@@ -1050,8 +1050,8 @@
                     }
                 );
 
-                this.addTest('movement-a-d-keys', 'Player Movement Controls', 'A/D keys work as alternatives',
-                    'Verifies A and D keys work as alternative movement controls',
+                this.addTest('aim-wasd-horizontal', 'Aim Controls', 'A/D keys aim left/right',
+                    'Verifies A and D keys control horizontal aiming',
                     async () => {
                         this.resetGame();
                         await this.wait(100);
@@ -1059,29 +1059,31 @@
                         this.simulateClick(startBtn);
                         await this.wait(200);
 
-                        // Test A key (move left)
-                        const initialX = this.gameWindow.cart?.x || this.gameWindow.playerX || 0;
+                        // Check aimKeys exist
+                        if (!this.gameWindow.aimKeys) {
+                            throw new Error('aimKeys not found on window');
+                        }
+
+                        // Test A key (aim left)
                         this.simulateKeyDown('a');
-                        await this.wait(150);
-                        this.simulateKeyUp('a'); // Release A key
-                        const afterAX = this.gameWindow.cart?.x || this.gameWindow.playerX || 0;
-                        if (afterAX >= initialX) {
-                            throw new Error(`A key did not move cart left. Initial: ${initialX}, After A: ${afterAX}`);
+                        await this.wait(50);
+                        if (!this.gameWindow.aimKeys.left) {
+                            throw new Error('A key did not set aimKeys.left');
                         }
+                        this.simulateKeyUp('a');
 
-                        // Test D key (move right) - A is now released
+                        // Test D key (aim right)
                         this.simulateKeyDown('d');
-                        await this.wait(150);
-                        this.simulateKeyUp('d'); // Release D key
-                        const afterDX = this.gameWindow.cart?.x || this.gameWindow.playerX || 0;
-                        if (afterDX <= afterAX) {
-                            throw new Error(`D key did not move cart right. After A: ${afterAX}, After D: ${afterDX}`);
+                        await this.wait(50);
+                        if (!this.gameWindow.aimKeys.right) {
+                            throw new Error('D key did not set aimKeys.right');
                         }
+                        this.simulateKeyUp('d');
                     }
                 );
 
-                this.addTest('movement-w-speed-boost', 'Player Movement Controls', 'W key activates speed boost',
-                    'Verifies pressing W key activates speed boost',
+                this.addTest('aim-wasd-vertical', 'Aim Controls', 'W/S keys aim up/down',
+                    'Verifies W and S keys control vertical aiming',
                     async () => {
                         this.resetGame();
                         await this.wait(100);
@@ -1089,30 +1091,26 @@
                         this.simulateClick(startBtn);
                         await this.wait(200);
 
-                        // Check that keys.up is initially false
-                        const initialUp = this.gameWindow.keys?.up || false;
-                        if (initialUp) {
-                            throw new Error('keys.up should be false initially');
-                        }
-
-                        // Press W key
+                        // Test W key (aim up)
                         this.simulateKeyDown('w');
-                        await this.wait(100);
-
-                        // Check that keys.up is now true (W/ArrowUp activates speed boost)
-                        const keysUp = this.gameWindow.keys?.up || false;
-                        const speedMult = this.gameWindow.speedMultiplier || 1;
-
-                        if (!keysUp && speedMult <= 1) {
-                            throw new Error(`Speed boost not activated. keys.up: ${keysUp}, speedMultiplier: ${speedMult}`);
+                        await this.wait(50);
+                        if (!this.gameWindow.aimKeys.up) {
+                            throw new Error('W key did not set aimKeys.up');
                         }
-
                         this.simulateKeyUp('w');
+
+                        // Test S key (aim down)
+                        this.simulateKeyDown('s');
+                        await this.wait(50);
+                        if (!this.gameWindow.aimKeys.down) {
+                            throw new Error('S key did not set aimKeys.down');
+                        }
+                        this.simulateKeyUp('s');
                     }
                 );
 
-                this.addTest('movement-s-slow-down', 'Player Movement Controls', 'S key activates slow down',
-                    'Verifies pressing S key activates slow down',
+                this.addTest('arrow-speed-boost', 'Player Movement Controls', 'Arrow Up activates speed boost',
+                    'Verifies pressing Arrow Up activates speed boost',
                     async () => {
                         this.resetGame();
                         await this.wait(100);
@@ -1120,25 +1118,38 @@
                         this.simulateClick(startBtn);
                         await this.wait(200);
 
-                        // Check that keys.down is initially false
-                        const initialDown = this.gameWindow.keys?.down || false;
-                        if (initialDown) {
-                            throw new Error('keys.down should be false initially');
-                        }
-
-                        // Press S key
-                        this.simulateKeyDown('s');
+                        // Press Arrow Up
+                        this.simulateKeyDown('ArrowUp');
                         await this.wait(100);
 
-                        // Check that keys.down is now true (S/ArrowDown activates slow down)
-                        const keysDown = this.gameWindow.keys?.down || false;
-                        const speedMult = this.gameWindow.speedMultiplier || 1;
-
-                        if (!keysDown && speedMult >= 1) {
-                            throw new Error(`Slow down not activated. keys.down: ${keysDown}, speedMultiplier: ${speedMult}`);
+                        const keysUp = this.gameWindow.keys?.up || false;
+                        if (!keysUp) {
+                            throw new Error('Arrow Up did not set keys.up');
                         }
 
-                        this.simulateKeyUp('s');
+                        this.simulateKeyUp('ArrowUp');
+                    }
+                );
+
+                this.addTest('arrow-slow-down', 'Player Movement Controls', 'Arrow Down activates slow down',
+                    'Verifies pressing Arrow Down activates slow down',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+
+                        // Press Arrow Down
+                        this.simulateKeyDown('ArrowDown');
+                        await this.wait(100);
+
+                        const keysDown = this.gameWindow.keys?.down || false;
+                        if (!keysDown) {
+                            throw new Error('Arrow Down did not set keys.down');
+                        }
+
+                        this.simulateKeyUp('ArrowDown');
                     }
                 );
 

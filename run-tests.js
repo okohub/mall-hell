@@ -16,9 +16,14 @@ function updateProgressDisplay() {
         ? `✅ ${progress.ui.passed}/${progress.ui.total}`
         : `⏳ ${progress.ui.passed + progress.ui.failed}/${progress.ui.total}`;
 
-    const currentTest = progress.ui.current ? ` [${progress.ui.current}]` : '';
+    // Truncate test name if too long
+    let testName = progress.ui.current || '';
+    if (testName.length > 40) {
+        testName = testName.substring(0, 37) + '...';
+    }
+    const currentTest = testName ? ` [${testName}]` : '';
 
-    process.stdout.write(`\r  Unit: ${unitStatus} | UI: ${uiStatus}${currentTest}`.padEnd(100));
+    process.stdout.write(`\r  Unit: ${unitStatus} | UI: ${uiStatus}${currentTest}`.padEnd(120));
 }
 
 async function runTests() {
