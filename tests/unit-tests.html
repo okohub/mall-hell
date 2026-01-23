@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart Chaos - Unit Tests</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #e94560;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        .subtitle {
+            color: #888;
+            margin-bottom: 30px;
+        }
+        .summary {
+            background: #2c3e50;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+        .summary-item {
+            text-align: center;
+        }
+        .summary-item .label {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .summary-item .value {
+            font-size: 36px;
+            font-weight: bold;
+        }
+        .summary-item .value.passed { color: #2ecc71; }
+        .summary-item .value.failed { color: #e74c3c; }
+        .summary-item .value.total { color: #f1c40f; }
+
+        .test-module {
+            background: #16213e;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .module-header {
+            background: #0f3460;
+            padding: 15px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .module-header:hover {
+            background: #1a4a7a;
+        }
+        .module-status {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .module-status.all-passed {
+            background: #27ae60;
+        }
+        .module-status.has-failures {
+            background: #e74c3c;
+        }
+        .test-list {
+            padding: 10px 20px 20px;
+        }
+        .test-item {
+            padding: 12px 15px;
+            margin: 8px 0;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .test-item.passed {
+            background: rgba(46, 204, 113, 0.15);
+            border-left: 4px solid #2ecc71;
+        }
+        .test-item.failed {
+            background: rgba(231, 76, 60, 0.15);
+            border-left: 4px solid #e74c3c;
+        }
+        .test-name {
+            font-weight: 500;
+        }
+        .test-status {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .test-status.passed {
+            background: #2ecc71;
+            color: #fff;
+        }
+        .test-status.failed {
+            background: #e74c3c;
+            color: #fff;
+        }
+        .test-details {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+        .test-details.error {
+            color: #e74c3c;
+        }
+        .progress-bar {
+            width: 200px;
+            height: 10px;
+            background: #34495e;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #2ecc71, #27ae60);
+            transition: width 0.3s;
+        }
+        .run-btn {
+            background: linear-gradient(135deg, #e94560, #c0392b);
+            color: #fff;
+            border: none;
+            padding: 15px 40px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .run-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(233, 69, 96, 0.4);
+        }
+        .run-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cart Chaos Unit Tests</h1>
+    <p class="subtitle">Testing core game logic modules</p>
+
+    <button class="run-btn" id="run-tests">Run All Tests</button>
+
+    <div class="summary" id="summary" style="display: none;">
+        <div class="summary-item">
+            <div class="label">Total Tests</div>
+            <div class="value total" id="total-count">0</div>
+        </div>
+        <div class="summary-item">
+            <div class="label">Passed</div>
+            <div class="value passed" id="passed-count">0</div>
+        </div>
+        <div class="summary-item">
+            <div class="label">Failed</div>
+            <div class="value failed" id="failed-count">0</div>
+        </div>
+        <div class="summary-item">
+            <div class="label">Progress</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="test-results"></div>
+
+    <script>
+        // ============================================
+        // SIMPLE CUSTOM TEST FRAMEWORK
+        // ============================================
+
+        class TestFramework {
+            constructor() {
+                this.modules = [];
+                this.currentModule = null;
+                this.results = {
+                    total: 0,
+                    passed: 0,
+                    failed: 0
+                };
+            }
+
+            describe(moduleName, testFn) {
+                this.currentModule = {
+                    name: moduleName,
+                    tests: [],
+                    beforeEach: null,
+                    afterEach: null
+                };
+                testFn();
+                this.modules.push(this.currentModule);
+            }
+
+            beforeEach(fn) {
+                if (this.currentModule) {
+                    this.currentModule.beforeEach = fn;
+                }
+            }
+
+            afterEach(fn) {
+                if (this.currentModule) {
+                    this.currentModule.afterEach = fn;
+                }
+            }
+
+            it(testName, testFn) {
+                if (this.currentModule) {
+                    this.currentModule.tests.push({
+                        name: testName,
+                        fn: testFn,
+                        passed: null,
+                        error: null
+                    });
+                }
+            }
+
+            assertEqual(actual, expected, message = '') {
+                if (actual !== expected) {
+                    throw new Error(`${message} Expected ${expected}, got ${actual}`);
+                }
+            }
+
+            assertCloseTo(actual, expected, tolerance = 0.0001, message = '') {
+                if (Math.abs(actual - expected) > tolerance) {
+                    throw new Error(`${message} Expected ${expected} (±${tolerance}), got ${actual}`);
+                }
+            }
+
+            assertTrue(value, message = '') {
+                if (!value) {
+                    throw new Error(`${message} Expected true, got ${value}`);
+                }
+            }
+
+            assertFalse(value, message = '') {
+                if (value) {
+                    throw new Error(`${message} Expected false, got ${value}`);
+                }
+            }
+
+            assertGreaterThan(actual, expected, message = '') {
+                if (!(actual > expected)) {
+                    throw new Error(`${message} Expected ${actual} to be greater than ${expected}`);
+                }
+            }
+
+            assertLessThan(actual, expected, message = '') {
+                if (!(actual < expected)) {
+                    throw new Error(`${message} Expected ${actual} to be less than ${expected}`);
+                }
+            }
+
+            assertInRange(value, min, max, message = '') {
+                if (value < min || value > max) {
+                    throw new Error(`${message} Expected ${value} to be between ${min} and ${max}`);
+                }
+            }
+
+            assertThrows(fn, message = '') {
+                let threw = false;
+                try {
+                    fn();
+                } catch (e) {
+                    threw = true;
+                }
+                if (!threw) {
+                    throw new Error(`${message} Expected function to throw an error`);
+                }
+            }
+
+            assertArrayEqual(actual, expected, message = '') {
+                if (actual.length !== expected.length) {
+                    throw new Error(`${message} Array lengths differ: ${actual.length} vs ${expected.length}`);
+                }
+                for (let i = 0; i < actual.length; i++) {
+                    if (actual[i] !== expected[i]) {
+                        throw new Error(`${message} Arrays differ at index ${i}: ${actual[i]} vs ${expected[i]}`);
+                    }
+                }
+            }
+
+            run() {
+                this.results = { total: 0, passed: 0, failed: 0 };
+
+                for (const module of this.modules) {
+                    for (const test of module.tests) {
+                        this.results.total++;
+
+                        try {
+                            // Setup
+                            if (module.beforeEach) {
+                                module.beforeEach();
+                            }
+
+                            // Run test
+                            test.fn();
+
+                            // Teardown
+                            if (module.afterEach) {
+                                module.afterEach();
+                            }
+
+                            test.passed = true;
+                            this.results.passed++;
+                        } catch (e) {
+                            test.passed = false;
+                            test.error = e.message;
+                            this.results.failed++;
+                        }
+                    }
+                }
+
+                return this.results;
+            }
+
+            getModules() {
+                return this.modules;
+            }
+        }
+
+        const test = new TestFramework();
+
+        // ============================================
+        // EXTRACTED GAME LOGIC FOR TESTING
+        // (Standalone functions that mirror game logic)
+        // ============================================
+
+        // Game Constants (from index.html)
+        const AISLE_LENGTH = 800;
+        const CART_SPEED = 25;
+        const SHOOT_COOLDOWN = 500;
+        const PROJECTILE_SPEED = 120;
+        const ENEMY_HEALTH = 3;
+
+        // Valid game states
+        const VALID_STATES = ['MENU', 'PLAYING', 'PAUSED', 'GAME_OVER'];
+
+        // Valid state transitions
+        const VALID_TRANSITIONS = {
+            'MENU': ['PLAYING'],
+            'PLAYING': ['PAUSED', 'GAME_OVER'],
+            'PAUSED': ['PLAYING', 'MENU'],
+            'GAME_OVER': ['MENU', 'PLAYING']
+        };
+
+        // ============================================
+        // SCORING SYSTEM MODULE
+        // ============================================
+
+        const ScoringSystem = {
+            calculateScore(baseScore, multiplier = 1) {
+                return Math.floor(baseScore * multiplier);
+            },
+
+            getEnemyHitScore() {
+                return 100;
+            },
+
+            getEnemyDestroyScore() {
+                return 300;
+            },
+
+            getObstacleHitScore() {
+                return 150;
+            },
+
+            getRating(score) {
+                if (score > 10000) return 'LEGENDARY CHAOS!';
+                if (score > 7000) return 'Total Mayhem!';
+                if (score > 4000) return 'Chaos Master';
+                if (score > 2000) return 'Troublemaker';
+                if (score > 800) return 'Rowdy Kid';
+                return 'Mild Mischief';
+            },
+
+            getRatingThresholds() {
+                return [
+                    { threshold: 10000, rating: 'LEGENDARY CHAOS!' },
+                    { threshold: 7000, rating: 'Total Mayhem!' },
+                    { threshold: 4000, rating: 'Chaos Master' },
+                    { threshold: 2000, rating: 'Troublemaker' },
+                    { threshold: 800, rating: 'Rowdy Kid' },
+                    { threshold: 0, rating: 'Mild Mischief' }
+                ];
+            }
+        };
+
+        // ============================================
+        // GAME STATE MACHINE MODULE
+        // ============================================
+
+        const GameStateMachine = {
+            currentState: 'MENU',
+
+            reset() {
+                this.currentState = 'MENU';
+            },
+
+            getState() {
+                return this.currentState;
+            },
+
+            isValidState(state) {
+                return VALID_STATES.includes(state);
+            },
+
+            canTransitionTo(targetState) {
+                const allowedTransitions = VALID_TRANSITIONS[this.currentState];
+                return allowedTransitions && allowedTransitions.includes(targetState);
+            },
+
+            transitionTo(targetState) {
+                if (!this.isValidState(targetState)) {
+                    return false;
+                }
+                if (!this.canTransitionTo(targetState)) {
+                    return false;
+                }
+                this.currentState = targetState;
+                return true;
+            },
+
+            startGame() {
+                return this.transitionTo('PLAYING');
+            },
+
+            pauseGame() {
+                return this.transitionTo('PAUSED');
+            },
+
+            resumeGame() {
+                return this.transitionTo('PLAYING');
+            },
+
+            endGame() {
+                return this.transitionTo('GAME_OVER');
+            },
+
+            quitToMenu() {
+                return this.transitionTo('MENU');
+            }
+        };
+
+        // ============================================
+        // COOLDOWN SYSTEM MODULE
+        // ============================================
+
+        const CooldownSystem = {
+            lastShootTime: 0,
+            cooldownDuration: SHOOT_COOLDOWN,
+
+            reset() {
+                this.lastShootTime = 0;
+            },
+
+            canShoot(currentTime) {
+                return (currentTime - this.lastShootTime) >= this.cooldownDuration;
+            },
+
+            shoot(currentTime) {
+                if (!this.canShoot(currentTime)) {
+                    return false;
+                }
+                this.lastShootTime = currentTime;
+                return true;
+            },
+
+            getCooldownProgress(currentTime) {
+                const elapsed = currentTime - this.lastShootTime;
+                return Math.min(elapsed / this.cooldownDuration, 1);
+            },
+
+            getRemainingCooldown(currentTime) {
+                const elapsed = currentTime - this.lastShootTime;
+                return Math.max(this.cooldownDuration - elapsed, 0);
+            }
+        };
+
+        // ============================================
+        // COLLISION DETECTION MODULE
+        // ============================================
+
+        const CollisionDetection = {
+            distanceBetween(pos1, pos2) {
+                const dx = pos2.x - pos1.x;
+                const dy = pos2.y - pos1.y;
+                const dz = pos2.z - pos1.z;
+                return Math.sqrt(dx * dx + dy * dy + dz * dz);
+            },
+
+            checkHit(projectilePos, targetPos, hitRadius) {
+                const dist = this.distanceBetween(projectilePos, targetPos);
+                return dist < hitRadius;
+            },
+
+            isProjectileInBounds(projectilePos, cameraZ, bounds) {
+                const { maxDistance, maxX, minY, maxY } = bounds;
+
+                if (projectilePos.z < cameraZ - maxDistance) return false;
+                if (Math.abs(projectilePos.x) > maxX) return false;
+                if (projectilePos.y < minY || projectilePos.y > maxY) return false;
+
+                return true;
+            },
+
+            getEnemyHitRadius() {
+                return 2;
+            },
+
+            getObstacleHitRadius(obstacleWidth) {
+                return obstacleWidth * 0.7;
+            }
+        };
+
+        // ============================================
+        // SPAWN SYSTEM MODULE
+        // ============================================
+
+        const SpawnSystem = {
+            maxEnemies: 10,
+            maxObstacles: 15,
+
+            canSpawnEnemy(currentEnemyCount) {
+                return currentEnemyCount < this.maxEnemies;
+            },
+
+            canSpawnObstacle(currentObstacleCount) {
+                return currentObstacleCount < this.maxObstacles;
+            },
+
+            calculateSpawnX(rangeWidth) {
+                return (Math.random() - 0.5) * rangeWidth;
+            },
+
+            calculateSpawnZ(cameraZ, spawnDistance) {
+                return cameraZ - spawnDistance;
+            },
+
+            shouldSpawnEnemy(randomValue, spawnChance = 0.015) {
+                return randomValue < spawnChance;
+            },
+
+            shouldSpawnObstacle(randomValue, spawnChance = 0.02) {
+                return randomValue < spawnChance;
+            },
+
+            getRandomObstacleType() {
+                const types = ['stack', 'barrel', 'display'];
+                return types[Math.floor(Math.random() * types.length)];
+            },
+
+            validateSpawnPosition(x, z, minX, maxX, maxZ) {
+                return x >= minX && x <= maxX && z >= maxZ;
+            }
+        };
+
+        // ============================================
+        // OBJECT CLEANUP MODULE
+        // ============================================
+
+        const ObjectCleanup = {
+            isObjectBehindCamera(objectZ, cameraZ, buffer) {
+                return objectZ > cameraZ + buffer;
+            },
+
+            isProjectileOutOfBounds(projectile, cameraZ, bounds) {
+                return !CollisionDetection.isProjectileInBounds(
+                    projectile.position,
+                    cameraZ,
+                    bounds
+                );
+            },
+
+            isParticleDead(particle) {
+                return particle.life <= 0;
+            },
+
+            filterActiveObjects(objects) {
+                return objects.filter(obj => obj.active);
+            },
+
+            countActiveObjects(objects) {
+                return objects.filter(obj => obj.active).length;
+            },
+
+            markForRemoval(object) {
+                object.active = false;
+                return object;
+            }
+        };
+
+        // ============================================
+        // HEALTH SYSTEM MODULE
+        // ============================================
+
+        const HealthSystem = {
+            maxHealth: ENEMY_HEALTH,
+
+            createEnemy() {
+                return {
+                    health: this.maxHealth,
+                    active: true,
+                    hitFlash: 0
+                };
+            },
+
+            damageEnemy(enemy, damage = 1) {
+                if (!enemy.active) return enemy;
+
+                enemy.health -= damage;
+                enemy.hitFlash = 1;
+
+                if (enemy.health <= 0) {
+                    enemy.health = 0;
+                    enemy.active = false;
+                }
+
+                return enemy;
+            },
+
+            isEnemyAlive(enemy) {
+                return enemy.active && enemy.health > 0;
+            },
+
+            isEnemyDestroyed(enemy) {
+                return !enemy.active || enemy.health <= 0;
+            },
+
+            getHealthPercentage(enemy) {
+                return enemy.health / this.maxHealth;
+            },
+
+            getHealthBarScale(enemy) {
+                return enemy.health / this.maxHealth;
+            }
+        };
+
+        // ============================================
+        // PLAYER MOVEMENT SYSTEM MODULE
+        // ============================================
+
+        const PlayerMovementSystem = {
+            lateralSpeed: 8, // units per second
+            speedBoostMultiplier: 1.5,
+            slowdownMultiplier: 0.5,
+            minBound: -10,
+            maxBound: 10,
+
+            reset() {
+                // Reset any state if needed
+            },
+
+            getLateralSpeed() {
+                return this.lateralSpeed;
+            },
+
+            getSpeedWithBoost() {
+                return this.lateralSpeed * this.speedBoostMultiplier;
+            },
+
+            getSpeedWithSlowdown() {
+                return this.lateralSpeed * this.slowdownMultiplier;
+            },
+
+            clampPosition(position) {
+                return Math.max(this.minBound, Math.min(this.maxBound, position));
+            },
+
+            canMove(gameState) {
+                return gameState === 'PLAYING';
+            },
+
+            calculateVelocity(leftPressed, rightPressed) {
+                let velocity = 0;
+                if (leftPressed) velocity -= this.lateralSpeed;
+                if (rightPressed) velocity += this.lateralSpeed;
+                return velocity;
+            }
+        };
+
+        // ============================================
+        // PLAYER HEALTH SYSTEM MODULE
+        // ============================================
+
+        const PlayerHealthSystem = {
+            health: 100,
+            maxHealth: 100,
+            invulnerabilityDuration: 1000, // 1 second in milliseconds
+            lastDamageTime: -1000, // Start with no invulnerability
+
+            reset() {
+                this.health = 100;
+                this.lastDamageTime = -1000;
+            },
+
+            getHealth() {
+                return this.health;
+            },
+
+            getMaxHealth() {
+                return this.maxHealth;
+            },
+
+            getInvulnerabilityDuration() {
+                return this.invulnerabilityDuration;
+            },
+
+            isInvulnerable(currentTime) {
+                return (currentTime - this.lastDamageTime) < this.invulnerabilityDuration;
+            },
+
+            applyDamage(amount, currentTime) {
+                if (this.isInvulnerable(currentTime)) {
+                    return false; // Damage blocked
+                }
+
+                this.health = Math.max(0, this.health - amount);
+                this.lastDamageTime = currentTime;
+                return true; // Damage applied
+            },
+
+            applyEnemyCollisionDamage() {
+                this.health = Math.max(0, this.health - 20);
+            },
+
+            applyObstacleCollisionDamage() {
+                this.health = Math.max(0, this.health - 10);
+            },
+
+            isDead() {
+                return this.health <= 0;
+            },
+
+            getHealthPercentage() {
+                return (this.health / this.maxHealth) * 100;
+            }
+        };
+
+        // ============================================
+        // TEST DEFINITIONS
+        // ============================================
+
+        // Scoring System Tests
+        test.describe('Scoring System', () => {
+            test.it('should return correct enemy hit score (100 points)', () => {
+                test.assertEqual(ScoringSystem.getEnemyHitScore(), 100);
+            });
+
+            test.it('should return correct enemy destroy score (300 points)', () => {
+                test.assertEqual(ScoringSystem.getEnemyDestroyScore(), 300);
+            });
+
+            test.it('should return correct obstacle hit score (150 points)', () => {
+                test.assertEqual(ScoringSystem.getObstacleHitScore(), 150);
+            });
+
+            test.it('should apply multiplier correctly to base score', () => {
+                test.assertEqual(ScoringSystem.calculateScore(100, 2), 200);
+                test.assertEqual(ScoringSystem.calculateScore(150, 1.5), 225);
+            });
+
+            test.it('should return "Mild Mischief" rating for score <= 800', () => {
+                test.assertEqual(ScoringSystem.getRating(0), 'Mild Mischief');
+                test.assertEqual(ScoringSystem.getRating(500), 'Mild Mischief');
+                test.assertEqual(ScoringSystem.getRating(800), 'Mild Mischief');
+            });
+
+            test.it('should return "Rowdy Kid" rating for score > 800 and <= 2000', () => {
+                test.assertEqual(ScoringSystem.getRating(801), 'Rowdy Kid');
+                test.assertEqual(ScoringSystem.getRating(1500), 'Rowdy Kid');
+                test.assertEqual(ScoringSystem.getRating(2000), 'Rowdy Kid');
+            });
+
+            test.it('should return "LEGENDARY CHAOS!" rating for score > 10000', () => {
+                test.assertEqual(ScoringSystem.getRating(10001), 'LEGENDARY CHAOS!');
+                test.assertEqual(ScoringSystem.getRating(50000), 'LEGENDARY CHAOS!');
+            });
+        });
+
+        // Game State Machine Tests
+        test.describe('Game State Machine', () => {
+            test.beforeEach(() => {
+                GameStateMachine.reset();
+            });
+
+            test.it('should start in MENU state', () => {
+                test.assertEqual(GameStateMachine.getState(), 'MENU');
+            });
+
+            test.it('should allow transition from MENU to PLAYING', () => {
+                test.assertTrue(GameStateMachine.startGame());
+                test.assertEqual(GameStateMachine.getState(), 'PLAYING');
+            });
+
+            test.it('should allow transition from PLAYING to PAUSED', () => {
+                GameStateMachine.startGame();
+                test.assertTrue(GameStateMachine.pauseGame());
+                test.assertEqual(GameStateMachine.getState(), 'PAUSED');
+            });
+
+            test.it('should allow transition from PAUSED to PLAYING', () => {
+                GameStateMachine.startGame();
+                GameStateMachine.pauseGame();
+                test.assertTrue(GameStateMachine.resumeGame());
+                test.assertEqual(GameStateMachine.getState(), 'PLAYING');
+            });
+
+            test.it('should reject invalid state transition from MENU to PAUSED', () => {
+                test.assertFalse(GameStateMachine.pauseGame());
+                test.assertEqual(GameStateMachine.getState(), 'MENU');
+            });
+
+            test.it('should reject invalid state transition from MENU to GAME_OVER', () => {
+                test.assertFalse(GameStateMachine.endGame());
+                test.assertEqual(GameStateMachine.getState(), 'MENU');
+            });
+
+            test.it('should validate known game states', () => {
+                test.assertTrue(GameStateMachine.isValidState('MENU'));
+                test.assertTrue(GameStateMachine.isValidState('PLAYING'));
+                test.assertTrue(GameStateMachine.isValidState('PAUSED'));
+                test.assertTrue(GameStateMachine.isValidState('GAME_OVER'));
+            });
+
+            test.it('should reject unknown game states', () => {
+                test.assertFalse(GameStateMachine.isValidState('INVALID'));
+                test.assertFalse(GameStateMachine.isValidState(''));
+                test.assertFalse(GameStateMachine.isValidState(null));
+            });
+        });
+
+        // Cooldown System Tests
+        test.describe('Cooldown System', () => {
+            test.beforeEach(() => {
+                CooldownSystem.reset();
+            });
+
+            test.it('should allow shooting when cooldown has elapsed', () => {
+                test.assertTrue(CooldownSystem.canShoot(1000));
+            });
+
+            test.it('should prevent shooting during cooldown period', () => {
+                CooldownSystem.shoot(1000);
+                test.assertFalse(CooldownSystem.canShoot(1200)); // Only 200ms elapsed
+                test.assertFalse(CooldownSystem.canShoot(1499)); // 499ms elapsed
+            });
+
+            test.it('should allow shooting after cooldown expires', () => {
+                CooldownSystem.shoot(1000);
+                test.assertTrue(CooldownSystem.canShoot(1500)); // Exactly 500ms
+                test.assertTrue(CooldownSystem.canShoot(2000)); // 1000ms elapsed
+            });
+
+            test.it('should return correct cooldown progress', () => {
+                CooldownSystem.shoot(1000);
+                test.assertEqual(CooldownSystem.getCooldownProgress(1000), 0);
+                test.assertEqual(CooldownSystem.getCooldownProgress(1250), 0.5);
+                test.assertEqual(CooldownSystem.getCooldownProgress(1500), 1);
+                test.assertEqual(CooldownSystem.getCooldownProgress(2000), 1); // Capped at 1
+            });
+
+            test.it('should return correct remaining cooldown time', () => {
+                CooldownSystem.shoot(1000);
+                test.assertEqual(CooldownSystem.getRemainingCooldown(1000), 500);
+                test.assertEqual(CooldownSystem.getRemainingCooldown(1250), 250);
+                test.assertEqual(CooldownSystem.getRemainingCooldown(1500), 0);
+            });
+        });
+
+        // Collision Detection Tests
+        test.describe('Collision Detection', () => {
+            test.it('should calculate correct distance between two points', () => {
+                const pos1 = { x: 0, y: 0, z: 0 };
+                const pos2 = { x: 3, y: 4, z: 0 };
+                test.assertEqual(CollisionDetection.distanceBetween(pos1, pos2), 5);
+            });
+
+            test.it('should detect hit when within radius', () => {
+                const projectile = { x: 0, y: 0, z: 0 };
+                const target = { x: 1, y: 0, z: 0 };
+                test.assertTrue(CollisionDetection.checkHit(projectile, target, 2));
+            });
+
+            test.it('should not detect hit when outside radius', () => {
+                const projectile = { x: 0, y: 0, z: 0 };
+                const target = { x: 5, y: 0, z: 0 };
+                test.assertFalse(CollisionDetection.checkHit(projectile, target, 2));
+            });
+
+            test.it('should return correct enemy hit radius (2 units)', () => {
+                test.assertEqual(CollisionDetection.getEnemyHitRadius(), 2);
+            });
+
+            test.it('should calculate obstacle hit radius as 70% of width', () => {
+                test.assertCloseTo(CollisionDetection.getObstacleHitRadius(3), 2.1);
+                test.assertCloseTo(CollisionDetection.getObstacleHitRadius(1.5), 1.05);
+            });
+
+            test.it('should correctly determine if projectile is in bounds', () => {
+                const bounds = { maxDistance: 200, maxX: 20, minY: 0, maxY: 15 };
+
+                // In bounds
+                const inBounds = { x: 5, y: 5, z: -50 };
+                test.assertTrue(CollisionDetection.isProjectileInBounds(inBounds, 0, bounds));
+
+                // Out of bounds (too far)
+                const tooFar = { x: 0, y: 5, z: -250 };
+                test.assertFalse(CollisionDetection.isProjectileInBounds(tooFar, 0, bounds));
+
+                // Out of bounds (too wide)
+                const tooWide = { x: 25, y: 5, z: -50 };
+                test.assertFalse(CollisionDetection.isProjectileInBounds(tooWide, 0, bounds));
+            });
+        });
+
+        // Spawn System Tests
+        test.describe('Spawn System', () => {
+            test.it('should allow enemy spawn when under limit', () => {
+                test.assertTrue(SpawnSystem.canSpawnEnemy(5));
+                test.assertTrue(SpawnSystem.canSpawnEnemy(9));
+            });
+
+            test.it('should prevent enemy spawn when at limit', () => {
+                test.assertFalse(SpawnSystem.canSpawnEnemy(10));
+                test.assertFalse(SpawnSystem.canSpawnEnemy(15));
+            });
+
+            test.it('should allow obstacle spawn when under limit', () => {
+                test.assertTrue(SpawnSystem.canSpawnObstacle(10));
+                test.assertTrue(SpawnSystem.canSpawnObstacle(14));
+            });
+
+            test.it('should prevent obstacle spawn when at limit', () => {
+                test.assertFalse(SpawnSystem.canSpawnObstacle(15));
+                test.assertFalse(SpawnSystem.canSpawnObstacle(20));
+            });
+
+            test.it('should calculate spawn X position within range', () => {
+                // Run multiple times to test randomness bounds
+                for (let i = 0; i < 100; i++) {
+                    const x = SpawnSystem.calculateSpawnX(16);
+                    test.assertInRange(x, -8, 8);
+                }
+            });
+
+            test.it('should calculate correct spawn Z position', () => {
+                test.assertEqual(SpawnSystem.calculateSpawnZ(0, 150), -150);
+                test.assertEqual(SpawnSystem.calculateSpawnZ(-100, 150), -250);
+            });
+
+            test.it('should return valid obstacle type', () => {
+                const validTypes = ['stack', 'barrel', 'display'];
+                for (let i = 0; i < 50; i++) {
+                    const type = SpawnSystem.getRandomObstacleType();
+                    test.assertTrue(validTypes.includes(type), `Invalid type: ${type}`);
+                }
+            });
+        });
+
+        // Object Cleanup Tests
+        test.describe('Object Cleanup', () => {
+            test.it('should detect object behind camera', () => {
+                test.assertTrue(ObjectCleanup.isObjectBehindCamera(30, 0, 20));
+                test.assertTrue(ObjectCleanup.isObjectBehindCamera(25, 0, 20));
+            });
+
+            test.it('should not flag object ahead of camera', () => {
+                test.assertFalse(ObjectCleanup.isObjectBehindCamera(-50, 0, 20));
+                test.assertFalse(ObjectCleanup.isObjectBehindCamera(10, 0, 20));
+            });
+
+            test.it('should detect dead particles (life <= 0)', () => {
+                test.assertTrue(ObjectCleanup.isParticleDead({ life: 0 }));
+                test.assertTrue(ObjectCleanup.isParticleDead({ life: -0.5 }));
+            });
+
+            test.it('should not flag living particles', () => {
+                test.assertFalse(ObjectCleanup.isParticleDead({ life: 0.5 }));
+                test.assertFalse(ObjectCleanup.isParticleDead({ life: 1 }));
+            });
+
+            test.it('should filter to only active objects', () => {
+                const objects = [
+                    { id: 1, active: true },
+                    { id: 2, active: false },
+                    { id: 3, active: true },
+                    { id: 4, active: false }
+                ];
+                const active = ObjectCleanup.filterActiveObjects(objects);
+                test.assertEqual(active.length, 2);
+                test.assertEqual(active[0].id, 1);
+                test.assertEqual(active[1].id, 3);
+            });
+
+            test.it('should count active objects correctly', () => {
+                const objects = [
+                    { active: true },
+                    { active: false },
+                    { active: true },
+                    { active: true }
+                ];
+                test.assertEqual(ObjectCleanup.countActiveObjects(objects), 3);
+            });
+
+            test.it('should mark object for removal by setting active to false', () => {
+                const obj = { active: true, data: 'test' };
+                ObjectCleanup.markForRemoval(obj);
+                test.assertFalse(obj.active);
+            });
+        });
+
+        // Health System Tests
+        test.describe('Health System', () => {
+            test.it('should create enemy with full health', () => {
+                const enemy = HealthSystem.createEnemy();
+                test.assertEqual(enemy.health, 3);
+                test.assertTrue(enemy.active);
+            });
+
+            test.it('should reduce enemy health on damage', () => {
+                const enemy = HealthSystem.createEnemy();
+                HealthSystem.damageEnemy(enemy, 1);
+                test.assertEqual(enemy.health, 2);
+            });
+
+            test.it('should trigger hit flash on damage', () => {
+                const enemy = HealthSystem.createEnemy();
+                HealthSystem.damageEnemy(enemy, 1);
+                test.assertEqual(enemy.hitFlash, 1);
+            });
+
+            test.it('should destroy enemy at 0 health', () => {
+                const enemy = HealthSystem.createEnemy();
+                HealthSystem.damageEnemy(enemy, 3);
+                test.assertEqual(enemy.health, 0);
+                test.assertFalse(enemy.active);
+            });
+
+            test.it('should correctly report enemy alive status', () => {
+                const enemy = HealthSystem.createEnemy();
+                test.assertTrue(HealthSystem.isEnemyAlive(enemy));
+
+                HealthSystem.damageEnemy(enemy, 3);
+                test.assertFalse(HealthSystem.isEnemyAlive(enemy));
+            });
+
+            test.it('should calculate correct health percentage', () => {
+                const enemy = HealthSystem.createEnemy();
+                test.assertEqual(HealthSystem.getHealthPercentage(enemy), 1);
+
+                HealthSystem.damageEnemy(enemy, 1);
+                test.assertInRange(HealthSystem.getHealthPercentage(enemy), 0.66, 0.67);
+
+                HealthSystem.damageEnemy(enemy, 1);
+                test.assertInRange(HealthSystem.getHealthPercentage(enemy), 0.33, 0.34);
+            });
+
+            test.it('should not damage inactive enemies', () => {
+                const enemy = HealthSystem.createEnemy();
+                enemy.active = false;
+                enemy.health = 3;
+
+                HealthSystem.damageEnemy(enemy, 1);
+                test.assertEqual(enemy.health, 3); // Health unchanged
+            });
+        });
+
+        // Player Movement System Tests
+        test.describe('Player Movement System', () => {
+            test.beforeEach(() => {
+                PlayerMovementSystem.reset();
+            });
+
+            test.it('should calculate lateral movement speed as 8 units/sec', () => {
+                test.assertEqual(PlayerMovementSystem.getLateralSpeed(), 8);
+            });
+
+            test.it('should apply speed boost multiplier (1.5x)', () => {
+                const baseSpeed = PlayerMovementSystem.getLateralSpeed();
+                const boostedSpeed = PlayerMovementSystem.getSpeedWithBoost();
+                test.assertEqual(boostedSpeed, baseSpeed * 1.5);
+                test.assertEqual(boostedSpeed, 12);
+            });
+
+            test.it('should apply slow down multiplier (0.5x)', () => {
+                const baseSpeed = PlayerMovementSystem.getLateralSpeed();
+                const slowedSpeed = PlayerMovementSystem.getSpeedWithSlowdown();
+                test.assertEqual(slowedSpeed, baseSpeed * 0.5);
+                test.assertEqual(slowedSpeed, 4);
+            });
+
+            test.it('should clamp movement within bounds (+-10 units)', () => {
+                // Test left bound
+                test.assertEqual(PlayerMovementSystem.clampPosition(-15), -10);
+                test.assertEqual(PlayerMovementSystem.clampPosition(-10), -10);
+
+                // Test right bound
+                test.assertEqual(PlayerMovementSystem.clampPosition(15), 10);
+                test.assertEqual(PlayerMovementSystem.clampPosition(10), 10);
+
+                // Test within bounds
+                test.assertEqual(PlayerMovementSystem.clampPosition(5), 5);
+                test.assertEqual(PlayerMovementSystem.clampPosition(-5), -5);
+                test.assertEqual(PlayerMovementSystem.clampPosition(0), 0);
+            });
+
+            test.it('should only allow movement in PLAYING state', () => {
+                test.assertTrue(PlayerMovementSystem.canMove('PLAYING'));
+                test.assertFalse(PlayerMovementSystem.canMove('MENU'));
+                test.assertFalse(PlayerMovementSystem.canMove('PAUSED'));
+                test.assertFalse(PlayerMovementSystem.canMove('GAME_OVER'));
+            });
+
+            test.it('should stop movement when not pressing keys', () => {
+                const velocity = PlayerMovementSystem.calculateVelocity(false, false);
+                test.assertEqual(velocity, 0);
+            });
+
+            test.it('should move left when pressing left key', () => {
+                const velocity = PlayerMovementSystem.calculateVelocity(true, false);
+                test.assertEqual(velocity, -8);
+            });
+
+            test.it('should move right when pressing right key', () => {
+                const velocity = PlayerMovementSystem.calculateVelocity(false, true);
+                test.assertEqual(velocity, 8);
+            });
+
+            test.it('should cancel out movement when pressing both keys', () => {
+                const velocity = PlayerMovementSystem.calculateVelocity(true, true);
+                test.assertEqual(velocity, 0);
+            });
+        });
+
+        // Player Health System Tests
+        test.describe('Player Health System', () => {
+            test.beforeEach(() => {
+                PlayerHealthSystem.reset();
+            });
+
+            test.it('should have initial health of 100', () => {
+                test.assertEqual(PlayerHealthSystem.getHealth(), 100);
+            });
+
+            test.it('should apply enemy collision damage (20 HP)', () => {
+                PlayerHealthSystem.applyEnemyCollisionDamage();
+                test.assertEqual(PlayerHealthSystem.getHealth(), 80);
+            });
+
+            test.it('should apply obstacle collision damage (10 HP)', () => {
+                PlayerHealthSystem.applyObstacleCollisionDamage();
+                test.assertEqual(PlayerHealthSystem.getHealth(), 90);
+            });
+
+            test.it('should not allow health to go below 0', () => {
+                // Apply enough damage to potentially go negative
+                for (let i = 0; i < 10; i++) {
+                    PlayerHealthSystem.applyEnemyCollisionDamage();
+                }
+                test.assertEqual(PlayerHealthSystem.getHealth(), 0);
+                test.assertFalse(PlayerHealthSystem.getHealth() < 0);
+            });
+
+            test.it('should activate invulnerability timer (1 second) after taking damage', () => {
+                const currentTime = 1000;
+                PlayerHealthSystem.applyDamage(20, currentTime);
+                test.assertTrue(PlayerHealthSystem.isInvulnerable(currentTime + 500));
+                test.assertEqual(PlayerHealthSystem.getInvulnerabilityDuration(), 1000);
+            });
+
+            test.it('should block damage during invulnerability', () => {
+                const currentTime = 1000;
+                PlayerHealthSystem.applyDamage(20, currentTime);
+                test.assertEqual(PlayerHealthSystem.getHealth(), 80);
+
+                // Try to apply damage during invulnerability
+                PlayerHealthSystem.applyDamage(20, currentTime + 500);
+                test.assertEqual(PlayerHealthSystem.getHealth(), 80); // Health unchanged
+            });
+
+            test.it('should expire invulnerability after 1 second', () => {
+                const currentTime = 1000;
+                PlayerHealthSystem.applyDamage(20, currentTime);
+
+                // Check invulnerable during the window
+                test.assertTrue(PlayerHealthSystem.isInvulnerable(currentTime + 500));
+                test.assertTrue(PlayerHealthSystem.isInvulnerable(currentTime + 999));
+
+                // Check no longer invulnerable after 1 second
+                test.assertFalse(PlayerHealthSystem.isInvulnerable(currentTime + 1000));
+                test.assertFalse(PlayerHealthSystem.isInvulnerable(currentTime + 1500));
+            });
+
+            test.it('should trigger death condition when health <= 0', () => {
+                test.assertFalse(PlayerHealthSystem.isDead());
+
+                // Reduce health to 0
+                for (let i = 0; i < 5; i++) {
+                    PlayerHealthSystem.health -= 20;
+                }
+                PlayerHealthSystem.health = Math.max(0, PlayerHealthSystem.health);
+
+                test.assertTrue(PlayerHealthSystem.isDead());
+            });
+
+            test.it('should calculate health percentage correctly', () => {
+                test.assertEqual(PlayerHealthSystem.getHealthPercentage(), 100);
+
+                PlayerHealthSystem.health = 50;
+                test.assertEqual(PlayerHealthSystem.getHealthPercentage(), 50);
+
+                PlayerHealthSystem.health = 25;
+                test.assertEqual(PlayerHealthSystem.getHealthPercentage(), 25);
+
+                PlayerHealthSystem.health = 0;
+                test.assertEqual(PlayerHealthSystem.getHealthPercentage(), 0);
+            });
+        });
+
+        // ============================================
+        // UI RENDERING
+        // ============================================
+
+        function renderResults(modules, results) {
+            const resultsContainer = document.getElementById('test-results');
+            const summary = document.getElementById('summary');
+
+            // Show summary
+            summary.style.display = 'flex';
+            document.getElementById('total-count').textContent = results.total;
+            document.getElementById('passed-count').textContent = results.passed;
+            document.getElementById('failed-count').textContent = results.failed;
+            document.getElementById('progress-fill').style.width =
+                (results.passed / results.total * 100) + '%';
+
+            // Clear previous results
+            resultsContainer.innerHTML = '';
+
+            // Render each module
+            modules.forEach(module => {
+                const moduleDiv = document.createElement('div');
+                moduleDiv.className = 'test-module';
+
+                const passedInModule = module.tests.filter(t => t.passed).length;
+                const allPassed = passedInModule === module.tests.length;
+
+                moduleDiv.innerHTML = `
+                    <div class="module-header">
+                        <span>${module.name}</span>
+                        <span class="module-status ${allPassed ? 'all-passed' : 'has-failures'}">
+                            ${passedInModule}/${module.tests.length} Passed
+                        </span>
+                    </div>
+                    <div class="test-list">
+                        ${module.tests.map(t => `
+                            <div class="test-item ${t.passed ? 'passed' : 'failed'}">
+                                <div>
+                                    <div class="test-name">${t.name}</div>
+                                    ${t.error ? `<div class="test-details error">${t.error}</div>` : ''}
+                                </div>
+                                <span class="test-status ${t.passed ? 'passed' : 'failed'}">
+                                    ${t.passed ? 'PASS' : 'FAIL'}
+                                </span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+
+                resultsContainer.appendChild(moduleDiv);
+            });
+        }
+
+        // Run tests on button click
+        document.getElementById('run-tests').addEventListener('click', function() {
+            this.disabled = true;
+            this.textContent = 'Running...';
+
+            // Small delay for visual feedback
+            setTimeout(() => {
+                const results = test.run();
+                renderResults(test.getModules(), results);
+
+                this.disabled = false;
+                this.textContent = 'Run All Tests';
+            }, 100);
+        });
+
+        // Auto-run tests on page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('run-tests').click();
+            }, 300);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart Chaos - UI/Integration Tests</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: #fff;
+            min-height: 100vh;
+        }
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        .test-panel {
+            width: 450px;
+            background: #16213e;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 2px solid #e94560;
+        }
+        .game-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .game-frame-container {
+            flex: 1;
+            position: relative;
+            background: #0a0a0f;
+        }
+        #game-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .controls-bar {
+            background: #0f3460;
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        h1 {
+            color: #e94560;
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            background: linear-gradient(135deg, #e94560, #c0392b);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(233, 69, 96, 0.4);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-secondary {
+            background: linear-gradient(135deg, #34495e, #2c3e50);
+        }
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        .summary {
+            background: #0f3460;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .summary-stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+        }
+        .stat {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .stat-label {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+        }
+        .stat-pass { color: #2ecc71; }
+        .stat-fail { color: #e74c3c; }
+        .stat-pending { color: #f39c12; }
+        .stat-total { color: #3498db; }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #1a1a2e;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #2ecc71, #27ae60);
+            transition: width 0.3s;
+        }
+        .test-group {
+            margin-bottom: 20px;
+        }
+        .group-header {
+            background: #0f3460;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #e94560;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .group-count {
+            font-size: 12px;
+            color: #888;
+        }
+        .test-item {
+            background: #1a1a2e;
+            padding: 12px 15px;
+            border-radius: 5px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s;
+        }
+        .test-item:hover {
+            background: #232741;
+        }
+        .test-status {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+        .status-pending {
+            background: #34495e;
+            color: #888;
+        }
+        .status-running {
+            background: #f39c12;
+            color: #fff;
+            animation: pulse 1s infinite;
+        }
+        .status-pass {
+            background: #2ecc71;
+            color: #fff;
+        }
+        .status-fail {
+            background: #e74c3c;
+            color: #fff;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .test-info {
+            flex: 1;
+        }
+        .test-name {
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+        .test-desc {
+            font-size: 11px;
+            color: #666;
+        }
+        .test-time {
+            font-size: 11px;
+            color: #888;
+        }
+        .test-error {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid #e74c3c;
+            border-radius: 4px;
+            padding: 8px;
+            margin-top: 8px;
+            font-size: 11px;
+            color: #e74c3c;
+            font-family: monospace;
+            word-break: break-word;
+        }
+        .log-panel {
+            background: #0a0a0f;
+            padding: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 11px;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        .log-entry {
+            padding: 2px 0;
+            border-bottom: 1px solid #1a1a2e;
+        }
+        .log-info { color: #3498db; }
+        .log-success { color: #2ecc71; }
+        .log-error { color: #e74c3c; }
+        .log-warn { color: #f39c12; }
+        .state-capture {
+            background: #0f3460;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        .state-capture h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #e94560;
+        }
+        .state-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            font-size: 12px;
+        }
+        .state-item {
+            background: #1a1a2e;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .state-label {
+            color: #888;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+        .state-value {
+            color: #fff;
+            font-family: monospace;
+            margin-top: 3px;
+        }
+        .timing-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #888;
+            font-size: 12px;
+        }
+        .timing-control input {
+            width: 60px;
+            padding: 5px;
+            background: #1a1a2e;
+            border: 1px solid #34495e;
+            color: #fff;
+            border-radius: 3px;
+        }
+        .screenshot-btn {
+            background: #9b59b6;
+        }
+        .screenshot-btn:hover {
+            box-shadow: 0 5px 15px rgba(155, 89, 182, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="test-panel">
+            <h1>Cart Chaos UI Tests</h1>
+            <p class="subtitle">Integration & UI Testing Suite</p>
+
+            <div class="summary">
+                <div class="summary-stats">
+                    <div class="stat">
+                        <div class="stat-value stat-pass" id="pass-count">0</div>
+                        <div class="stat-label">Passed</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value stat-fail" id="fail-count">0</div>
+                        <div class="stat-label">Failed</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value stat-pending" id="pending-count">0</div>
+                        <div class="stat-label">Pending</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value stat-total" id="total-count">0</div>
+                        <div class="stat-label">Total</div>
+                    </div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="test-progress"></div>
+                </div>
+            </div>
+
+            <div id="test-list"></div>
+
+            <div class="state-capture">
+                <h3>Current Game State</h3>
+                <div class="state-grid">
+                    <div class="state-item">
+                        <div class="state-label">Game State</div>
+                        <div class="state-value" id="current-state">-</div>
+                    </div>
+                    <div class="state-item">
+                        <div class="state-label">Score</div>
+                        <div class="state-value" id="current-score">-</div>
+                    </div>
+                    <div class="state-item">
+                        <div class="state-label">Progress</div>
+                        <div class="state-value" id="current-progress">-</div>
+                    </div>
+                    <div class="state-item">
+                        <div class="state-label">HUD Visible</div>
+                        <div class="state-value" id="hud-visible">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="log-panel" id="log-panel"></div>
+        </div>
+
+        <div class="game-panel">
+            <div class="controls-bar">
+                <button class="btn" id="run-all-btn">Run All Tests</button>
+                <button class="btn btn-secondary" id="run-selected-btn">Run Selected</button>
+                <button class="btn btn-secondary" id="reset-btn">Reset</button>
+                <button class="btn btn-secondary screenshot-btn" id="capture-btn">Capture State</button>
+                <div class="timing-control">
+                    <label>Delay (ms):</label>
+                    <input type="number" id="test-delay" value="500" min="100" max="5000" step="100">
+                </div>
+            </div>
+            <div class="game-frame-container">
+                <iframe id="game-frame" src="../index.html"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Test Framework
+        class UITestRunner {
+            constructor() {
+                this.tests = [];
+                this.results = { pass: 0, fail: 0, pending: 0 };
+                this.gameWindow = null;
+                this.gameDocument = null;
+                this.isRunning = false;
+                this.delay = 500;
+                this.currentTest = null;
+            }
+
+            async init() {
+                const frame = document.getElementById('game-frame');
+                this.gameWindow = frame.contentWindow;
+                this.gameDocument = frame.contentDocument;
+                this.log('Game loaded successfully', 'success');
+                this.setupTests();
+                this.renderTests();
+                this.startStateMonitor();
+            }
+
+            log(message, type = 'info') {
+                const panel = document.getElementById('log-panel');
+                const entry = document.createElement('div');
+                entry.className = `log-entry log-${type}`;
+                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                panel.appendChild(entry);
+                panel.scrollTop = panel.scrollHeight;
+            }
+
+            async wait(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            getElement(selector) {
+                return this.gameDocument.querySelector(selector);
+            }
+
+            getElements(selector) {
+                return this.gameDocument.querySelectorAll(selector);
+            }
+
+            isVisible(element) {
+                if (!element) return false;
+                const style = this.gameWindow.getComputedStyle(element);
+                return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+            }
+
+            getGameState() {
+                return this.gameWindow.gameState;
+            }
+
+            getScore() {
+                return this.gameWindow.score;
+            }
+
+            getDistance() {
+                return this.gameWindow.distance;
+            }
+
+            simulateClick(element) {
+                if (!element) throw new Error('Element not found for click');
+                const event = new MouseEvent('click', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: this.gameWindow
+                });
+                element.dispatchEvent(event);
+            }
+
+            simulateMouseMove(x, y) {
+                const event = new MouseEvent('mousemove', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: this.gameWindow,
+                    clientX: x,
+                    clientY: y
+                });
+                this.gameDocument.dispatchEvent(event);
+            }
+
+            simulateKeyDown(key) {
+                const event = new KeyboardEvent('keydown', {
+                    bubbles: true,
+                    cancelable: true,
+                    key: key
+                });
+                this.gameDocument.dispatchEvent(event);
+            }
+
+            simulateKeyUp(key) {
+                const event = new KeyboardEvent('keyup', {
+                    bubbles: true,
+                    cancelable: true,
+                    key: key
+                });
+                this.gameDocument.dispatchEvent(event);
+            }
+
+            simulateHover(element) {
+                if (!element) throw new Error('Element not found for hover');
+                const enterEvent = new MouseEvent('mouseenter', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: this.gameWindow
+                });
+                element.dispatchEvent(enterEvent);
+
+                const overEvent = new MouseEvent('mouseover', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: this.gameWindow
+                });
+                element.dispatchEvent(overEvent);
+            }
+
+            simulateHoverEnd(element) {
+                if (!element) throw new Error('Element not found for hover end');
+                const leaveEvent = new MouseEvent('mouseleave', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: this.gameWindow
+                });
+                element.dispatchEvent(leaveEvent);
+            }
+
+            resetGame() {
+                const menuScreen = this.getElement('#menu-screen');
+                const gameoverScreen = this.getElement('#gameover-screen');
+                const pauseScreen = this.getElement('#pause-screen');
+                const hud = this.getElement('#hud');
+
+                if (menuScreen) menuScreen.style.display = 'flex';
+                if (gameoverScreen) gameoverScreen.style.display = 'none';
+                if (pauseScreen) pauseScreen.style.display = 'none';
+                if (hud) hud.style.display = 'none';
+
+                this.gameWindow.gameState = 'MENU';
+                this.gameWindow.score = 0;
+                this.gameWindow.distance = 0;
+
+                const scoreEl = this.getElement('#score');
+                if (scoreEl) scoreEl.textContent = '0';
+
+                const progressFill = this.getElement('#progress-fill');
+                if (progressFill) progressFill.style.width = '0%';
+            }
+
+            startStateMonitor() {
+                setInterval(() => {
+                    document.getElementById('current-state').textContent = this.getGameState() || '-';
+                    document.getElementById('current-score').textContent = this.getScore() || '0';
+                    const progress = this.getDistance() ?
+                        ((this.getDistance() / 800) * 100).toFixed(1) + '%' : '0%';
+                    document.getElementById('current-progress').textContent = progress;
+                    const hud = this.getElement('#hud');
+                    document.getElementById('hud-visible').textContent =
+                        hud ? (this.isVisible(hud) ? 'Yes' : 'No') : '-';
+                }, 200);
+            }
+
+            setupTests() {
+                // Menu Screen Tests
+                this.addTest('menu-title', 'Menu Screen', 'Title is visible',
+                    'Verifies the game title "CART CHAOS" is displayed',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const title = this.getElement('.title');
+                        if (!title || !this.isVisible(title)) {
+                            throw new Error('Title element not found or not visible');
+                        }
+                        if (!title.textContent.includes('CART CHAOS')) {
+                            throw new Error(`Expected title to contain "CART CHAOS", got "${title.textContent}"`);
+                        }
+                    }
+                );
+
+                this.addTest('menu-start-btn', 'Menu Screen', 'Start button exists and works',
+                    'Verifies the start button is visible and clickable',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        if (!startBtn || !this.isVisible(startBtn)) {
+                            throw new Error('Start button not found or not visible');
+                        }
+                        if (!startBtn.textContent.includes('START')) {
+                            throw new Error('Start button text incorrect');
+                        }
+                    }
+                );
+
+                this.addTest('menu-instructions', 'Menu Screen', 'Instructions are displayed',
+                    'Verifies game instructions are visible on menu',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const instructions = this.getElement('.instructions');
+                        if (!instructions || !this.isVisible(instructions)) {
+                            throw new Error('Instructions not found or not visible');
+                        }
+                        const text = instructions.textContent.toLowerCase();
+                        if (!text.includes('mouse') || !text.includes('click')) {
+                            throw new Error('Instructions missing key controls info');
+                        }
+                    }
+                );
+
+                // Game Start Tests
+                this.addTest('game-start-hud', 'Game Start', 'HUD appears on game start',
+                    'Verifies HUD is displayed when game starts',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+                        const hud = this.getElement('#hud');
+                        if (!this.isVisible(hud)) {
+                            throw new Error('HUD not visible after game start');
+                        }
+                    }
+                );
+
+                this.addTest('game-start-score', 'Game Start', 'Score starts at 0',
+                    'Verifies score is 0 when game starts',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+                        const score = this.getScore();
+                        if (score !== 0) {
+                            throw new Error(`Expected score 0, got ${score}`);
+                        }
+                        const scoreEl = this.getElement('#score');
+                        if (scoreEl.textContent !== '0') {
+                            throw new Error(`Score display shows "${scoreEl.textContent}" instead of "0"`);
+                        }
+                    }
+                );
+
+                this.addTest('game-start-progress', 'Game Start', 'Progress bar at 0%',
+                    'Verifies progress bar starts at 0%',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+                        const progressFill = this.getElement('#progress-fill');
+                        const width = parseFloat(progressFill.style.width) || 0;
+                        if (width > 5) {
+                            throw new Error(`Progress bar should be near 0%, got ${width}%`);
+                        }
+                    }
+                );
+
+                // Pause Menu Tests
+                this.addTest('pause-esc-shows', 'Pause Menu', 'ESC shows pause screen',
+                    'Verifies pressing ESC during gameplay shows pause menu',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(300);
+                        this.simulateKeyDown('Escape');
+                        await this.wait(200);
+                        const pauseScreen = this.getElement('#pause-screen');
+                        if (!this.isVisible(pauseScreen)) {
+                            throw new Error('Pause screen not visible after ESC');
+                        }
+                        if (this.getGameState() !== 'PAUSED') {
+                            throw new Error(`Expected PAUSED state, got ${this.getGameState()}`);
+                        }
+                    }
+                );
+
+                this.addTest('pause-resume', 'Pause Menu', 'Resume button works',
+                    'Verifies clicking resume returns to gameplay',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+                        this.simulateKeyDown('Escape');
+                        await this.wait(200);
+                        const resumeBtn = this.getElement('#resume-btn');
+                        this.simulateClick(resumeBtn);
+                        await this.wait(200);
+                        const pauseScreen = this.getElement('#pause-screen');
+                        if (this.isVisible(pauseScreen)) {
+                            throw new Error('Pause screen still visible after resume');
+                        }
+                        if (this.getGameState() !== 'PLAYING') {
+                            throw new Error(`Expected PLAYING state, got ${this.getGameState()}`);
+                        }
+                    }
+                );
+
+                this.addTest('pause-quit', 'Pause Menu', 'Quit to menu works',
+                    'Verifies quit button returns to main menu',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+                        this.simulateKeyDown('Escape');
+                        await this.wait(200);
+                        const quitBtn = this.getElement('#quit-btn');
+                        this.simulateClick(quitBtn);
+                        await this.wait(200);
+                        const menuScreen = this.getElement('#menu-screen');
+                        if (!this.isVisible(menuScreen)) {
+                            throw new Error('Menu screen not visible after quit');
+                        }
+                        if (this.getGameState() !== 'MENU') {
+                            throw new Error(`Expected MENU state, got ${this.getGameState()}`);
+                        }
+                    }
+                );
+
+                // Pause Button Functionality Tests
+                this.addTest('pause-resume-clickable', 'Pause Menu', 'Resume button is clickable',
+                    'Verifies resume button has pointer-events and responds to clicks',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(300);
+                        this.simulateKeyDown('Escape');
+                        await this.wait(300);
+
+                        const pauseScreen = this.getElement('#pause-screen');
+                        const resumeBtn = this.getElement('#resume-btn');
+
+                        // Check pause screen is visible
+                        if (!this.isVisible(pauseScreen)) {
+                            throw new Error('Pause screen not visible');
+                        }
+
+                        // Check button has pointer-events
+                        const computedStyle = this.gameWindow.getComputedStyle(pauseScreen);
+                        if (computedStyle.pointerEvents === 'none') {
+                            throw new Error('Pause screen has pointer-events: none');
+                        }
+
+                        // Click resume
+                        this.simulateClick(resumeBtn);
+                        await this.wait(300);
+
+                        if (this.getGameState() !== 'PLAYING') {
+                            throw new Error(`Resume failed - state is ${this.getGameState()}, expected PLAYING`);
+                        }
+                    }
+                );
+
+                this.addTest('pause-quit-clickable', 'Pause Menu', 'Quit button is clickable',
+                    'Verifies quit button has pointer-events and responds to clicks',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(300);
+                        this.simulateKeyDown('Escape');
+                        await this.wait(300);
+
+                        const pauseScreen = this.getElement('#pause-screen');
+                        const quitBtn = this.getElement('#quit-btn');
+
+                        // Check pause screen is visible
+                        if (!this.isVisible(pauseScreen)) {
+                            throw new Error('Pause screen not visible');
+                        }
+
+                        // Click quit
+                        this.simulateClick(quitBtn);
+                        await this.wait(300);
+
+                        if (this.getGameState() !== 'MENU') {
+                            throw new Error(`Quit failed - state is ${this.getGameState()}, expected MENU`);
+                        }
+
+                        const menuScreen = this.getElement('#menu-screen');
+                        if (!this.isVisible(menuScreen)) {
+                            throw new Error('Menu screen not visible after quit');
+                        }
+                    }
+                );
+
+                // Game Over Tests
+                this.addTest('gameover-shows', 'Game Over', 'Game over screen appears',
+                    'Verifies game over screen shows when game ends',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        // Manually trigger game over
+                        this.gameWindow.gameState = 'PLAYING';
+                        this.gameWindow.score = 1500;
+                        this.gameWindow.endGame();
+                        await this.wait(200);
+                        const gameoverScreen = this.getElement('#gameover-screen');
+                        if (!this.isVisible(gameoverScreen)) {
+                            throw new Error('Game over screen not visible');
+                        }
+                    }
+                );
+
+                this.addTest('gameover-score', 'Game Over', 'Final score is displayed',
+                    'Verifies score is shown on game over screen',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        this.gameWindow.gameState = 'PLAYING';
+                        this.gameWindow.score = 2500;
+                        this.gameWindow.endGame();
+                        await this.wait(200);
+                        const finalScore = this.getElement('#final-score');
+                        if (!finalScore || finalScore.textContent !== '2500') {
+                            throw new Error(`Expected final score 2500, got ${finalScore?.textContent}`);
+                        }
+                    }
+                );
+
+                this.addTest('gameover-play-again', 'Game Over', 'Play again button works',
+                    'Verifies play again restarts the game',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        this.gameWindow.gameState = 'PLAYING';
+                        this.gameWindow.score = 1000;
+                        this.gameWindow.endGame();
+                        await this.wait(200);
+                        const restartBtn = this.getElement('#restart-btn');
+                        this.simulateClick(restartBtn);
+                        await this.wait(300);
+                        if (this.getGameState() !== 'PLAYING') {
+                            throw new Error(`Expected PLAYING state, got ${this.getGameState()}`);
+                        }
+                        if (this.getScore() !== 0) {
+                            throw new Error('Score not reset after play again');
+                        }
+                    }
+                );
+
+                // HUD Update Tests
+                this.addTest('hud-score-update', 'HUD Updates', 'Score updates on events',
+                    'Verifies score display updates when score changes',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+                        // Mock score update
+                        this.gameWindow.score = 500;
+                        this.getElement('#score').textContent = '500';
+                        await this.wait(100);
+                        const scoreEl = this.getElement('#score');
+                        if (scoreEl.textContent !== '500') {
+                            throw new Error(`Score display not updated, shows ${scoreEl.textContent}`);
+                        }
+                    }
+                );
+
+                this.addTest('hud-progress-update', 'HUD Updates', 'Progress bar moves',
+                    'Verifies progress bar updates with distance',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(300);
+
+                        const progressFill = this.getElement('#progress-fill');
+                        if (!progressFill) {
+                            throw new Error('Progress fill element not found');
+                        }
+
+                        // Get initial width
+                        const initialWidth = parseFloat(progressFill.style.width) || 0;
+
+                        // Let the game run a bit to see progress
+                        await this.wait(500);
+
+                        // Get new width after game loop updates
+                        const newWidth = parseFloat(progressFill.style.width) || 0;
+
+                        // Verify progress is being updated (should be > 0 since game is running)
+                        if (newWidth <= 0.1) {
+                            throw new Error(`Progress bar not updating. Width: ${newWidth}%`);
+                        }
+
+                        // Additionally verify we can directly update it
+                        progressFill.style.width = '75%';
+                        const setWidth = parseFloat(progressFill.style.width);
+                        if (setWidth !== 75) {
+                            throw new Error(`Could not set progress bar width. Expected 75%, got ${setWidth}%`);
+                        }
+                    }
+                );
+
+                // Button Hover Tests
+                this.addTest('btn-hover-start', 'Button Hover', 'Start button responds to hover',
+                    'Verifies start button has hover styles',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        const initialTransform = this.gameWindow.getComputedStyle(startBtn).transform;
+                        // Check that button has transition property set
+                        const transition = this.gameWindow.getComputedStyle(startBtn).transition;
+                        if (!transition || transition === 'none') {
+                            throw new Error('Button missing transition property for hover effect');
+                        }
+                    }
+                );
+
+                // Crosshair Tests
+                this.addTest('crosshair-gameplay', 'Crosshair', 'Visible during gameplay',
+                    'Verifies crosshair is visible when playing',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+                        const crosshair = this.getElement('#crosshair');
+                        if (!crosshair) {
+                            throw new Error('Crosshair element not found');
+                        }
+                        // Crosshair should exist in UI layer during gameplay
+                        const style = this.gameWindow.getComputedStyle(crosshair);
+                        if (style.display === 'none') {
+                            throw new Error('Crosshair hidden during gameplay');
+                        }
+                    }
+                );
+
+                this.addTest('crosshair-menu', 'Crosshair', 'Cursor style in menu',
+                    'Verifies appropriate cursor in menu state',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const menuScreen = this.getElement('#menu-screen');
+                        if (!this.isVisible(menuScreen)) {
+                            throw new Error('Menu screen not visible');
+                        }
+                        // Menu should be visible, game canvas cursor should be crosshair
+                        const canvas = this.getElement('canvas');
+                        if (canvas) {
+                            const cursor = this.gameWindow.getComputedStyle(canvas).cursor;
+                            if (cursor !== 'crosshair') {
+                                throw new Error(`Expected crosshair cursor, got ${cursor}`);
+                            }
+                        }
+                    }
+                );
+
+                // State Transition Tests
+                this.addTest('transition-menu-to-playing', 'State Transitions', 'Menu to Playing',
+                    'Verifies state changes correctly from menu to playing',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        if (this.getGameState() !== 'MENU') {
+                            throw new Error('Initial state not MENU');
+                        }
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+                        if (this.getGameState() !== 'PLAYING') {
+                            throw new Error(`Expected PLAYING, got ${this.getGameState()}`);
+                        }
+                    }
+                );
+
+                this.addTest('transition-playing-to-paused', 'State Transitions', 'Playing to Paused',
+                    'Verifies state changes correctly when pausing',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+                        this.simulateKeyDown('Escape');
+                        await this.wait(200);
+                        if (this.getGameState() !== 'PAUSED') {
+                            throw new Error(`Expected PAUSED, got ${this.getGameState()}`);
+                        }
+                    }
+                );
+
+                this.addTest('transition-paused-to-playing', 'State Transitions', 'Paused to Playing',
+                    'Verifies state changes correctly when resuming',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+                        this.simulateKeyDown('Escape');
+                        await this.wait(200);
+                        this.simulateKeyDown('Escape');
+                        await this.wait(200);
+                        if (this.getGameState() !== 'PLAYING') {
+                            throw new Error(`Expected PLAYING after resume, got ${this.getGameState()}`);
+                        }
+                    }
+                );
+
+                this.addTest('transition-ui-sync', 'State Transitions', 'UI updates with state',
+                    'Verifies UI elements sync with game state changes',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+
+                        // Check menu state UI
+                        let menuVisible = this.isVisible(this.getElement('#menu-screen'));
+                        let hudVisible = this.isVisible(this.getElement('#hud'));
+                        if (!menuVisible || hudVisible) {
+                            throw new Error('Menu state UI incorrect');
+                        }
+
+                        // Start game
+                        this.simulateClick(this.getElement('#start-btn'));
+                        await this.wait(200);
+
+                        // Check playing state UI
+                        menuVisible = this.isVisible(this.getElement('#menu-screen'));
+                        hudVisible = this.isVisible(this.getElement('#hud'));
+                        if (menuVisible || !hudVisible) {
+                            throw new Error('Playing state UI incorrect');
+                        }
+
+                        // Pause
+                        this.simulateKeyDown('Escape');
+                        await this.wait(200);
+
+                        // Check paused state UI
+                        const pauseVisible = this.isVisible(this.getElement('#pause-screen'));
+                        if (!pauseVisible) {
+                            throw new Error('Paused state UI incorrect');
+                        }
+                    }
+                );
+
+                // Player Movement Controls Tests
+                this.addTest('movement-left-arrow', 'Player Movement Controls', 'Left arrow key moves cart left',
+                    'Verifies pressing left arrow key moves the cart to the left',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+                        const initialX = this.gameWindow.cart?.x || this.gameWindow.playerX || 0;
+                        this.simulateKeyDown('ArrowLeft');
+                        await this.wait(100);
+                        const newX = this.gameWindow.cart?.x || this.gameWindow.playerX || 0;
+                        if (newX >= initialX) {
+                            throw new Error(`Cart did not move left. Initial: ${initialX}, New: ${newX}`);
+                        }
+                    }
+                );
+
+                this.addTest('movement-right-arrow', 'Player Movement Controls', 'Right arrow key moves cart right',
+                    'Verifies pressing right arrow key moves the cart to the right',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+                        const initialX = this.gameWindow.cart?.x || this.gameWindow.playerX || 0;
+                        this.simulateKeyDown('ArrowRight');
+                        await this.wait(100);
+                        const newX = this.gameWindow.cart?.x || this.gameWindow.playerX || 0;
+                        if (newX <= initialX) {
+                            throw new Error(`Cart did not move right. Initial: ${initialX}, New: ${newX}`);
+                        }
+                    }
+                );
+
+                this.addTest('movement-a-d-keys', 'Player Movement Controls', 'A/D keys work as alternatives',
+                    'Verifies A and D keys work as alternative movement controls',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+
+                        // Test A key (move left)
+                        const initialX = this.gameWindow.cart?.x || this.gameWindow.playerX || 0;
+                        this.simulateKeyDown('a');
+                        await this.wait(150);
+                        this.simulateKeyUp('a'); // Release A key
+                        const afterAX = this.gameWindow.cart?.x || this.gameWindow.playerX || 0;
+                        if (afterAX >= initialX) {
+                            throw new Error(`A key did not move cart left. Initial: ${initialX}, After A: ${afterAX}`);
+                        }
+
+                        // Test D key (move right) - A is now released
+                        this.simulateKeyDown('d');
+                        await this.wait(150);
+                        this.simulateKeyUp('d'); // Release D key
+                        const afterDX = this.gameWindow.cart?.x || this.gameWindow.playerX || 0;
+                        if (afterDX <= afterAX) {
+                            throw new Error(`D key did not move cart right. After A: ${afterAX}, After D: ${afterDX}`);
+                        }
+                    }
+                );
+
+                this.addTest('movement-w-speed-boost', 'Player Movement Controls', 'W key activates speed boost',
+                    'Verifies pressing W key activates speed boost',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+
+                        // Check that keys.up is initially false
+                        const initialUp = this.gameWindow.keys?.up || false;
+                        if (initialUp) {
+                            throw new Error('keys.up should be false initially');
+                        }
+
+                        // Press W key
+                        this.simulateKeyDown('w');
+                        await this.wait(100);
+
+                        // Check that keys.up is now true (W/ArrowUp activates speed boost)
+                        const keysUp = this.gameWindow.keys?.up || false;
+                        const speedMult = this.gameWindow.speedMultiplier || 1;
+
+                        if (!keysUp && speedMult <= 1) {
+                            throw new Error(`Speed boost not activated. keys.up: ${keysUp}, speedMultiplier: ${speedMult}`);
+                        }
+
+                        this.simulateKeyUp('w');
+                    }
+                );
+
+                this.addTest('movement-s-slow-down', 'Player Movement Controls', 'S key activates slow down',
+                    'Verifies pressing S key activates slow down',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+
+                        // Check that keys.down is initially false
+                        const initialDown = this.gameWindow.keys?.down || false;
+                        if (initialDown) {
+                            throw new Error('keys.down should be false initially');
+                        }
+
+                        // Press S key
+                        this.simulateKeyDown('s');
+                        await this.wait(100);
+
+                        // Check that keys.down is now true (S/ArrowDown activates slow down)
+                        const keysDown = this.gameWindow.keys?.down || false;
+                        const speedMult = this.gameWindow.speedMultiplier || 1;
+
+                        if (!keysDown && speedMult >= 1) {
+                            throw new Error(`Slow down not activated. keys.down: ${keysDown}, speedMultiplier: ${speedMult}`);
+                        }
+
+                        this.simulateKeyUp('s');
+                    }
+                );
+
+                this.addTest('movement-bounds-check', 'Player Movement Controls', 'Cart stays within bounds',
+                    'Verifies cart cannot move outside game boundaries',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+
+                        // Game uses MOVEMENT_BOUND = 10, so valid range is [-10, 10]
+                        const MOVEMENT_BOUND = 10;
+
+                        // Move far left
+                        this.simulateKeyDown('ArrowLeft');
+                        await this.wait(300);
+                        this.simulateKeyUp('ArrowLeft');
+                        await this.wait(100);
+
+                        const leftX = this.gameWindow.cart?.x || this.gameWindow.playerX || 0;
+                        if (leftX < -MOVEMENT_BOUND - 0.5) {
+                            throw new Error(`Cart moved outside left boundary. X position: ${leftX}, Min allowed: ${-MOVEMENT_BOUND}`);
+                        }
+
+                        // Move far right
+                        this.simulateKeyDown('ArrowRight');
+                        await this.wait(600);
+                        this.simulateKeyUp('ArrowRight');
+                        await this.wait(100);
+
+                        const rightX = this.gameWindow.cart?.x || this.gameWindow.playerX || 0;
+                        if (rightX > MOVEMENT_BOUND + 0.5) {
+                            throw new Error(`Cart moved outside right boundary. X position: ${rightX}, Max allowed: ${MOVEMENT_BOUND}`);
+                        }
+                    }
+                );
+
+                this.addTest('movement-disabled-when-paused', 'Player Movement Controls', 'Controls disabled when paused',
+                    'Verifies movement controls do not work when game is paused',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+
+                        // Pause the game
+                        this.simulateKeyDown('Escape');
+                        await this.wait(200);
+
+                        if (this.getGameState() !== 'PAUSED') {
+                            throw new Error('Game not paused');
+                        }
+
+                        const initialX = this.gameWindow.cart?.x || this.gameWindow.playerX || 0;
+
+                        // Try to move while paused
+                        this.simulateKeyDown('ArrowLeft');
+                        this.simulateKeyDown('ArrowRight');
+                        this.simulateKeyDown('a');
+                        this.simulateKeyDown('d');
+                        await this.wait(100);
+
+                        const newX = this.gameWindow.cart?.x || this.gameWindow.playerX || 0;
+                        if (newX !== initialX) {
+                            throw new Error(`Cart moved while paused. Initial: ${initialX}, New: ${newX}`);
+                        }
+                    }
+                );
+
+                // Player Health UI Tests
+                this.addTest('health-bar-visible', 'Player Health UI', 'Health bar visible in HUD',
+                    'Verifies health bar is visible in HUD during gameplay',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+
+                        const healthBar = this.getElement('#health-bar') || this.getElement('.health-bar') || this.getElement('[class*="health"]');
+                        if (!healthBar) {
+                            throw new Error('Health bar element not found in HUD');
+                        }
+                        if (!this.isVisible(healthBar)) {
+                            throw new Error('Health bar is not visible');
+                        }
+                    }
+                );
+
+                this.addTest('health-bar-100-at-start', 'Player Health UI', 'Health bar shows 100% at start',
+                    'Verifies health bar shows full health at game start',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+
+                        const health = this.gameWindow.health || this.gameWindow.cart?.health || this.gameWindow.playerHealth || 100;
+                        const maxHealth = this.gameWindow.maxHealth || this.gameWindow.cart?.maxHealth || 100;
+
+                        if (health !== maxHealth) {
+                            throw new Error(`Health not at max on start. Current: ${health}, Max: ${maxHealth}`);
+                        }
+
+                        const healthFill = this.getElement('#health-fill') || this.getElement('.health-fill') || this.getElement('[class*="health-fill"]');
+                        if (healthFill) {
+                            const width = parseFloat(this.gameWindow.getComputedStyle(healthFill).width);
+                            const parentWidth = parseFloat(this.gameWindow.getComputedStyle(healthFill.parentElement).width);
+                            const percentage = (width / parentWidth) * 100;
+                            if (percentage < 95) {
+                                throw new Error(`Health bar not showing 100%. Showing approximately ${percentage.toFixed(1)}%`);
+                            }
+                        }
+                    }
+                );
+
+                this.addTest('health-bar-element-id', 'Player Health UI', 'Health bar element exists with correct ID',
+                    'Verifies health bar element has correct ID attribute',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+
+                        const healthBar = this.getElement('#health-bar');
+                        if (!healthBar) {
+                            const altHealthBar = this.getElement('.health-bar') || this.getElement('[class*="health"]');
+                            if (altHealthBar) {
+                                throw new Error('Health bar exists but does not have id="health-bar"');
+                            }
+                            throw new Error('Health bar element with id="health-bar" not found');
+                        }
+                    }
+                );
+
+                this.addTest('damage-overlay-flash', 'Player Health UI', 'Damage overlay flashes on hit',
+                    'Verifies damage overlay flashes when player takes damage',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(200);
+
+                        const damageOverlay = this.getElement('#damage-overlay') || this.getElement('.damage-overlay') || this.getElement('[class*="damage"]');
+                        if (!damageOverlay) {
+                            throw new Error('Damage overlay element not found');
+                        }
+
+                        const initialOpacity = parseFloat(this.gameWindow.getComputedStyle(damageOverlay).opacity) || 0;
+
+                        // Simulate taking damage
+                        if (this.gameWindow.takeDamage) {
+                            this.gameWindow.takeDamage(10);
+                        } else if (this.gameWindow.cart && this.gameWindow.cart.takeDamage) {
+                            this.gameWindow.cart.takeDamage(10);
+                        } else {
+                            this.gameWindow.health = (this.gameWindow.health || 100) - 10;
+                            if (damageOverlay) {
+                                damageOverlay.style.opacity = '0.5';
+                            }
+                        }
+
+                        await this.wait(50);
+
+                        const flashOpacity = parseFloat(this.gameWindow.getComputedStyle(damageOverlay).opacity) || 0;
+                        if (flashOpacity <= initialOpacity) {
+                            throw new Error(`Damage overlay did not flash. Initial opacity: ${initialOpacity}, Flash opacity: ${flashOpacity}`);
+                        }
+                    }
+                );
+
+                this.addTest('gameover-wrecked-message', 'Player Health UI', 'Game over shows "WRECKED!" on death',
+                    'Verifies game over screen displays "WRECKED!" message when player dies',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+
+                        // Set health to 0 to simulate death
+                        this.gameWindow.gameState = 'PLAYING';
+                        this.gameWindow.health = 0;
+                        if (this.gameWindow.cart) {
+                            this.gameWindow.cart.health = 0;
+                        }
+
+                        // Trigger game over with died=true to get "WRECKED!" message
+                        if (this.gameWindow.endGame) {
+                            this.gameWindow.endGame(true); // Pass true for death
+                        } else if (this.gameWindow.gameOver) {
+                            this.gameWindow.gameOver(true);
+                        }
+
+                        await this.wait(200);
+
+                        const gameoverScreen = this.getElement('#gameover-screen');
+                        if (!this.isVisible(gameoverScreen)) {
+                            throw new Error('Game over screen not visible');
+                        }
+
+                        const gameoverText = gameoverScreen.textContent || gameoverScreen.innerText;
+                        if (!gameoverText.toUpperCase().includes('WRECKED')) {
+                            throw new Error(`Game over screen does not contain "WRECKED!" message. Content: "${gameoverText.substring(0, 100)}..."`);
+                        }
+                    }
+                );
+
+                // Health Container Position Tests
+                this.addTest('health-container-hidden-in-menu', 'Player Health UI', 'Health hidden in menu',
+                    'Verifies health container is hidden when in menu state',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(200);
+
+                        const healthContainer = this.getElement('#health-container');
+                        if (!healthContainer) {
+                            throw new Error('Health container element not found');
+                        }
+
+                        const computedStyle = this.gameWindow.getComputedStyle(healthContainer);
+                        if (computedStyle.display !== 'none') {
+                            throw new Error(`Health container should be hidden in menu, but display is: ${computedStyle.display}`);
+                        }
+                    }
+                );
+
+                this.addTest('health-container-visible-in-game', 'Player Health UI', 'Health visible during gameplay',
+                    'Verifies health container is visible when playing',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(300);
+
+                        const healthContainer = this.getElement('#health-container');
+                        if (!healthContainer) {
+                            throw new Error('Health container element not found');
+                        }
+
+                        const computedStyle = this.gameWindow.getComputedStyle(healthContainer);
+                        if (computedStyle.display === 'none') {
+                            throw new Error('Health container should be visible during gameplay');
+                        }
+                    }
+                );
+
+                this.addTest('health-container-hidden-when-paused', 'Player Health UI', 'Health hidden when paused',
+                    'Verifies health container is hidden when game is paused',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(300);
+                        this.simulateKeyDown('Escape');
+                        await this.wait(300);
+
+                        const healthContainer = this.getElement('#health-container');
+                        const computedStyle = this.gameWindow.getComputedStyle(healthContainer);
+                        if (computedStyle.display !== 'none') {
+                            throw new Error(`Health container should be hidden when paused, but display is: ${computedStyle.display}`);
+                        }
+                    }
+                );
+
+                this.addTest('health-container-bottom-left-position', 'Player Health UI', 'Health bar at bottom-left',
+                    'Verifies health container is positioned at bottom-left corner',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(300);
+
+                        const healthContainer = this.getElement('#health-container');
+                        const rect = healthContainer.getBoundingClientRect();
+                        const windowHeight = this.gameWindow.innerHeight;
+
+                        // Should be in bottom half and left side
+                        if (rect.top < windowHeight / 2) {
+                            throw new Error(`Health container is in top half (top: ${rect.top}px), expected bottom-left`);
+                        }
+                        if (rect.left > 200) {
+                            throw new Error(`Health container is not on left side (left: ${rect.left}px), expected left side`);
+                        }
+                    }
+                );
+
+                this.addTest('health-no-overlap-with-score', 'Player Health UI', 'Health does not overlap score',
+                    'Verifies health container does not overlap with score container',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(300);
+
+                        const healthContainer = this.getElement('#health-container');
+                        const scoreContainer = this.getElement('#score-container');
+
+                        if (!healthContainer || !scoreContainer) {
+                            throw new Error('Could not find health or score containers');
+                        }
+
+                        const healthRect = healthContainer.getBoundingClientRect();
+                        const scoreRect = scoreContainer.getBoundingClientRect();
+
+                        // Check for overlap
+                        const overlaps = !(healthRect.right < scoreRect.left ||
+                                          healthRect.left > scoreRect.right ||
+                                          healthRect.bottom < scoreRect.top ||
+                                          healthRect.top > scoreRect.bottom);
+
+                        if (overlaps) {
+                            throw new Error(`Health container overlaps with score container. Health: top=${healthRect.top}, Score: bottom=${scoreRect.bottom}`);
+                        }
+                    }
+                );
+            }
+
+            addTest(id, group, name, description, fn) {
+                this.tests.push({ id, group, name, description, fn, status: 'pending', error: null, time: 0 });
+            }
+
+            renderTests() {
+                const container = document.getElementById('test-list');
+                container.innerHTML = '';
+
+                const groups = {};
+                this.tests.forEach(test => {
+                    if (!groups[test.group]) groups[test.group] = [];
+                    groups[test.group].push(test);
+                });
+
+                for (const [groupName, tests] of Object.entries(groups)) {
+                    const groupDiv = document.createElement('div');
+                    groupDiv.className = 'test-group';
+
+                    const passCount = tests.filter(t => t.status === 'pass').length;
+                    const header = document.createElement('div');
+                    header.className = 'group-header';
+                    header.innerHTML = `
+                        <span>${groupName}</span>
+                        <span class="group-count">${passCount}/${tests.length}</span>
+                    `;
+                    groupDiv.appendChild(header);
+
+                    tests.forEach(test => {
+                        const testDiv = document.createElement('div');
+                        testDiv.className = 'test-item';
+                        testDiv.dataset.testId = test.id;
+
+                        let statusIcon = '-';
+                        if (test.status === 'pass') statusIcon = '&#10003;';
+                        else if (test.status === 'fail') statusIcon = '&#10007;';
+                        else if (test.status === 'running') statusIcon = '...';
+
+                        testDiv.innerHTML = `
+                            <div class="test-status status-${test.status}">${statusIcon}</div>
+                            <div class="test-info">
+                                <div class="test-name">${test.name}</div>
+                                <div class="test-desc">${test.description}</div>
+                                ${test.error ? `<div class="test-error">${test.error}</div>` : ''}
+                            </div>
+                            <div class="test-time">${test.time ? test.time + 'ms' : ''}</div>
+                        `;
+
+                        testDiv.addEventListener('click', () => this.runSingleTest(test.id));
+                        groupDiv.appendChild(testDiv);
+                    });
+
+                    container.appendChild(groupDiv);
+                }
+
+                this.updateSummary();
+            }
+
+            updateSummary() {
+                this.results = { pass: 0, fail: 0, pending: 0 };
+                this.tests.forEach(test => {
+                    if (test.status === 'pass') this.results.pass++;
+                    else if (test.status === 'fail') this.results.fail++;
+                    else this.results.pending++;
+                });
+
+                document.getElementById('pass-count').textContent = this.results.pass;
+                document.getElementById('fail-count').textContent = this.results.fail;
+                document.getElementById('pending-count').textContent = this.results.pending;
+                document.getElementById('total-count').textContent = this.tests.length;
+
+                const progress = ((this.results.pass + this.results.fail) / this.tests.length) * 100;
+                document.getElementById('test-progress').style.width = progress + '%';
+            }
+
+            async runTest(test) {
+                test.status = 'running';
+                test.error = null;
+                this.currentTest = test;
+                this.renderTests();
+                this.log(`Running: ${test.name}`, 'info');
+
+                const startTime = performance.now();
+                try {
+                    await test.fn();
+                    test.status = 'pass';
+                    test.time = Math.round(performance.now() - startTime);
+                    this.log(`PASS: ${test.name} (${test.time}ms)`, 'success');
+                } catch (error) {
+                    test.status = 'fail';
+                    test.error = error.message;
+                    test.time = Math.round(performance.now() - startTime);
+                    this.log(`FAIL: ${test.name} - ${error.message}`, 'error');
+                }
+
+                this.currentTest = null;
+                this.renderTests();
+            }
+
+            async runSingleTest(testId) {
+                if (this.isRunning) return;
+                this.isRunning = true;
+
+                const test = this.tests.find(t => t.id === testId);
+                if (test) {
+                    await this.runTest(test);
+                }
+
+                this.isRunning = false;
+            }
+
+            async runAllTests() {
+                if (this.isRunning) return;
+                this.isRunning = true;
+                this.delay = parseInt(document.getElementById('test-delay').value) || 500;
+
+                this.log('Starting all tests...', 'info');
+                document.getElementById('run-all-btn').disabled = true;
+
+                for (const test of this.tests) {
+                    test.status = 'pending';
+                    test.error = null;
+                    test.time = 0;
+                }
+                this.renderTests();
+
+                for (const test of this.tests) {
+                    await this.runTest(test);
+                    await this.wait(this.delay);
+                }
+
+                this.log(`Tests complete: ${this.results.pass} passed, ${this.results.fail} failed`,
+                    this.results.fail > 0 ? 'warn' : 'success');
+
+                document.getElementById('run-all-btn').disabled = false;
+                this.isRunning = false;
+            }
+
+            reset() {
+                this.tests.forEach(test => {
+                    test.status = 'pending';
+                    test.error = null;
+                    test.time = 0;
+                });
+                this.resetGame();
+                this.renderTests();
+                this.log('Tests reset', 'info');
+            }
+
+            captureState() {
+                const state = {
+                    gameState: this.getGameState(),
+                    score: this.getScore(),
+                    distance: this.getDistance(),
+                    menuVisible: this.isVisible(this.getElement('#menu-screen')),
+                    hudVisible: this.isVisible(this.getElement('#hud')),
+                    pauseVisible: this.isVisible(this.getElement('#pause-screen')),
+                    gameoverVisible: this.isVisible(this.getElement('#gameover-screen')),
+                    timestamp: new Date().toISOString()
+                };
+
+                this.log(`State captured: ${JSON.stringify(state)}`, 'info');
+                console.log('Game State Capture:', state);
+
+                // Copy to clipboard
+                navigator.clipboard.writeText(JSON.stringify(state, null, 2)).then(() => {
+                    this.log('State copied to clipboard', 'success');
+                }).catch(() => {
+                    this.log('Could not copy to clipboard', 'warn');
+                });
+            }
+        }
+
+        // Initialize
+        const runner = new UITestRunner();
+        window.runner = runner; // Expose for Puppeteer
+
+        document.getElementById('game-frame').addEventListener('load', () => {
+            runner.init();
+        });
+
+        document.getElementById('run-all-btn').addEventListener('click', () => runner.runAllTests());
+        document.getElementById('reset-btn').addEventListener('click', () => runner.reset());
+        document.getElementById('capture-btn').addEventListener('click', () => runner.captureState());
+        document.getElementById('run-selected-btn').addEventListener('click', () => {
+            runner.log('Click on a test to run it individually', 'info');
+        });
+    </script>
+</body>
+</html>

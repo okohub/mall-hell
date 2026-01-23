@@ -1,0 +1,21 @@
+{
+  "name": "mall-hell",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "node run-tests.js",
+    "test:ui": "npx serve . -p 3000",
+    "test:open": "open tests/unit-tests.html && open tests/ui-tests.html"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "puppeteer": "^24.36.0"
+  }
+}
