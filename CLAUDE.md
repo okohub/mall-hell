@@ -42,7 +42,7 @@ Before claiming any feature is "done", I must confirm:
 ## Overview
 
 **Title:** Mall Hell
-**Version:** 1.3
+**Version:** 1.4
 **Platform:** Desktop Browser
 **Tech Stack:** HTML5, CSS3, JavaScript, Three.js (r128)
 **Delivery:** Single `index.html` file, runs locally without build tools

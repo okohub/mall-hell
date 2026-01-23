@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mall Hell v1.3</title>
+    <title>Mall Hell v1.4</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -453,13 +453,12 @@
 
             <div id="menu-screen">
                 <div class="title">MALL HELL</div>
-                <div class="version">v1.3</div>
+                <div class="version">v1.4</div>
                 <div class="subtitle">Supermarket Mayhem in 3D</div>
                 <div class="instructions">
-                    <span>ARROWS</span> Steer cart (↑↓ speed)<br>
-                    <span>WASD</span> Aim slingshot<br>
-                    <span>SPACE</span> Fire projectile<br>
-                    <span>MOUSE</span> Aim + Click to fire
+                    <span>← →</span> Move & Aim<br>
+                    <span>SPACE</span> Fire!<br>
+                    <span>ESC</span> Pause
                 </div>
                 <button class="btn" id="start-btn">START CHAOS</button>
             </div>
@@ -535,19 +534,11 @@
         // Keyboard input - Movement (Arrow keys)
         const keys = {
             left: false,
-            right: false,
-            up: false,
-            down: false
-        };
-
-        // Keyboard input - Aiming (WASD keys)
-        const aimKeys = {
-            up: false,
-            down: false,
-            left: false,
             right: false
         };
-        const AIM_SPEED = 1000; // pixels per second
+
+        // Aim follows movement - speed for keyboard aim
+        const AIM_SPEED = 800; // pixels per second for aim tracking
 
         // Mouse
         let mouseX = 0;
@@ -1256,8 +1247,6 @@
             speedMultiplier = 1;
             keys.left = false;
             keys.right = false;
-            keys.up = false;
-            keys.down = false;
 
             // Reset health UI
             healthFill.style.width = '100%';
@@ -1458,33 +1447,30 @@
             // Update invulnerability
             updateInvulnerability();
 
-            // Calculate speed multiplier based on keys
-            speedMultiplier = 1;
-            if (keys.up) speedMultiplier = SPEED_BOOST_MULTIPLIER;
-            if (keys.down) speedMultiplier = SLOWDOWN_MULTIPLIER;
-
-            // Move camera forward
-            const moveAmount = CART_SPEED * speedMultiplier * dt;
+            // Move camera forward (fixed speed)
+            const moveAmount = CART_SPEED * dt;
             camera.position.z -= moveAmount;
             distance += moveAmount;
 
-            // Player lateral movement
-            if (keys.left) playerX -= LATERAL_SPEED * dt;
-            if (keys.right) playerX += LATERAL_SPEED * dt;
+            // Player lateral movement AND aim (arrows control both!)
+            if (keys.left) {
+                playerX -= LATERAL_SPEED * dt;
+                cumulativeX -= AIM_SPEED * dt;
+            }
+            if (keys.right) {
+                playerX += LATERAL_SPEED * dt;
+                cumulativeX += AIM_SPEED * dt;
+            }
             playerX = Math.max(-MOVEMENT_BOUND, Math.min(MOVEMENT_BOUND, playerX));
             camera.position.x = playerX;
 
-            // WASD aim control (alternative to mouse)
-            if (aimKeys.up) cumulativeY -= AIM_SPEED * dt;
-            if (aimKeys.down) cumulativeY += AIM_SPEED * dt;
-            if (aimKeys.left) cumulativeX -= AIM_SPEED * dt;
-            if (aimKeys.right) cumulativeX += AIM_SPEED * dt;
+            // Keep aim within screen bounds
             cumulativeX = Math.max(0, Math.min(window.innerWidth, cumulativeX));
             cumulativeY = Math.max(0, Math.min(window.innerHeight, cumulativeY));
             mouseX = cumulativeX;
             mouseY = cumulativeY;
 
-            // Update slingshot aim (increased sensitivity)
+            // Update slingshot aim
             const aimX = (mouseX / window.innerWidth - 0.5) * 1.2;
             const aimY = -(mouseY / window.innerHeight - 0.5) * 0.8;
             camera.rotation.y = -aimX;
@@ -1741,16 +1727,9 @@
             // Controls only during gameplay
             if (gameState === 'PLAYING') {
                 const key = e.key;
-                // Arrow keys: Movement
+                // Arrow keys: Move & Aim
                 if (key === 'ArrowLeft') keys.left = true;
                 if (key === 'ArrowRight') keys.right = true;
-                if (key === 'ArrowUp') keys.up = true;
-                if (key === 'ArrowDown') keys.down = true;
-                // WASD: Aiming
-                if (key === 'w' || key === 'W') aimKeys.up = true;
-                if (key === 's' || key === 'S') aimKeys.down = true;
-                if (key === 'a' || key === 'A') aimKeys.left = true;
-                if (key === 'd' || key === 'D') aimKeys.right = true;
                 // Space: Fire
                 if (key === ' ') {
                     e.preventDefault();
@@ -1761,16 +1740,8 @@
 
         document.addEventListener('keyup', (e) => {
             const key = e.key;
-            // Arrow keys: Movement
             if (key === 'ArrowLeft') keys.left = false;
             if (key === 'ArrowRight') keys.right = false;
-            if (key === 'ArrowUp') keys.up = false;
-            if (key === 'ArrowDown') keys.down = false;
-            // WASD: Aiming
-            if (key === 'w' || key === 'W') aimKeys.up = false;
-            if (key === 's' || key === 'S') aimKeys.down = false;
-            if (key === 'a' || key === 'A') aimKeys.left = false;
-            if (key === 'd' || key === 'D') aimKeys.right = false;
         });
 
         // Pointer lock for better mouse control
@@ -1837,7 +1808,6 @@
         window.damagePlayer = damagePlayer;
         window.takeDamage = damagePlayer;
         window.keys = keys;
-        window.aimKeys = aimKeys;
 
         // Initialize and start
         initThree();
