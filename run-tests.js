@@ -1,14 +1,22 @@
 const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
+const PNG = require('pngjs').PNG;
 
-// Screenshot directory
-const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
+// Directories
+const BASELINE_DIR = path.join(__dirname, 'tests/baselines');
+const CURRENT_DIR = path.join(__dirname, 'screenshots');
 
-// Ensure screenshot directory exists
-if (!fs.existsSync(SCREENSHOT_DIR)) {
-    fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+// Ensure directories exist
+if (!fs.existsSync(BASELINE_DIR)) {
+    fs.mkdirSync(BASELINE_DIR, { recursive: true });
 }
+if (!fs.existsSync(CURRENT_DIR)) {
+    fs.mkdirSync(CURRENT_DIR, { recursive: true });
+}
+
+// Check if we're updating baselines
+const UPDATE_BASELINES = process.argv.includes('--update-baselines');
 
 // Shared progress state
 const progress = {
@@ -25,7 +33,6 @@ function updateProgressDisplay() {
         ? `✅ ${progress.ui.passed}/${progress.ui.total}`
         : `⏳ ${progress.ui.passed + progress.ui.failed}/${progress.ui.total}`;
 
-    // Truncate test name if too long
     let testName = progress.ui.current || '';
     if (testName.length > 40) {
         testName = testName.substring(0, 37) + '...';
@@ -35,7 +42,68 @@ function updateProgressDisplay() {
     process.stdout.write(`\r  Unit: ${unitStatus} | UI: ${uiStatus}${currentTest}`.padEnd(120));
 }
 
+// Compare two PNG images, return difference percentage
+function compareImages(baselinePath, currentPath) {
+    if (!fs.existsSync(baselinePath)) {
+        return { match: false, reason: 'no_baseline', diff: 100 };
+    }
+    if (!fs.existsSync(currentPath)) {
+        return { match: false, reason: 'no_current', diff: 100 };
+    }
+
+    try {
+        const baseline = PNG.sync.read(fs.readFileSync(baselinePath));
+        const current = PNG.sync.read(fs.readFileSync(currentPath));
+
+        // Check dimensions
+        if (baseline.width !== current.width || baseline.height !== current.height) {
+            return { match: false, reason: 'size_mismatch', diff: 100 };
+        }
+
+        // Compare pixels
+        let diffPixels = 0;
+        const totalPixels = baseline.width * baseline.height;
+
+        for (let i = 0; i < baseline.data.length; i += 4) {
+            const rDiff = Math.abs(baseline.data[i] - current.data[i]);
+            const gDiff = Math.abs(baseline.data[i + 1] - current.data[i + 1]);
+            const bDiff = Math.abs(baseline.data[i + 2] - current.data[i + 2]);
+
+            // Allow small color differences (anti-aliasing, etc.)
+            if (rDiff > 10 || gDiff > 10 || bDiff > 10) {
+                diffPixels++;
+            }
+        }
+
+        const diffPercent = (diffPixels / totalPixels) * 100;
+        const threshold = 1; // 1% threshold for differences
+
+        return {
+            match: diffPercent <= threshold,
+            reason: diffPercent <= threshold ? 'match' : 'visual_diff',
+            diff: diffPercent.toFixed(2)
+        };
+    } catch (error) {
+        return { match: false, reason: 'error', diff: 100, error: error.message };
+    }
+}
+
+// Clean up current screenshots
+function cleanupScreenshots() {
+    if (fs.existsSync(CURRENT_DIR)) {
+        const files = fs.readdirSync(CURRENT_DIR);
+        files.forEach(file => {
+            if (file.endsWith('.png')) {
+                fs.unlinkSync(path.join(CURRENT_DIR, file));
+            }
+        });
+    }
+}
+
 async function runTests() {
+    // Clean up old screenshots at start
+    cleanupScreenshots();
+
     const browser = await puppeteer.launch({
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security']
@@ -43,18 +111,20 @@ async function runTests() {
 
     console.log('\n🧪 MALL HELL TEST RUNNER\n');
     console.log('='.repeat(60));
-    console.log('\n⚡ Running Unit Tests and UI Tests in parallel...\n');
 
-    // Start progress display
+    if (UPDATE_BASELINES) {
+        console.log('\n📸 MODE: Updating baseline screenshots\n');
+    } else {
+        console.log('\n⚡ Running Unit Tests and UI Tests in parallel...\n');
+    }
+
     const progressInterval = setInterval(updateProgressDisplay, 200);
 
-    // Run both test suites in parallel
     const [unitResults, uiResults] = await Promise.all([
         runUnitTests(browser),
         runUITests(browser)
     ]);
 
-    // Stop progress display
     clearInterval(progressInterval);
     process.stdout.write('\r' + ' '.repeat(100) + '\r');
 
@@ -81,21 +151,49 @@ async function runTests() {
     }
     console.log(`  📊 Results: ${uiResults.passed} passed, ${uiResults.failed} failed, ${uiResults.pending} pending`);
 
-    // Show screenshot info
-    if (uiResults.screenshots && uiResults.screenshots.length > 0) {
-        console.log(`  📸 Screenshots saved to: ${SCREENSHOT_DIR}/`);
+    // Visual regression results
+    console.log('\n📸 VISUAL REGRESSION\n');
+    if (UPDATE_BASELINES) {
+        console.log(`  ✅ Updated ${uiResults.screenshots.length} baseline screenshots`);
+        console.log(`  📁 Baselines saved to: ${BASELINE_DIR}/`);
+    } else if (uiResults.visualRegressions) {
+        const regressions = uiResults.visualRegressions.filter(r => !r.match);
+        const passed = uiResults.visualRegressions.filter(r => r.match);
+
+        if (regressions.length > 0) {
+            console.log('  Visual differences detected:');
+            regressions.forEach(r => {
+                if (r.reason === 'no_baseline') {
+                    console.log(`  ⚠️  ${r.name}: No baseline (run with --update-baselines)`);
+                } else {
+                    console.log(`  ❌ ${r.name}: ${r.diff}% different`);
+                }
+            });
+            console.log('');
+        }
+        console.log(`  📊 Results: ${passed.length} match, ${regressions.length} differ`);
     }
 
     await browser.close();
 
+    // Cleanup screenshots after comparison (unless updating baselines)
+    if (!UPDATE_BASELINES) {
+        cleanupScreenshots();
+        console.log('\n  🧹 Cleaned up test screenshots');
+    }
+
     const totalPassed = unitResults.passed + uiResults.passed;
     const totalFailed = unitResults.failed + uiResults.failed;
+    const visualFailed = uiResults.visualRegressions?.filter(r => !r.match && r.reason !== 'no_baseline').length || 0;
 
-    // Final Summary
     console.log('\n' + '='.repeat(60));
-    console.log(`\n🎯 FINAL RESULTS: ${totalPassed} passed, ${totalFailed} failed\n`);
+    console.log(`\n🎯 FINAL RESULTS: ${totalPassed} passed, ${totalFailed} failed`);
+    if (visualFailed > 0) {
+        console.log(`   ⚠️  ${visualFailed} visual regression(s) detected`);
+    }
+    console.log('');
 
-    if (totalFailed > 0) {
+    if (totalFailed > 0 || visualFailed > 0) {
         process.exit(1);
     }
 }
@@ -109,14 +207,12 @@ async function runUnitTests(browser) {
     try {
         await page.goto(`file://${filePath}`, { waitUntil: 'domcontentloaded', timeout: 10000 });
 
-        // Get total test count first
         await new Promise(resolve => setTimeout(resolve, 500));
         const total = await page.evaluate(() => {
             return document.querySelectorAll('.test-item').length || 65;
         });
         progress.unit.total = total || 65;
 
-        // Poll for results
         let attempts = 0;
         while (attempts < 30) {
             const results = await page.evaluate(() => {
@@ -133,7 +229,6 @@ async function runUnitTests(browser) {
             progress.unit.failed = results.failed;
             progress.unit.total = results.total || progress.unit.total;
 
-            // Check if all tests completed
             if (results.passed + results.failed >= progress.unit.total && progress.unit.total > 0) {
                 break;
             }
@@ -142,7 +237,6 @@ async function runUnitTests(browser) {
             attempts++;
         }
 
-        // Get final results
         const results = await page.evaluate(() => {
             const testModules = document.querySelectorAll('.test-module');
             const output = { passed: 0, failed: 0, tests: [] };
@@ -194,45 +288,52 @@ async function runUITests(browser) {
     let passed = 0, failed = 0, pending = 0;
     let failedTests = [];
     let screenshotsTaken = [];
+    let visualRegressions = [];
 
-    // Helper to take screenshot with timestamp
-    async function takeScreenshot(name) {
-        const timestamp = Date.now();
-        const filename = `${name.replace(/[^a-z0-9]/gi, '_')}_${timestamp}.png`;
-        const filepath = path.join(SCREENSHOT_DIR, filename);
-        await page.screenshot({ path: filepath, fullPage: false });
-        screenshotsTaken.push(filepath);
-        return filepath;
-    }
+    // Screenshot names for visual regression
+    const SCREENSHOT_POINTS = [
+        'menu_initial',
+        'game_playing',
+        'game_paused',
+        'game_final'
+    ];
 
-    // Helper to take game canvas screenshot only
-    async function takeGameScreenshot(name) {
-        const timestamp = Date.now();
-        const filename = `game_${name.replace(/[^a-z0-9]/gi, '_')}_${timestamp}.png`;
-        const filepath = path.join(SCREENSHOT_DIR, filename);
+    // Helper to take and compare screenshot
+    async function captureScreenshot(name) {
+        const currentPath = path.join(CURRENT_DIR, `${name}.png`);
+        const baselinePath = path.join(BASELINE_DIR, `${name}.png`);
 
-        // Try to screenshot just the game iframe
+        // Take screenshot of game iframe
         const frame = await page.$('iframe#game-frame');
         if (frame) {
-            await frame.screenshot({ path: filepath });
+            await frame.screenshot({ path: currentPath });
         } else {
-            await page.screenshot({ path: filepath, fullPage: false });
+            await page.screenshot({ path: currentPath, fullPage: false });
         }
-        screenshotsTaken.push(filepath);
-        return filepath;
+
+        screenshotsTaken.push(currentPath);
+
+        if (UPDATE_BASELINES) {
+            // Copy to baselines
+            fs.copyFileSync(currentPath, baselinePath);
+        } else {
+            // Compare to baseline
+            const result = compareImages(baselinePath, currentPath);
+            visualRegressions.push({ name, ...result });
+        }
+
+        return currentPath;
     }
 
     try {
         await page.setViewport({ width: 1400, height: 900 });
         await page.goto(`file://${filePath}`, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
-        // Wait for page and game iframe to load
         await new Promise(resolve => setTimeout(resolve, 3000));
 
-        // Screenshot: Initial state
-        await takeScreenshot('01_initial_load');
+        // Screenshot 1: Menu state
+        await captureScreenshot('menu_initial');
 
-        // Get total test count
         const totalTests = await page.evaluate(() => {
             return window.runner?.tests?.length || 0;
         });
@@ -244,10 +345,10 @@ async function runUITests(browser) {
             if (runBtn) runBtn.click();
         });
 
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
-        // Screenshot: Tests started
-        await takeGameScreenshot('02_tests_started');
+        // Screenshot 2: Game playing
+        await captureScreenshot('game_playing');
 
         // Monitor test progress
         let stableCount = 0;
@@ -279,12 +380,10 @@ async function runUITests(browser) {
             progress.ui.total = status.total;
             progress.ui.current = status.current;
 
-            // Exit if not running and all tests are done
             if (!status.isRunning && status.completed === status.total && status.total > 0) {
                 break;
             }
 
-            // Track stability
             if (status.completed === lastCompleted) {
                 stableCount++;
             } else {
@@ -322,14 +421,8 @@ async function runUITests(browser) {
         failed = results.failed;
         pending = results.tests.filter(t => t.status === 'PENDING').length;
 
-        // Screenshot: Final state
-        await takeScreenshot('03_tests_complete');
-        await takeGameScreenshot('04_game_final_state');
-
-        // Screenshot each failure
-        if (failedTests.length > 0) {
-            await takeScreenshot('05_failed_tests_view');
-        }
+        // Screenshot 3: Final game state
+        await captureScreenshot('game_final');
 
         progress.ui.passed = passed;
         progress.ui.failed = failed;
@@ -338,11 +431,10 @@ async function runUITests(browser) {
 
     } catch (error) {
         console.log(`\n  ⚠️  UI Tests Error: ${error.message}`);
-        await takeScreenshot('error_state');
     }
 
     await page.close();
-    return { passed, failed, pending, failedTests, screenshots: screenshotsTaken };
+    return { passed, failed, pending, failedTests, screenshots: screenshotsTaken, visualRegressions };
 }
 
 runTests().catch(console.error);
