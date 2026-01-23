@@ -66,6 +66,59 @@
             box-shadow: 0 0 10px #e94560;
         }
 
+        /* Tension Indicator */
+        #tension-indicator {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        #tension-indicator.charging {
+            opacity: 1;
+        }
+        #tension-indicator svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+        #tension-indicator .tension-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.15);
+            stroke-width: 6;
+        }
+        #tension-indicator .tension-fill {
+            fill: none;
+            stroke: #f1c40f;
+            stroke-width: 6;
+            stroke-linecap: round;
+            stroke-dasharray: 283;
+            stroke-dashoffset: 283;
+            transition: stroke 0.1s, stroke-dashoffset 0.05s;
+        }
+        #tension-indicator.medium .tension-fill {
+            stroke: #e67e22;
+        }
+        #tension-indicator.high .tension-fill {
+            stroke: #e74c3c;
+        }
+        #tension-indicator.max .tension-fill {
+            stroke: #e74c3c;
+            filter: drop-shadow(0 0 8px #e74c3c);
+        }
+        #tension-text {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #fff;
+            text-shadow: 0 0 5px #000;
+            white-space: nowrap;
+        }
+
         #hud {
             position: absolute;
             top: 0;
@@ -446,6 +499,15 @@
         <div id="ui-layer">
             <div id="crosshair"><div id="crosshair-dot"></div></div>
 
+            <!-- Tension Indicator (ring around crosshair) -->
+            <div id="tension-indicator">
+                <svg viewBox="0 0 100 100">
+                    <circle class="tension-bg" cx="50" cy="50" r="45"/>
+                    <circle class="tension-fill" cx="50" cy="50" r="45"/>
+                </svg>
+                <div id="tension-text"></div>
+            </div>
+
             <div id="hud">
                 <div id="score-container">
                     <div id="score-label">CHAOS SCORE</div>
@@ -536,9 +598,15 @@
         // Game Constants
         const AISLE_LENGTH = 800;
         const CART_SPEED = 25;
-        const SHOOT_COOLDOWN = 500;
-        const PROJECTILE_SPEED = 120;
+        const SHOOT_COOLDOWN = 300; // Reduced cooldown (tension adds delay)
         const ENEMY_HEALTH = 3;
+
+        // Slingshot Tension Constants
+        const TENSION_MIN = 0.2;           // Minimum tension (quick tap)
+        const TENSION_MAX = 1.0;           // Maximum tension (fully charged)
+        const TENSION_CHARGE_RATE = 1.2;   // Tension gained per second
+        const PROJECTILE_SPEED_MIN = 60;   // Speed at min tension
+        const PROJECTILE_SPEED_MAX = 180;  // Speed at max tension
 
         // Player Movement Constants
         const LATERAL_SPEED = 8;
@@ -593,6 +661,11 @@
         let fpsHands;  // Hands group for animation
         let fpsBandL, fpsBandR, fpsPouch, fpsStone; // For pull animation
         let fpsFireAnim = 0; // Firing animation progress (0 = ready, >0 = animating)
+
+        // Slingshot Tension State
+        let slingshotTension = 0;        // Current tension (0 to TENSION_MAX)
+        let isChargingSlingshot = false; // Is player holding to charge
+
         let playerX = 0;
         let playerHealth = PLAYER_MAX_HEALTH;
         let lastDamageTime = 0;
@@ -1637,25 +1710,26 @@
             return group;
         }
 
-        function createProjectile(direction, spawnPos) {
+        function createProjectile(direction, spawnPos, speed = PROJECTILE_SPEED_MAX) {
             const group = new THREE.Group();
 
-            // Stone/ball projectile
-            const stoneGeo = new THREE.SphereGeometry(0.2, 12, 12);
+            // Stone/ball projectile - size scales slightly with power
+            const sizeScale = 0.8 + (speed / PROJECTILE_SPEED_MAX) * 0.4;
+            const stoneGeo = new THREE.SphereGeometry(0.2 * sizeScale, 12, 12);
             const stoneMat = new THREE.MeshStandardMaterial({
                 color: 0xf39c12,
                 emissive: 0xf39c12,
-                emissiveIntensity: 0.3
+                emissiveIntensity: 0.2 + (speed / PROJECTILE_SPEED_MAX) * 0.4
             });
             const stone = new THREE.Mesh(stoneGeo, stoneMat);
             group.add(stone);
 
-            // Glow
-            const glowGeo = new THREE.SphereGeometry(0.3, 12, 12);
+            // Glow - brighter for faster projectiles
+            const glowGeo = new THREE.SphereGeometry(0.3 * sizeScale, 12, 12);
             const glowMat = new THREE.MeshBasicMaterial({
                 color: 0xf39c12,
                 transparent: true,
-                opacity: 0.3
+                opacity: 0.2 + (speed / PROJECTILE_SPEED_MAX) * 0.3
             });
             const glow = new THREE.Mesh(glowGeo, glowMat);
             group.add(glow);
@@ -1669,7 +1743,7 @@
             }
 
             group.userData = {
-                velocity: direction.clone().multiplyScalar(PROJECTILE_SPEED),
+                velocity: direction.clone().multiplyScalar(speed),
                 active: true,
                 prevPosition: group.position.clone() // For sweep collision detection
             };
@@ -1802,9 +1876,47 @@
             };
         }
 
-        function shoot() {
+        // Slingshot Charging Functions
+        function startCharging() {
+            if (!isChargingSlingshot && gameState === 'PLAYING') {
+                const now = Date.now();
+                if (now - lastShootTime < SHOOT_COOLDOWN) return; // Still on cooldown
+
+                isChargingSlingshot = true;
+                slingshotTension = TENSION_MIN;
+            }
+        }
+
+        function updateCharging(dt) {
+            if (isChargingSlingshot && slingshotTension < TENSION_MAX) {
+                slingshotTension += TENSION_CHARGE_RATE * dt;
+                if (slingshotTension > TENSION_MAX) {
+                    slingshotTension = TENSION_MAX;
+                }
+            }
+        }
+
+        function cancelCharging() {
+            isChargingSlingshot = false;
+            slingshotTension = 0;
+        }
+
+        function releaseAndFire() {
+            if (!isChargingSlingshot) return;
+
+            const tension = slingshotTension;
+            isChargingSlingshot = false;
+            slingshotTension = 0;
+
+            // Calculate speed based on tension
+            const speed = PROJECTILE_SPEED_MIN +
+                (PROJECTILE_SPEED_MAX - PROJECTILE_SPEED_MIN) * tension;
+
+            shoot(speed);
+        }
+
+        function shoot(speed = PROJECTILE_SPEED_MAX) {
             const now = Date.now();
-            if (now - lastShootTime < SHOOT_COOLDOWN) return;
             lastShootTime = now;
 
             // Trigger FPS firing animation
@@ -1862,7 +1974,7 @@
                 direction.normalize();
             }
 
-            createProjectile(direction, spawnPos);
+            createProjectile(direction, spawnPos, speed);
 
             // Visual feedback
             ammoDisplay.textContent = 'RELOADING...';
@@ -1897,6 +2009,10 @@
             dodgeVelocity = 0;
             currentLeanAngle = 0;
             fpsFireAnim = 0; // Reset firing animation
+
+            // Reset slingshot tension
+            slingshotTension = 0;
+            isChargingSlingshot = false;
 
             // Reset crosshair to center
             crosshairX = window.innerWidth / 2;
@@ -2013,6 +2129,7 @@
         function pauseGame() {
             if (gameState !== 'PLAYING') return;
             gameState = 'PAUSED';
+            cancelCharging(); // Cancel any charging in progress
             pauseScoreValue.textContent = score;
             pauseScreen.style.display = 'flex';
             hud.style.display = 'none';
@@ -2159,34 +2276,59 @@
                 if (slingshotArm) slingshotArm.visible = false;
                 if (fpsWeapon) fpsWeapon.visible = true;
 
-                // Animate FPS slingshot firing
-                if (fpsFireAnim > 0) {
-                    fpsFireAnim -= dt * 4; // Animation speed
-                    if (fpsFireAnim < 0) fpsFireAnim = 0;
+                // Update charging
+                updateCharging(dt);
 
-                    // Pull-back to release animation
-                    const pullBack = fpsFireAnim > 0.5 ? (1 - fpsFireAnim) * 2 : fpsFireAnim * 2;
-                    const pullZ = pullBack * 0.15;
+                // Animate FPS slingshot - either charging or firing
+                if (isChargingSlingshot) {
+                    // CHARGING: Pull back based on tension
+                    const pullBack = slingshotTension; // 0 to 1
+                    const pullZ = pullBack * 0.25; // More stretch when charging
 
                     if (fpsPouch) fpsPouch.position.z = 0.1 + pullZ;
                     if (fpsStone) {
                         fpsStone.position.z = 0.1 + pullZ;
-                        fpsStone.visible = fpsFireAnim > 0.3; // Hide stone after release
+                        fpsStone.visible = true; // Stone visible while charging
                     }
                     if (fpsBandL) {
-                        fpsBandL.scale.z = 1 + pullBack * 0.8;
-                        fpsBandL.rotation.x = Math.PI / 6 + pullBack * 0.3;
+                        fpsBandL.scale.z = 1 + pullBack * 1.2; // Stretch bands more
+                        fpsBandL.rotation.x = Math.PI / 6 + pullBack * 0.4;
                     }
                     if (fpsBandR) {
-                        fpsBandR.scale.z = 1 + pullBack * 0.8;
-                        fpsBandR.rotation.x = Math.PI / 6 + pullBack * 0.3;
+                        fpsBandR.scale.z = 1 + pullBack * 1.2;
+                        fpsBandR.rotation.x = Math.PI / 6 + pullBack * 0.4;
                     }
-                    // Pull right hand back
+                    // Pull right hand back with pouch
                     if (fpsHands && fpsHands.userData.rightHand) {
                         fpsHands.userData.rightHand.position.z = -0.15 + pullZ;
                     }
+                } else if (fpsFireAnim > 0) {
+                    // FIRING: Quick release animation
+                    fpsFireAnim -= dt * 6; // Faster release
+                    if (fpsFireAnim < 0) fpsFireAnim = 0;
+
+                    // Snap forward animation (release)
+                    const snapProgress = 1 - fpsFireAnim; // 0 to 1
+                    const snapZ = (1 - snapProgress) * 0.1; // Quickly return to 0
+
+                    if (fpsPouch) fpsPouch.position.z = 0.1 + snapZ;
+                    if (fpsStone) {
+                        fpsStone.position.z = 0.1 + snapZ;
+                        fpsStone.visible = fpsFireAnim > 0.5; // Hide stone quickly after release
+                    }
+                    if (fpsBandL) {
+                        fpsBandL.scale.z = 1 + (1 - snapProgress) * 0.3;
+                        fpsBandL.rotation.x = Math.PI / 6 + (1 - snapProgress) * 0.1;
+                    }
+                    if (fpsBandR) {
+                        fpsBandR.scale.z = 1 + (1 - snapProgress) * 0.3;
+                        fpsBandR.rotation.x = Math.PI / 6 + (1 - snapProgress) * 0.1;
+                    }
+                    if (fpsHands && fpsHands.userData.rightHand) {
+                        fpsHands.userData.rightHand.position.z = -0.15 + snapZ;
+                    }
                 } else {
-                    // Reset to ready position
+                    // READY: Reset to ready position
                     if (fpsPouch) fpsPouch.position.z = 0.1;
                     if (fpsStone) { fpsStone.position.z = 0.1; fpsStone.visible = true; }
                     if (fpsBandL) { fpsBandL.scale.z = 1; fpsBandL.rotation.x = Math.PI / 6; }
@@ -2222,6 +2364,20 @@
                 if (playerChild) playerChild.visible = true;
                 if (slingshotArm) slingshotArm.visible = true;
                 if (fpsWeapon) fpsWeapon.visible = false;
+
+                // Update charging for TPS mode too
+                updateCharging(dt);
+
+                // Animate slingshot arm in TPS mode
+                if (slingshotArm) {
+                    if (isChargingSlingshot) {
+                        // Pull back arm based on tension
+                        slingshotArm.rotation.x = -0.3 - slingshotTension * 0.5;
+                    } else {
+                        // Return to ready position
+                        slingshotArm.rotation.x = -0.3;
+                    }
+                }
             }
 
             // Crosshair movement (arcade mode uses arrow keys)
@@ -2244,6 +2400,43 @@
             const crosshairEl = document.getElementById('crosshair');
             crosshairEl.style.left = crosshairX + 'px';
             crosshairEl.style.top = crosshairY + 'px';
+
+            // Update tension indicator
+            const tensionEl = document.getElementById('tension-indicator');
+            if (tensionEl) {
+                tensionEl.style.left = crosshairX + 'px';
+                tensionEl.style.top = crosshairY + 'px';
+
+                if (isChargingSlingshot) {
+                    tensionEl.classList.add('charging');
+
+                    // Update tension class for color
+                    tensionEl.classList.remove('medium', 'high', 'max');
+                    if (slingshotTension >= TENSION_MAX) {
+                        tensionEl.classList.add('max');
+                    } else if (slingshotTension >= 0.7) {
+                        tensionEl.classList.add('high');
+                    } else if (slingshotTension >= 0.4) {
+                        tensionEl.classList.add('medium');
+                    }
+
+                    // Update arc fill (283 = circumference of r=45 circle)
+                    const fillEl = tensionEl.querySelector('.tension-fill');
+                    if (fillEl) {
+                        const dashOffset = 283 * (1 - slingshotTension);
+                        fillEl.style.strokeDashoffset = dashOffset;
+                    }
+
+                    // Update text
+                    const textEl = document.getElementById('tension-text');
+                    if (textEl) {
+                        const power = Math.round(slingshotTension * 100);
+                        textEl.textContent = power >= 100 ? 'MAX POWER!' : power + '%';
+                    }
+                } else {
+                    tensionEl.classList.remove('charging', 'medium', 'high', 'max');
+                }
+            }
 
             // Update progress
             const progress = Math.min(distance / AISLE_LENGTH * 100, 100);
@@ -2512,9 +2705,16 @@
             mouseY = e.clientY;
         });
 
-        document.addEventListener('click', () => {
-            if (gameState === 'PLAYING') {
-                shoot();
+        // Mouse controls for slingshot (Classic mode)
+        document.addEventListener('mousedown', (e) => {
+            if (e.button === 0 && gameState === 'PLAYING' && controlScheme === 'classic') {
+                startCharging();
+            }
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (e.button === 0 && gameState === 'PLAYING' && controlScheme === 'classic') {
+                releaseAndFire();
             }
         });
 
@@ -2586,10 +2786,15 @@
                     if (key === 'ArrowDown') keys.aimDown = true;
                 }
 
-                // Space: Fire (both schemes)
+                // Space: Start charging (arcade mode) or fire (classic mode fallback)
                 if (key === ' ') {
                     e.preventDefault();
-                    shoot();
+                    if (controlScheme === 'arcade') {
+                        startCharging();
+                    } else {
+                        // Classic mode: space also works as instant fire
+                        startCharging();
+                    }
                 }
             }
         });
@@ -2611,6 +2816,11 @@
                 if (key === 'ArrowRight') keys.aimRight = false;
                 if (key === 'ArrowUp') keys.aimUp = false;
                 if (key === 'ArrowDown') keys.aimDown = false;
+            }
+
+            // Space: Release and fire
+            if (key === ' ' && gameState === 'PLAYING') {
+                releaseAndFire();
             }
         });
 
@@ -2702,6 +2912,17 @@
         Object.defineProperty(window, 'playerCart', {
             get: () => playerCart
         });
+
+        // Expose slingshot tension for testing
+        Object.defineProperty(window, 'slingshotTension', {
+            get: () => slingshotTension
+        });
+        Object.defineProperty(window, 'isChargingSlingshot', {
+            get: () => isChargingSlingshot
+        });
+        window.startCharging = startCharging;
+        window.releaseAndFire = releaseAndFire;
+        window.cancelCharging = cancelCharging;
 
         // Initialize and start
         initThree();
