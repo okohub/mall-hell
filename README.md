@@ -72,6 +72,12 @@ The slingshot uses a **tension system** - hold SPACE to charge up power:
 ## Development
 
 ```bash
+# Install dependencies
+bun install
+
+# Create visual baselines (required on first run)
+bun run-tests.js --update-baselines
+
 # Run all tests
 bun run test
 
@@ -80,9 +86,6 @@ bun run-tests.js --test=<test-id>
 
 # Run test group
 bun run-tests.js --group=menu
-
-# Update visual baselines (only after intentional UI changes)
-bun run-tests.js --update-baselines
 
 # Or just open in browser
 open index.html
