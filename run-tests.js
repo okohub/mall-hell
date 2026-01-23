@@ -9,23 +9,41 @@ async function runTests() {
 
     console.log('\n🧪 MALL HELL TEST RUNNER\n');
     console.log('='.repeat(60));
+    console.log('\n⚡ Running Unit Tests and UI Tests in parallel...\n');
 
-    let totalPassed = 0;
-    let totalFailed = 0;
+    // Run both test suites in parallel
+    const [unitResults, uiResults] = await Promise.all([
+        runUnitTests(browser),
+        runUITests(browser)
+    ]);
 
-    // Run Unit Tests
+    // Display results
     console.log('\n📋 UNIT TESTS\n');
-    const unitResults = await runUnitTests(browser);
-    totalPassed += unitResults.passed;
-    totalFailed += unitResults.failed;
+    if (unitResults.failedTests.length > 0) {
+        console.log('  Failed tests:');
+        unitResults.failedTests.forEach(t => {
+            console.log(`  ❌ [${t.module}] ${t.name}`);
+            if (t.error) console.log(`     Error: ${t.error}`);
+        });
+        console.log('');
+    }
+    console.log(`  📊 Results: ${unitResults.passed} passed, ${unitResults.failed} failed`);
 
-    // Run UI Tests
     console.log('\n📋 UI TESTS\n');
-    const uiResults = await runUITests(browser);
-    totalPassed += uiResults.passed;
-    totalFailed += uiResults.failed;
+    if (uiResults.failedTests.length > 0) {
+        console.log('  Failed tests:');
+        uiResults.failedTests.forEach(t => {
+            console.log(`  ❌ [${t.group}] ${t.name}`);
+            if (t.error) console.log(`     Error: ${t.error}`);
+        });
+        console.log('');
+    }
+    console.log(`  📊 Results: ${uiResults.passed} passed, ${uiResults.failed} failed, ${uiResults.pending} pending`);
 
     await browser.close();
+
+    const totalPassed = unitResults.passed + uiResults.passed;
+    const totalFailed = unitResults.failed + uiResults.failed;
 
     // Final Summary
     console.log('\n' + '='.repeat(60));
@@ -40,6 +58,7 @@ async function runUnitTests(browser) {
     const page = await browser.newPage();
     const filePath = path.resolve(__dirname, 'tests/unit-tests.html');
     let passed = 0, failed = 0;
+    let failedTests = [];
 
     try {
         await page.goto(`file://${filePath}`, { waitUntil: 'domcontentloaded', timeout: 10000 });
@@ -77,33 +96,23 @@ async function runUnitTests(browser) {
             return output;
         });
 
-        // Display only failed tests
-        const failedTests = results.tests.filter(t => t.status === 'FAIL');
-        if (failedTests.length > 0) {
-            console.log('  Failed tests:');
-            failedTests.forEach(t => {
-                console.log(`  ❌ [${t.module}] ${t.name}`);
-                if (t.error) console.log(`     Error: ${t.error}`);
-            });
-            console.log('');
-        }
-
+        failedTests = results.tests.filter(t => t.status === 'FAIL');
         passed = results.passed;
         failed = results.failed;
-        console.log(`  📊 Results: ${passed} passed, ${failed} failed`);
 
     } catch (error) {
-        console.log(`  ⚠️  Error: ${error.message}`);
+        console.log(`  ⚠️  Unit Tests Error: ${error.message}`);
     }
 
     await page.close();
-    return { passed, failed };
+    return { passed, failed, failedTests };
 }
 
 async function runUITests(browser) {
     const page = await browser.newPage();
     const filePath = path.resolve(__dirname, 'tests/ui-tests.html');
-    let passed = 0, failed = 0;
+    let passed = 0, failed = 0, pending = 0;
+    let failedTests = [];
 
     try {
         // Set viewport
@@ -113,12 +122,6 @@ async function runUITests(browser) {
 
         // Wait for page and game iframe to load
         await new Promise(resolve => setTimeout(resolve, 3000));
-
-        // Get total test count
-        const totalTests = await page.evaluate(() => {
-            return window.runner?.tests?.length || 0;
-        });
-        console.log(`  Total tests: ${totalTests}`);
 
         // Click run all button
         await page.evaluate(() => {
@@ -130,45 +133,37 @@ async function runUITests(browser) {
         await new Promise(resolve => setTimeout(resolve, 500));
 
         // Monitor test progress
-        let lastProgress = '';
         let stableCount = 0;
         let attempts = 0;
+        let lastCompleted = 0;
 
         while (attempts < 120) { // Max 2 minutes
             const status = await page.evaluate(() => {
                 const runner = window.runner;
-                if (!runner) return { isRunning: false, current: '', passed: 0, failed: 0, completed: 0, total: 0 };
+                if (!runner) return { isRunning: false, completed: 0, total: 0 };
 
                 const passed = runner.tests.filter(t => t.status === 'pass').length;
                 const failed = runner.tests.filter(t => t.status === 'fail').length;
                 const total = runner.tests.length;
-                const currentTest = runner.currentTest;
 
                 return {
                     isRunning: runner.isRunning,
-                    current: currentTest ? currentTest.name : '',
-                    passed,
-                    failed,
                     completed: passed + failed,
                     total
                 };
             });
 
-            const progressStr = `${status.completed}/${status.total}`;
-
-            // Print progress when it changes
-            if (progressStr !== lastProgress) {
-                const currentInfo = status.current ? ` - ${status.current}` : '';
-                process.stdout.write(`\r  Progress: ${progressStr} (${status.passed}✓ ${status.failed}✗)${currentInfo}`.padEnd(80));
-                lastProgress = progressStr;
-                stableCount = 0;
-            } else {
-                stableCount++;
-            }
-
             // Exit if not running and all tests are done
             if (!status.isRunning && status.completed === status.total && status.total > 0) {
                 break;
+            }
+
+            // Track stability
+            if (status.completed === lastCompleted) {
+                stableCount++;
+            } else {
+                stableCount = 0;
+                lastCompleted = status.completed;
             }
 
             // Exit if stable for too long (tests probably done)
@@ -179,9 +174,6 @@ async function runUITests(browser) {
             await new Promise(resolve => setTimeout(resolve, 500));
             attempts++;
         }
-
-        // Clear progress line
-        process.stdout.write('\r' + ' '.repeat(100) + '\r');
 
         // Get final results
         const results = await page.evaluate(() => {
@@ -200,29 +192,17 @@ async function runUITests(browser) {
             };
         });
 
-        // Display failed tests
-        const failedTests = results.tests.filter(t => t.status === 'FAIL');
-        if (failedTests.length > 0) {
-            console.log('  Failed tests:');
-            failedTests.forEach(t => {
-                console.log(`  ❌ [${t.group}] ${t.name}`);
-                if (t.error) console.log(`     Error: ${t.error}`);
-            });
-            console.log('');
-        }
-
+        failedTests = results.tests.filter(t => t.status === 'FAIL');
         passed = results.passed;
         failed = results.failed;
-        const pending = results.tests.filter(t => t.status === 'PENDING').length;
-
-        console.log(`  📊 Results: ${passed} passed, ${failed} failed, ${pending} pending`);
+        pending = results.tests.filter(t => t.status === 'PENDING').length;
 
     } catch (error) {
-        console.log(`  ⚠️  Error: ${error.message}`);
+        console.log(`  ⚠️  UI Tests Error: ${error.message}`);
     }
 
     await page.close();
-    return { passed, failed };
+    return { passed, failed, pending, failedTests };
 }
 
 runTests().catch(console.error);
