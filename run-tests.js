@@ -1,5 +1,14 @@
 const puppeteer = require('puppeteer');
 const path = require('path');
+const fs = require('fs');
+
+// Screenshot directory
+const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
+
+// Ensure screenshot directory exists
+if (!fs.existsSync(SCREENSHOT_DIR)) {
+    fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+}
 
 // Shared progress state
 const progress = {
@@ -71,6 +80,11 @@ async function runTests() {
         console.log('');
     }
     console.log(`  📊 Results: ${uiResults.passed} passed, ${uiResults.failed} failed, ${uiResults.pending} pending`);
+
+    // Show screenshot info
+    if (uiResults.screenshots && uiResults.screenshots.length > 0) {
+        console.log(`  📸 Screenshots saved to: ${SCREENSHOT_DIR}/`);
+    }
 
     await browser.close();
 
@@ -179,6 +193,34 @@ async function runUITests(browser) {
     const filePath = path.resolve(__dirname, 'tests/ui-tests.html');
     let passed = 0, failed = 0, pending = 0;
     let failedTests = [];
+    let screenshotsTaken = [];
+
+    // Helper to take screenshot with timestamp
+    async function takeScreenshot(name) {
+        const timestamp = Date.now();
+        const filename = `${name.replace(/[^a-z0-9]/gi, '_')}_${timestamp}.png`;
+        const filepath = path.join(SCREENSHOT_DIR, filename);
+        await page.screenshot({ path: filepath, fullPage: false });
+        screenshotsTaken.push(filepath);
+        return filepath;
+    }
+
+    // Helper to take game canvas screenshot only
+    async function takeGameScreenshot(name) {
+        const timestamp = Date.now();
+        const filename = `game_${name.replace(/[^a-z0-9]/gi, '_')}_${timestamp}.png`;
+        const filepath = path.join(SCREENSHOT_DIR, filename);
+
+        // Try to screenshot just the game iframe
+        const frame = await page.$('iframe#game-frame');
+        if (frame) {
+            await frame.screenshot({ path: filepath });
+        } else {
+            await page.screenshot({ path: filepath, fullPage: false });
+        }
+        screenshotsTaken.push(filepath);
+        return filepath;
+    }
 
     try {
         await page.setViewport({ width: 1400, height: 900 });
@@ -186,6 +228,9 @@ async function runUITests(browser) {
 
         // Wait for page and game iframe to load
         await new Promise(resolve => setTimeout(resolve, 3000));
+
+        // Screenshot: Initial state
+        await takeScreenshot('01_initial_load');
 
         // Get total test count
         const totalTests = await page.evaluate(() => {
@@ -200,6 +245,9 @@ async function runUITests(browser) {
         });
 
         await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Screenshot: Tests started
+        await takeGameScreenshot('02_tests_started');
 
         // Monitor test progress
         let stableCount = 0;
@@ -274,6 +322,15 @@ async function runUITests(browser) {
         failed = results.failed;
         pending = results.tests.filter(t => t.status === 'PENDING').length;
 
+        // Screenshot: Final state
+        await takeScreenshot('03_tests_complete');
+        await takeGameScreenshot('04_game_final_state');
+
+        // Screenshot each failure
+        if (failedTests.length > 0) {
+            await takeScreenshot('05_failed_tests_view');
+        }
+
         progress.ui.passed = passed;
         progress.ui.failed = failed;
         progress.ui.current = '';
@@ -281,10 +338,11 @@ async function runUITests(browser) {
 
     } catch (error) {
         console.log(`\n  ⚠️  UI Tests Error: ${error.message}`);
+        await takeScreenshot('error_state');
     }
 
     await page.close();
-    return { passed, failed, pending, failedTests };
+    return { passed, failed, pending, failedTests, screenshots: screenshotsTaken };
 }
 
 runTests().catch(console.error);

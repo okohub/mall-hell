@@ -588,6 +588,7 @@
         // Player
         let playerCart;
         let slingshotArm;
+        let fpsWeapon; // Slingshot visible in FPS mode
         let playerX = 0;
         let playerHealth = PLAYER_MAX_HEALTH;
         let lastDamageTime = 0;
@@ -688,8 +689,88 @@
             // Create supermarket environment
             createEnvironment();
             createPlayerCart();
+            createFPSWeapon();
 
             window.addEventListener('resize', onWindowResize);
+        }
+
+        function createFPSWeapon() {
+            // Create slingshot that's attached to camera for FPS view
+            fpsWeapon = new THREE.Group();
+
+            const woodMat = new THREE.MeshStandardMaterial({
+                color: 0x8b4513,
+                roughness: 0.8
+            });
+            const rubberMat = new THREE.MeshStandardMaterial({
+                color: 0xc0392b,
+                roughness: 0.6
+            });
+
+            // Y-frame handle
+            const handleGeo = new THREE.CylinderGeometry(0.025, 0.03, 0.35, 8);
+            const handle = new THREE.Mesh(handleGeo, woodMat);
+            handle.rotation.x = Math.PI / 2.5;
+            handle.position.set(0, -0.1, 0);
+            fpsWeapon.add(handle);
+
+            // Fork prongs
+            const forkGeo = new THREE.CylinderGeometry(0.018, 0.022, 0.18, 8);
+            const forkL = new THREE.Mesh(forkGeo, woodMat);
+            forkL.rotation.z = Math.PI / 5;
+            forkL.position.set(-0.06, 0.06, -0.12);
+            fpsWeapon.add(forkL);
+
+            const forkR = new THREE.Mesh(forkGeo, woodMat);
+            forkR.rotation.z = -Math.PI / 5;
+            forkR.position.set(0.06, 0.06, -0.12);
+            fpsWeapon.add(forkR);
+
+            // Fork tips
+            const tipGeo = new THREE.SphereGeometry(0.025, 8, 8);
+            const tipL = new THREE.Mesh(tipGeo, woodMat);
+            tipL.position.set(-0.09, 0.12, -0.12);
+            fpsWeapon.add(tipL);
+
+            const tipR = new THREE.Mesh(tipGeo, woodMat);
+            tipR.position.set(0.09, 0.12, -0.12);
+            fpsWeapon.add(tipR);
+
+            // Rubber bands
+            const bandGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.15, 6);
+            const bandL = new THREE.Mesh(bandGeo, rubberMat);
+            bandL.rotation.x = Math.PI / 4;
+            bandL.rotation.z = Math.PI / 10;
+            bandL.position.set(-0.05, 0.05, -0.05);
+            fpsWeapon.add(bandL);
+
+            const bandR = new THREE.Mesh(bandGeo, rubberMat);
+            bandR.rotation.x = Math.PI / 4;
+            bandR.rotation.z = -Math.PI / 10;
+            bandR.position.set(0.05, 0.05, -0.05);
+            fpsWeapon.add(bandR);
+
+            // Pouch with stone
+            const pouchMat = new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.9 });
+            const pouchGeo = new THREE.SphereGeometry(0.03, 8, 8);
+            const pouch = new THREE.Mesh(pouchGeo, pouchMat);
+            pouch.position.set(0, 0, 0.02);
+            fpsWeapon.add(pouch);
+
+            // Stone in pouch
+            const stoneMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.7 });
+            const stoneGeo = new THREE.SphereGeometry(0.02, 8, 8);
+            const stone = new THREE.Mesh(stoneGeo, stoneMat);
+            stone.position.set(0, 0, 0.02);
+            fpsWeapon.add(stone);
+
+            // Position weapon in lower right of view
+            fpsWeapon.position.set(0.25, -0.2, -0.4);
+            fpsWeapon.rotation.set(0.1, -0.2, 0.1);
+
+            // Add to camera so it moves with view
+            camera.add(fpsWeapon);
+            fpsWeapon.visible = false; // Hidden by default, shown in FPS mode
         }
 
         function createEnvironment() {
@@ -1965,27 +2046,22 @@
 
             // Camera mode handling
             if (cameraMode === 'hybrid-fps') {
-                // Hybrid FPS: Camera inside cart, looking forward
-                // Position camera at child's eye level
-                const targetCamX = playerX;
-                const targetCamY = 2.2; // Child's eye height
-                const targetCamZ = playerCart.position.z + 0.5; // Slightly forward in cart
+                // Hybrid FPS: Camera fixed inside cart, looking forward
+                // Position camera at child's eye level - NO smoothing (causes vibration)
+                camera.position.x = playerX;
+                camera.position.y = 2.0; // Child's eye height
+                camera.position.z = playerCart.position.z - 0.3; // At front of cart
 
-                // Smooth camera follow
-                camera.position.x += (targetCamX - camera.position.x) * 10 * dt;
-                camera.position.y += (targetCamY - camera.position.y) * 10 * dt;
-                camera.position.z += (targetCamZ - camera.position.z) * 10 * dt;
+                // FPS camera looks straight ahead with slight downward tilt
+                camera.rotation.set(0, 0, 0);
+                camera.rotation.x = -0.08; // Slight downward tilt to see aisle
 
-                // FPS aiming based on crosshair
-                const aimX = (crosshairX / window.innerWidth - 0.5) * 1.0;
-                const aimY = -(crosshairY / window.innerHeight - 0.5) * 0.6;
-                camera.rotation.set(aimY, -aimX, currentLeanAngle * CAMERA_ROLL_FACTOR);
+                // Add subtle lean roll for immersion
+                camera.rotation.z = currentLeanAngle * CAMERA_ROLL_FACTOR * 0.5;
 
-                // Hide child and most of cart, show only front edges
-                playerCart.visible = true;
-                // Move slingshot to be visible in FPS view
-                slingshotArm.position.set(0.4, -0.3, -0.8);
-                slingshotArm.rotation.set(0.2, 0, 0.1);
+                // Hide cart (we're inside it), show FPS weapon
+                playerCart.visible = false;
+                if (fpsWeapon) fpsWeapon.visible = true;
             } else {
                 // Third-person camera follows cart from behind
                 const targetCamX = playerX + CAMERA_OFFSET_SIDE;
@@ -2008,10 +2084,9 @@
                 // Add subtle camera roll for immersion
                 camera.rotation.z = currentLeanAngle * CAMERA_ROLL_FACTOR;
 
-                // Reset slingshot position for third-person
-                slingshotArm.position.set(-0.45, 1.15, -0.2);
-                slingshotArm.rotation.set(-0.3, 0, 0);
+                // Show cart, hide FPS weapon in third-person
                 playerCart.visible = true;
+                if (fpsWeapon) fpsWeapon.visible = false;
             }
 
             // Crosshair movement (arcade mode uses arrow keys)
