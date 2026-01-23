@@ -981,6 +981,80 @@
             });
         });
 
+        // Spawn Collision Validation Tests
+        test.describe('Spawn Collision Validation', () => {
+            const SpawnCollision = {
+                ROOM_SIZE: 30,
+                WALL_MARGIN: 4,
+                CENTER_MARGIN: 4,
+                DOOR_WIDTH: 8,
+
+                isValidPosition(x, z, roomCenterX, roomCenterZ, doors = [], existingPositions = []) {
+                    const roomMinX = roomCenterX - this.ROOM_SIZE / 2;
+                    const roomMaxX = roomCenterX + this.ROOM_SIZE / 2;
+                    const roomMinZ = roomCenterZ - this.ROOM_SIZE / 2;
+                    const roomMaxZ = roomCenterZ + this.ROOM_SIZE / 2;
+
+                    // Check center clearance
+                    const centerDist = Math.sqrt(
+                        Math.pow(x - roomCenterX, 2) + Math.pow(z - roomCenterZ, 2)
+                    );
+                    if (centerDist < this.CENTER_MARGIN) return false;
+
+                    // Check wall clearance
+                    if (x < roomMinX + this.WALL_MARGIN) return false;
+                    if (x > roomMaxX - this.WALL_MARGIN) return false;
+                    if (z < roomMinZ + this.WALL_MARGIN) return false;
+                    if (z > roomMaxZ - this.WALL_MARGIN) return false;
+
+                    // Check door clearance
+                    const doorHalf = this.DOOR_WIDTH / 2 + 2;
+                    if (doors.includes('north') && z < roomMinZ + 5 && Math.abs(x - roomCenterX) < doorHalf) return false;
+                    if (doors.includes('south') && z > roomMaxZ - 5 && Math.abs(x - roomCenterX) < doorHalf) return false;
+
+                    // Check existing positions
+                    for (const pos of existingPositions) {
+                        const dist = Math.sqrt(Math.pow(x - pos.x, 2) + Math.pow(z - pos.z, 2));
+                        if (dist < 3) return false;
+                    }
+
+                    return true;
+                }
+            };
+
+            test.it('should reject positions too close to room center', () => {
+                test.assertFalse(SpawnCollision.isValidPosition(45, 75, 45, 75)); // Exact center
+                test.assertFalse(SpawnCollision.isValidPosition(46, 75, 45, 75)); // 1 unit away
+            });
+
+            test.it('should reject positions too close to walls', () => {
+                // Room center at (45, 75), room extends from (30, 60) to (60, 90)
+                test.assertFalse(SpawnCollision.isValidPosition(32, 75, 45, 75)); // Near west wall
+                test.assertFalse(SpawnCollision.isValidPosition(58, 75, 45, 75)); // Near east wall
+                test.assertFalse(SpawnCollision.isValidPosition(45, 62, 45, 75)); // Near north wall
+                test.assertFalse(SpawnCollision.isValidPosition(45, 88, 45, 75)); // Near south wall
+            });
+
+            test.it('should accept valid positions away from walls and center', () => {
+                // Valid positions (not too close to walls or center)
+                test.assertTrue(SpawnCollision.isValidPosition(38, 70, 45, 75)); // Southwest area
+                test.assertTrue(SpawnCollision.isValidPosition(52, 80, 45, 75)); // Northeast area
+            });
+
+            test.it('should reject positions near doorways', () => {
+                // Position near north door
+                test.assertFalse(SpawnCollision.isValidPosition(45, 62, 45, 75, ['north']));
+                // Position near south door
+                test.assertFalse(SpawnCollision.isValidPosition(45, 88, 45, 75, ['south']));
+            });
+
+            test.it('should reject positions overlapping existing spawns', () => {
+                const existing = [{ x: 40, z: 70 }];
+                test.assertFalse(SpawnCollision.isValidPosition(41, 70, 45, 75, [], existing)); // Too close
+                test.assertTrue(SpawnCollision.isValidPosition(50, 80, 45, 75, [], existing));  // Far enough
+            });
+        });
+
         // Object Cleanup Tests
         test.describe('Object Cleanup', () => {
             test.it('should detect object behind camera', () => {
@@ -1660,6 +1734,240 @@
         });
 
         // ============================================
+        // PROJECTILE SYSTEM TESTS
+        // ============================================
+
+        test.describe('Projectile System', () => {
+            // Simulated projectile for testing
+            const ProjectileSystem = {
+                projectiles: [],
+                cameraPosition: { x: 45, y: 2.2, z: 75 },
+
+                createProjectile(direction, speed) {
+                    const proj = {
+                        position: { ...this.cameraPosition },
+                        velocity: {
+                            x: direction.x * speed,
+                            y: direction.y * speed,
+                            z: direction.z * speed
+                        },
+                        active: true,
+                        power: speed / 180 // Normalized 0-1
+                    };
+                    this.projectiles.push(proj);
+                    return proj;
+                },
+
+                updateProjectile(proj, dt) {
+                    if (!proj.active) return;
+                    proj.position.x += proj.velocity.x * dt;
+                    proj.position.y += proj.velocity.y * dt;
+                    proj.position.z += proj.velocity.z * dt;
+                },
+
+                isOutOfBounds(proj) {
+                    const dx = proj.position.x - this.cameraPosition.x;
+                    const dy = proj.position.y - this.cameraPosition.y;
+                    const dz = proj.position.z - this.cameraPosition.z;
+                    const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                    return dist > 150 || proj.position.y < 0 || proj.position.y > 15;
+                },
+
+                checkHit(proj, target, hitRadius) {
+                    const dx = proj.position.x - target.x;
+                    const dy = proj.position.y - target.y;
+                    const dz = proj.position.z - target.z;
+                    const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                    return dist < hitRadius;
+                },
+
+                reset() {
+                    this.projectiles = [];
+                    this.cameraPosition = { x: 45, y: 2.2, z: 75 };
+                }
+            };
+
+            test.beforeEach(() => {
+                ProjectileSystem.reset();
+            });
+
+            test.it('should create projectile with correct properties', () => {
+                const direction = { x: 0, y: 0, z: -1 };
+                const proj = ProjectileSystem.createProjectile(direction, 120);
+
+                test.assertTrue(proj.active);
+                test.assertEqual(proj.velocity.z, -120);
+                test.assertInRange(proj.power, 0, 1);
+            });
+
+            test.it('should move projectile based on velocity', () => {
+                const direction = { x: 0, y: 0, z: -1 };
+                const proj = ProjectileSystem.createProjectile(direction, 100);
+                const initialZ = proj.position.z;
+
+                ProjectileSystem.updateProjectile(proj, 0.1);
+
+                test.assertEqual(proj.position.z, initialZ - 10); // 100 * 0.1
+            });
+
+            test.it('should detect out of bounds (distance)', () => {
+                const direction = { x: 0, y: 0, z: -1 };
+                const proj = ProjectileSystem.createProjectile(direction, 100);
+
+                test.assertFalse(ProjectileSystem.isOutOfBounds(proj));
+
+                proj.position.z = -100; // Far from camera
+                test.assertTrue(ProjectileSystem.isOutOfBounds(proj));
+            });
+
+            test.it('should detect out of bounds (height)', () => {
+                const direction = { x: 0, y: 1, z: 0 };
+                const proj = ProjectileSystem.createProjectile(direction, 100);
+
+                proj.position.y = 20;
+                test.assertTrue(ProjectileSystem.isOutOfBounds(proj));
+
+                proj.position.y = -1;
+                test.assertTrue(ProjectileSystem.isOutOfBounds(proj));
+            });
+
+            test.it('should detect hit on target within radius', () => {
+                const direction = { x: 0, y: 0, z: -1 };
+                const proj = ProjectileSystem.createProjectile(direction, 100);
+
+                const target = { x: 45, y: 2.2, z: 70 };
+                proj.position.z = 71;
+
+                test.assertTrue(ProjectileSystem.checkHit(proj, target, 2.5));
+            });
+
+            test.it('should not detect hit on target outside radius', () => {
+                const direction = { x: 0, y: 0, z: -1 };
+                const proj = ProjectileSystem.createProjectile(direction, 100);
+
+                const target = { x: 55, y: 2.2, z: 70 }; // 10 units away on X
+                proj.position.z = 70;
+
+                test.assertFalse(ProjectileSystem.checkHit(proj, target, 2.5));
+            });
+
+            test.it('should scale power based on speed', () => {
+                const direction = { x: 0, y: 0, z: -1 };
+
+                const slowProj = ProjectileSystem.createProjectile(direction, 60);
+                const fastProj = ProjectileSystem.createProjectile(direction, 180);
+
+                test.assertTrue(fastProj.power > slowProj.power);
+                test.assertInRange(slowProj.power, 0, 0.5);
+                test.assertInRange(fastProj.power, 0.9, 1.1);
+            });
+        });
+
+        // ============================================
+        // WALL BUMP EFFECT TESTS
+        // ============================================
+
+        test.describe('Wall Bump Effect', () => {
+            // Simulated wall bump system
+            const WallBumpSystem = {
+                intensity: 0,
+                direction: { x: 0, z: 0 },
+                DECAY_RATE: 0.85,
+                MIN_SPEED_FOR_BUMP: 1,
+                MAX_SPEED: 10,
+
+                triggerBump(speed, velocityX, velocityZ, blockedX, blockedZ) {
+                    if (speed > this.MIN_SPEED_FOR_BUMP) {
+                        this.intensity = Math.min(1, speed / this.MAX_SPEED);
+                        this.direction = {
+                            x: blockedX ? -Math.sign(velocityX) : 0,
+                            z: blockedZ ? -Math.sign(velocityZ) : 0
+                        };
+                        return true;
+                    }
+                    return false;
+                },
+
+                update() {
+                    this.intensity *= this.DECAY_RATE;
+                    if (this.intensity < 0.01) this.intensity = 0;
+                },
+
+                getCameraOffset() {
+                    return {
+                        x: this.direction.x * this.intensity * 0.3,
+                        z: this.direction.z * this.intensity * 0.3,
+                        shake: this.intensity * (Math.random() - 0.5) * 0.1
+                    };
+                },
+
+                reset() {
+                    this.intensity = 0;
+                    this.direction = { x: 0, z: 0 };
+                }
+            };
+
+            test.beforeEach(() => {
+                WallBumpSystem.reset();
+            });
+
+            test.it('should trigger bump on wall collision at speed', () => {
+                const triggered = WallBumpSystem.triggerBump(5, 1, 0, true, false);
+                test.assertTrue(triggered);
+                test.assertTrue(WallBumpSystem.intensity > 0);
+            });
+
+            test.it('should not trigger bump at low speed', () => {
+                const triggered = WallBumpSystem.triggerBump(0.5, 1, 0, true, false);
+                test.assertFalse(triggered);
+                test.assertEqual(WallBumpSystem.intensity, 0);
+            });
+
+            test.it('should set correct bump direction on X collision', () => {
+                WallBumpSystem.triggerBump(5, 1, 0, true, false); // Moving +X, blocked X
+                test.assertEqual(WallBumpSystem.direction.x, -1); // Push back
+                test.assertEqual(WallBumpSystem.direction.z, 0);
+            });
+
+            test.it('should set correct bump direction on Z collision', () => {
+                WallBumpSystem.triggerBump(5, 0, -1, false, true); // Moving -Z, blocked Z
+                test.assertEqual(WallBumpSystem.direction.x, 0);
+                test.assertEqual(WallBumpSystem.direction.z, 1); // Push back
+            });
+
+            test.it('should decay bump intensity over time', () => {
+                WallBumpSystem.triggerBump(10, 1, 0, true, false);
+                const initialIntensity = WallBumpSystem.intensity;
+
+                WallBumpSystem.update();
+                test.assertTrue(WallBumpSystem.intensity < initialIntensity);
+
+                // Multiple updates should decay further
+                for (let i = 0; i < 10; i++) WallBumpSystem.update();
+                test.assertTrue(WallBumpSystem.intensity < 0.5);
+            });
+
+            test.it('should provide camera offset during bump', () => {
+                WallBumpSystem.triggerBump(10, 1, 0, true, false);
+                const offset = WallBumpSystem.getCameraOffset();
+
+                test.assertTrue(offset.x !== 0); // Should have X offset
+                test.assertEqual(offset.z, 0);   // No Z offset (not blocked)
+            });
+
+            test.it('should scale intensity based on speed', () => {
+                WallBumpSystem.triggerBump(2, 1, 0, true, false);
+                const lowSpeedIntensity = WallBumpSystem.intensity;
+
+                WallBumpSystem.reset();
+                WallBumpSystem.triggerBump(10, 1, 0, true, false);
+                const highSpeedIntensity = WallBumpSystem.intensity;
+
+                test.assertTrue(highSpeedIntensity > lowSpeedIntensity);
+            });
+        });
+
+        // ============================================
         // CODE QUALITY TESTS
         // ============================================
 
@@ -1763,6 +2071,43 @@
 
                 if (missing.length > 0) {
                     throw new Error(`Properties not exposed to window: ${missing.join(', ')}`);
+                }
+            });
+
+            test.it('should not have duplicate CSS selectors', async () => {
+                const response = await fetch('../index.html');
+                const sourceCode = await response.text();
+
+                // Extract all CSS selectors from style tags
+                const styleMatch = sourceCode.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+                if (!styleMatch) {
+                    throw new Error('No style tags found');
+                }
+
+                const cssContent = styleMatch.join('\n');
+
+                // Find all selector blocks (simplified: looks for patterns like ".class {" or "#id {")
+                const selectorRegex = /^\s*([\.\#][\w\-\:\.\#\[\]\=\"\'\s\,\>\+\~]+)\s*\{/gm;
+                const selectors = {};
+                let match;
+
+                while ((match = selectorRegex.exec(cssContent)) !== null) {
+                    const selector = match[1].trim();
+                    // Skip pseudo-elements and complex selectors
+                    if (selector.includes('::') || selector.includes(':hover') ||
+                        selector.includes(':active') || selector.includes(':before') ||
+                        selector.includes(':after') || selector.includes(':focus')) {
+                        continue;
+                    }
+                    selectors[selector] = (selectors[selector] || 0) + 1;
+                }
+
+                const duplicates = Object.entries(selectors)
+                    .filter(([selector, count]) => count > 1)
+                    .map(([selector, count]) => `${selector} (${count} times)`);
+
+                if (duplicates.length > 0) {
+                    throw new Error(`Duplicate CSS selectors found: ${duplicates.join(', ')}`);
                 }
             });
         });

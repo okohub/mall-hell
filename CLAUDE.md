@@ -52,7 +52,15 @@ Before claiming any feature is "done", I must confirm:
 **Commands:**
 - `bun run test` - Full suite (use sparingly)
 - `bun run-tests.js --test=<id>` - Single test
-- `bun run-tests.js --update-baselines` - Update visual baselines
+- `bun run-tests.js --group=<name>` - Run test group (menu, movement, projectile, etc.)
+- `bun run-tests.js --update-baselines` - Update visual baselines (ONLY when intentional UI changes)
+
+**Visual Baseline Rules:**
+- Visual regression tests compare screenshots against baselines
+- **DO NOT update baselines automatically** after every change
+- If visual tests show "differ" after non-visual code changes, **investigate the bug**
+- Only run `--update-baselines` when you **intentionally changed UI/visuals**
+- Baselines exist to catch UNINTENDED visual regressions
 
 **Output files location:** `/Users/onurkagan/.claude/projects/-Users-onurkagan-projects-mall-hell/.../tool-results/`
 
@@ -61,7 +69,7 @@ Before claiming any feature is "done", I must confirm:
 ## Overview
 
 **Title:** Mall Hell
-**Version:** 1.9
+**Version:** 2.0
 **Platform:** Desktop Browser
 **Tech Stack:** HTML5, CSS3, JavaScript, Three.js (r128)
 **Delivery:** Single `index.html` file, runs locally without build tools

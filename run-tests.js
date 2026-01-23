@@ -15,7 +15,7 @@ if (!fs.existsSync(TEST_OUTPUT_DIR)) {
     fs.mkdirSync(TEST_OUTPUT_DIR, { recursive: true });
 }
 
-// Capture console output
+// Capture console output and ensure immediate flushing
 let outputLines = [];
 const originalLog = console.log;
 console.log = (...args) => {
@@ -23,6 +23,12 @@ console.log = (...args) => {
     outputLines.push(line);
     originalLog.apply(console, args);
 };
+
+// Progress logging function - uses stderr for unbuffered real-time output
+function logProgress(message) {
+    outputLines.push(message);
+    process.stderr.write(message + '\n');
+}
 
 // Ensure directories exist
 if (!fs.existsSync(BASELINE_DIR)) {
@@ -53,10 +59,30 @@ if (testIndex !== -1 && process.argv[testIndex + 1] && !process.argv[testIndex +
     ONLY_TESTS.push(process.argv[testIndex + 1]);
 }
 
+// Check for --group flag to run specific test groups
+// Supports: --group=menu, --group menu
+let TEST_GROUPS = [];
+process.argv.forEach(arg => {
+    if (arg.startsWith('--group=')) {
+        TEST_GROUPS.push(arg.substring(8).toLowerCase());
+    }
+});
+const groupIndex = process.argv.indexOf('--group');
+if (groupIndex !== -1 && process.argv[groupIndex + 1] && !process.argv[groupIndex + 1].startsWith('--')) {
+    TEST_GROUPS.push(process.argv[groupIndex + 1].toLowerCase());
+}
+
+// Skip visual tests flag
+const SKIP_VISUAL = process.argv.includes('--skip-visual');
+
+// Verbose mode is now DEFAULT - use --quiet or -q for compact single-line mode
+const QUIET = process.argv.includes('--quiet') || process.argv.includes('-q');
+const VERBOSE = !QUIET;
+
 // Shared progress state
 const progress = {
-    unit: { passed: 0, failed: 0, total: 0, done: false },
-    ui: { passed: 0, failed: 0, total: 0, current: '', done: false }
+    unit: { passed: 0, failed: 0, total: 0, done: false, lastLogged: 0 },
+    ui: { passed: 0, failed: 0, total: 0, current: '', done: false, lastTest: '' }
 };
 
 function updateProgressDisplay() {
@@ -74,7 +100,23 @@ function updateProgressDisplay() {
     }
     const currentTest = testName ? ` [${testName}]` : '';
 
-    process.stdout.write(`\r  Unit: ${unitStatus} | UI: ${uiStatus}${currentTest}`.padEnd(120));
+    if (VERBOSE) {
+        // In verbose mode, log new lines for each change (use stderr for real-time output)
+        const unitCompleted = progress.unit.passed + progress.unit.failed;
+        if (unitCompleted > progress.unit.lastLogged) {
+            const delta = unitCompleted - progress.unit.lastLogged;
+            logProgress(`  [Unit] ${unitCompleted}/${progress.unit.total} completed (+${delta})`);
+            progress.unit.lastLogged = unitCompleted;
+        }
+        if (progress.ui.current && progress.ui.current !== progress.ui.lastTest) {
+            const status = progress.ui.passed + progress.ui.failed;
+            logProgress(`  [UI ${status}/${progress.ui.total}] Running: ${progress.ui.current}`);
+            progress.ui.lastTest = progress.ui.current;
+        }
+    } else {
+        // Compact single-line mode
+        process.stdout.write(`\r  Unit: ${unitStatus} | UI: ${uiStatus}${currentTest}`.padEnd(120));
+    }
 }
 
 // Compare two PNG images, return difference percentage
@@ -156,9 +198,18 @@ async function runTests() {
     if (ONLY_TESTS.length > 0) {
         console.log(`\n🎯 Running only: ${ONLY_TESTS.join(', ')}`);
     }
+    if (TEST_GROUPS.length > 0) {
+        console.log(`\n📂 Running groups: ${TEST_GROUPS.join(', ')}`);
+    }
+    if (SKIP_VISUAL) {
+        console.log('\n⏭️  Skipping visual regression tests');
+    }
+    if (QUIET) {
+        console.log('\n🔇 Quiet mode: compact single-line progress');
+    }
     console.log('\n⚡ Running Unit Tests and UI Tests in parallel...\n');
 
-    const progressInterval = setInterval(updateProgressDisplay, 200);
+    const progressInterval = setInterval(updateProgressDisplay, VERBOSE ? 500 : 200);
 
     const [unitResults, uiResults] = await Promise.all([
         runUnitTests(browser),
@@ -166,7 +217,9 @@ async function runTests() {
     ]);
 
     clearInterval(progressInterval);
-    process.stdout.write('\r' + ' '.repeat(100) + '\r');
+    if (!VERBOSE) {
+        process.stdout.write('\r' + ' '.repeat(100) + '\r');
+    }
 
     // Display results
     console.log('\n📋 UNIT TESTS\n');
@@ -279,6 +332,7 @@ async function runUnitTests(browser) {
         progress.unit.total = total || 65;
 
         let attempts = 0;
+        let lastLoggedModule = '';
         while (attempts < 30) {
             const results = await page.evaluate(() => {
                 const testItems = document.querySelectorAll('.test-item');
@@ -287,12 +341,37 @@ async function runUnitTests(browser) {
                     if (item.classList.contains('passed')) passed++;
                     if (item.classList.contains('failed')) failed++;
                 });
-                return { passed, failed, total: testItems.length };
+
+                // Get current module being tested
+                const modules = document.querySelectorAll('.test-module');
+                let currentModule = '';
+                let moduleProgress = {};
+                modules.forEach(module => {
+                    const moduleName = module.querySelector('.module-header span')?.textContent || '';
+                    const items = module.querySelectorAll('.test-item');
+                    const modulePassed = module.querySelectorAll('.test-item.passed').length;
+                    const moduleFailed = module.querySelectorAll('.test-item.failed').length;
+                    moduleProgress[moduleName] = { passed: modulePassed, failed: moduleFailed, total: items.length };
+                    if (modulePassed + moduleFailed > 0 && modulePassed + moduleFailed < items.length) {
+                        currentModule = moduleName;
+                    }
+                });
+
+                return { passed, failed, total: testItems.length, currentModule, moduleProgress };
             });
 
             progress.unit.passed = results.passed;
             progress.unit.failed = results.failed;
             progress.unit.total = results.total || progress.unit.total;
+
+            // Log module progress in verbose mode
+            if (VERBOSE && results.currentModule && results.currentModule !== lastLoggedModule) {
+                const mp = results.moduleProgress[results.currentModule];
+                if (mp) {
+                    logProgress(`  [Unit] Running module: ${results.currentModule} (${mp.passed + mp.failed}/${mp.total})`);
+                }
+                lastLoggedModule = results.currentModule;
+            }
 
             if (results.passed + results.failed >= progress.unit.total && progress.unit.total > 0) {
                 break;
@@ -338,6 +417,10 @@ async function runUnitTests(browser) {
         progress.unit.passed = passed;
         progress.unit.failed = failed;
         progress.unit.done = true;
+
+        if (VERBOSE) {
+            logProgress(`  [Unit] ✅ COMPLETE: ${passed} passed, ${failed} failed`);
+        }
 
     } catch (error) {
         console.log(`\n  ⚠️  Unit Tests Error: ${error.message}`);
@@ -399,7 +482,7 @@ async function runUITests(browser) {
         // Screenshot 1: Menu state
         await captureScreenshot('menu_initial');
 
-        // Filter tests if --only flag is used
+        // Filter tests by name if --only/--test flag is used
         if (ONLY_TESTS.length > 0) {
             await page.evaluate((testNames) => {
                 if (window.runner && window.runner.tests) {
@@ -411,6 +494,22 @@ async function runUITests(browser) {
                     );
                 }
             }, ONLY_TESTS);
+        }
+
+        // Filter tests by group if --group flag is used
+        if (TEST_GROUPS.length > 0) {
+            await page.evaluate((groups) => {
+                if (window.runner && window.runner.tests) {
+                    window.runner.tests = window.runner.tests.filter(t => {
+                        const testGroup = (t.group || '').toLowerCase();
+                        return groups.some(g =>
+                            testGroup.includes(g) ||
+                            t.id?.toLowerCase().startsWith(g) ||
+                            t.name?.toLowerCase().includes(g)
+                        );
+                    });
+                }
+            }, TEST_GROUPS);
         }
 
         const totalTests = await page.evaluate(() => {
@@ -433,16 +532,22 @@ async function runUITests(browser) {
         let stableCount = 0;
         let attempts = 0;
         let lastCompleted = 0;
+        let loggedTests = new Set();
 
         while (attempts < 120) {
             const status = await page.evaluate(() => {
                 const runner = window.runner;
-                if (!runner) return { isRunning: false, completed: 0, total: 0, passed: 0, failed: 0, current: '' };
+                if (!runner) return { isRunning: false, completed: 0, total: 0, passed: 0, failed: 0, current: '', completedTests: [] };
 
                 const passed = runner.tests.filter(t => t.status === 'pass').length;
                 const failed = runner.tests.filter(t => t.status === 'fail').length;
                 const total = runner.tests.length;
                 const current = runner.currentTest?.name || '';
+
+                // Get completed test results for verbose logging
+                const completedTests = runner.tests
+                    .filter(t => t.status === 'pass' || t.status === 'fail')
+                    .map(t => ({ name: t.name, group: t.group, status: t.status }));
 
                 return {
                     isRunning: runner.isRunning,
@@ -450,7 +555,8 @@ async function runUITests(browser) {
                     total,
                     passed,
                     failed,
-                    current
+                    current,
+                    completedTests
                 };
             });
 
@@ -458,6 +564,18 @@ async function runUITests(browser) {
             progress.ui.failed = status.failed;
             progress.ui.total = status.total;
             progress.ui.current = status.current;
+
+            // Log newly completed tests in verbose mode
+            if (VERBOSE && status.completedTests) {
+                for (const test of status.completedTests) {
+                    if (!loggedTests.has(test.name)) {
+                        const icon = test.status === 'pass' ? '✓' : '✗';
+                        const color = test.status === 'pass' ? '' : ' ❌';
+                        logProgress(`  [UI] ${icon} [${test.group}] ${test.name}${color}`);
+                        loggedTests.add(test.name);
+                    }
+                }
+            }
 
             if (!status.isRunning && status.completed === status.total && status.total > 0) {
                 break;
@@ -507,6 +625,10 @@ async function runUITests(browser) {
         progress.ui.failed = failed;
         progress.ui.current = '';
         progress.ui.done = true;
+
+        if (VERBOSE) {
+            logProgress(`  [UI] ✅ COMPLETE: ${passed} passed, ${failed} failed, ${pending} pending`);
+        }
 
     } catch (error) {
         console.log(`\n  ⚠️  UI Tests Error: ${error.message}`);

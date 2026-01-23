@@ -574,28 +574,21 @@
                     }
                 );
 
-                this.addTest('menu-camera-selector', 'Menu Screen', 'Camera mode selector exists',
-                    'Verifies camera mode buttons are visible and selectable',
+                // Camera mode selector removed in v3.0 - now FPS only
+                this.addTest('menu-version', 'Menu Screen', 'Version shows v3.0',
+                    'Verifies menu shows correct version',
                     async () => {
                         this.resetGame();
                         await this.wait(100);
-                        const fpsBtn = this.getElement('#fps-btn');
-                        const tpsBtn = this.getElement('#thirdperson-btn');
-                        if (!fpsBtn || !tpsBtn) {
-                            throw new Error('Camera mode buttons not found');
-                        }
-                        if (!this.isVisible(fpsBtn) || !this.isVisible(tpsBtn)) {
-                            throw new Error('Camera mode buttons not visible');
-                        }
-                        // FPS should be selected by default
-                        if (!fpsBtn.classList.contains('selected')) {
-                            throw new Error('First person camera should be selected by default');
+                        const version = this.getElement('.version');
+                        if (!version || !version.textContent.includes('3.0')) {
+                            throw new Error('Version should show v3.0');
                         }
                     }
                 );
 
-                this.addTest('menu-instructions', 'Menu Screen', 'Instructions show keyboard controls',
-                    'Verifies instructions display arrows for dodge and space for fire',
+                this.addTest('menu-instructions', 'Menu Screen', 'Instructions show WASD controls',
+                    'Verifies instructions display WASD for driving and space for fire',
                     async () => {
                         this.resetGame();
                         await this.wait(100);
@@ -604,12 +597,139 @@
                             throw new Error('Instructions not found');
                         }
                         const text = instructions.textContent.toLowerCase();
-                        // Should mention arrows for dodge and space for fire
-                        if (!text.includes('dodge')) {
-                            throw new Error('Instructions should mention dodge');
+                        // Should mention WASD for driving and space for fire
+                        if (!text.includes('forward') && !text.includes('w')) {
+                            throw new Error('Instructions should mention forward/W');
                         }
                         if (!text.includes('space')) {
                             throw new Error('Instructions should mention space for fire');
+                        }
+                    }
+                );
+
+                // How to Play Modal Tests
+                this.addTest('how-to-play-btn-exists', 'How to Play', 'How to Play button exists',
+                    'Verifies How to Play button is visible in menu',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const btn = this.getElement('#how-to-play-btn');
+                        if (!btn) {
+                            throw new Error('How to Play button not found');
+                        }
+                        if (!this.isVisible(btn)) {
+                            throw new Error('How to Play button not visible');
+                        }
+                    }
+                );
+
+                this.addTest('how-to-play-modal-opens', 'How to Play', 'Modal opens on button click',
+                    'Verifies clicking How to Play button opens the modal',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const btn = this.getElement('#how-to-play-btn');
+                        const modal = this.getElement('#how-to-play-modal');
+
+                        // Modal should be hidden initially
+                        if (modal.classList.contains('visible')) {
+                            throw new Error('Modal should be hidden initially');
+                        }
+
+                        // Click the button
+                        this.simulateClick(btn);
+                        await this.wait(100);
+
+                        // Modal should now be visible
+                        if (!modal.classList.contains('visible')) {
+                            throw new Error('Modal should be visible after clicking button');
+                        }
+                    }
+                );
+
+                this.addTest('how-to-play-modal-closes', 'How to Play', 'Modal closes on GOT IT click',
+                    'Verifies clicking GOT IT button closes the modal',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const btn = this.getElement('#how-to-play-btn');
+                        const modal = this.getElement('#how-to-play-modal');
+                        const closeBtn = this.getElement('#modal-close');
+
+                        // Open the modal first
+                        this.simulateClick(btn);
+                        await this.wait(100);
+
+                        if (!modal.classList.contains('visible')) {
+                            throw new Error('Modal should be visible after opening');
+                        }
+
+                        // Click close button
+                        this.simulateClick(closeBtn);
+                        await this.wait(100);
+
+                        // Modal should be hidden
+                        if (modal.classList.contains('visible')) {
+                            throw new Error('Modal should be hidden after clicking GOT IT');
+                        }
+                    }
+                );
+
+                this.addTest('how-to-play-modal-content', 'How to Play', 'Modal has correct content',
+                    'Verifies modal contains help information',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const modal = this.getElement('#how-to-play-modal');
+                        const content = modal.querySelector('.modal-content');
+
+                        if (!content) {
+                            throw new Error('Modal content not found');
+                        }
+
+                        const text = content.textContent.toLowerCase();
+
+                        // Should have controls info
+                        if (!text.includes('w') || !text.includes('s')) {
+                            throw new Error('Modal should explain W/S controls');
+                        }
+                        if (!text.includes('a') || !text.includes('d')) {
+                            throw new Error('Modal should explain A/D controls');
+                        }
+                        if (!text.includes('space')) {
+                            throw new Error('Modal should explain SPACE control');
+                        }
+
+                        // Should have scoring info
+                        if (!text.includes('100') || !text.includes('300')) {
+                            throw new Error('Modal should explain scoring');
+                        }
+                    }
+                );
+
+                this.addTest('how-to-play-modal-clickable', 'How to Play', 'Modal elements are clickable',
+                    'Verifies modal has pointer-events enabled for clicking',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+
+                        const modal = this.getElement('#how-to-play-modal');
+                        const content = modal.querySelector('.modal-content');
+                        const closeBtn = this.getElement('#modal-close');
+
+                        // Check that modal has pointer-events: auto (not inherited 'none' from ui-layer)
+                        const modalStyle = window.getComputedStyle(modal);
+                        const contentStyle = window.getComputedStyle(content);
+                        const btnStyle = window.getComputedStyle(closeBtn);
+
+                        if (modalStyle.pointerEvents === 'none') {
+                            throw new Error('Modal should have pointer-events: auto, got none');
+                        }
+                        if (contentStyle.pointerEvents === 'none') {
+                            throw new Error('Modal content should have pointer-events: auto, got none');
+                        }
+                        if (btnStyle.pointerEvents === 'none') {
+                            throw new Error('Close button should have pointer-events: auto, got none');
                         }
                     }
                 );
@@ -654,18 +774,21 @@
                     }
                 );
 
-                this.addTest('game-start-progress', 'Game Start', 'Progress bar at 0%',
-                    'Verifies progress bar starts at 0%',
+                this.addTest('game-start-timer', 'Game Start', 'Timer shows 3:00 at start',
+                    'Verifies timer starts at 3 minutes',
                     async () => {
                         this.resetGame();
                         await this.wait(100);
                         const startBtn = this.getElement('#start-btn');
                         this.simulateClick(startBtn);
                         await this.wait(200);
-                        const progressFill = this.getElement('#progress-fill');
-                        const width = parseFloat(progressFill.style.width) || 0;
-                        if (width > 5) {
-                            throw new Error(`Progress bar should be near 0%, got ${width}%`);
+                        const timerDisplay = this.getElement('#timer-display');
+                        if (!timerDisplay) {
+                            throw new Error('Timer display not found');
+                        }
+                        const timerText = timerDisplay.textContent;
+                        if (!timerText.includes('3:00') && !timerText.includes('2:5')) {
+                            throw new Error(`Timer should start at 3:00, got ${timerText}`);
                         }
                     }
                 );
@@ -894,8 +1017,8 @@
                     }
                 );
 
-                this.addTest('hud-progress-update', 'HUD Updates', 'Progress bar moves',
-                    'Verifies progress bar updates with distance',
+                this.addTest('hud-timer-update', 'HUD Updates', 'Timer counts down',
+                    'Verifies timer decreases over time',
                     async () => {
                         this.resetGame();
                         await this.wait(100);
@@ -903,30 +1026,23 @@
                         this.simulateClick(startBtn);
                         await this.wait(300);
 
-                        const progressFill = this.getElement('#progress-fill');
-                        if (!progressFill) {
-                            throw new Error('Progress fill element not found');
+                        const timerDisplay = this.getElement('#timer-display');
+                        if (!timerDisplay) {
+                            throw new Error('Timer display element not found');
                         }
 
-                        // Get initial width
-                        const initialWidth = parseFloat(progressFill.style.width) || 0;
+                        // Get initial timer value
+                        const initialTime = this.gameWindow.gameTimer || 180;
 
-                        // Let the game run a bit to see progress
-                        await this.wait(500);
+                        // Let the game run a bit
+                        await this.wait(1500);
 
-                        // Get new width after game loop updates
-                        const newWidth = parseFloat(progressFill.style.width) || 0;
+                        // Get new timer value
+                        const newTime = this.gameWindow.gameTimer || 180;
 
-                        // Verify progress is being updated (should be > 0 since game is running)
-                        if (newWidth <= 0.1) {
-                            throw new Error(`Progress bar not updating. Width: ${newWidth}%`);
-                        }
-
-                        // Additionally verify we can directly update it
-                        progressFill.style.width = '75%';
-                        const setWidth = parseFloat(progressFill.style.width);
-                        if (setWidth !== 75) {
-                            throw new Error(`Could not set progress bar width. Expected 75%, got ${setWidth}%`);
+                        // Verify timer is counting down
+                        if (newTime >= initialTime - 0.5) {
+                            throw new Error(`Timer not counting down. Initial: ${initialTime}, Current: ${newTime}`);
                         }
                     }
                 );
@@ -1072,9 +1188,9 @@
                     }
                 );
 
-                // Player Movement Controls Tests (Keyboard-only)
-                this.addTest('movement-arrow-left', 'Player Movement', 'Arrow Left dodges cart left',
-                    'Verifies pressing Arrow Left moves the cart to the left',
+                // Player Movement Controls Tests (WASD Driving - v3.0)
+                this.addTest('movement-wasd-forward', 'Player Movement', 'W key drives cart forward',
+                    'Verifies pressing W moves the cart forward',
                     async () => {
                         this.resetGame();
                         await this.wait(100);
@@ -1082,19 +1198,20 @@
                         const startBtn = this.getElement('#start-btn');
                         this.simulateClick(startBtn);
                         await this.wait(200);
-                        const initialX = this.gameWindow.playerX || 0;
-                        this.simulateKeyDown('ArrowLeft');
-                        await this.wait(150);
-                        const newX = this.gameWindow.playerX || 0;
-                        this.simulateKeyUp('ArrowLeft');
-                        if (newX >= initialX) {
-                            throw new Error(`Cart did not move left. Initial: ${initialX}, New: ${newX}`);
+                        const initialZ = this.gameWindow.playerPosition?.z || 0;
+                        this.simulateKeyDown('KeyW');
+                        await this.wait(300);
+                        const newZ = this.gameWindow.playerPosition?.z || 0;
+                        this.simulateKeyUp('KeyW');
+                        // Forward movement decreases Z in our coordinate system
+                        if (Math.abs(newZ - initialZ) < 0.1) {
+                            throw new Error(`Cart did not move. Initial Z: ${initialZ}, New Z: ${newZ}`);
                         }
                     }
                 );
 
-                this.addTest('movement-arrow-right', 'Player Movement', 'Arrow Right dodges cart right',
-                    'Verifies pressing Arrow Right moves the cart to the right',
+                this.addTest('movement-wasd-turn', 'Player Movement', 'A/D keys turn cart',
+                    'Verifies pressing A/D rotates the cart',
                     async () => {
                         this.resetGame();
                         await this.wait(100);
@@ -1102,19 +1219,19 @@
                         const startBtn = this.getElement('#start-btn');
                         this.simulateClick(startBtn);
                         await this.wait(200);
-                        const initialX = this.gameWindow.playerX || 0;
-                        this.simulateKeyDown('ArrowRight');
-                        await this.wait(150);
-                        const newX = this.gameWindow.playerX || 0;
-                        this.simulateKeyUp('ArrowRight');
-                        if (newX <= initialX) {
-                            throw new Error(`Cart did not move right. Initial: ${initialX}, New: ${newX}`);
+                        const initialRot = this.gameWindow.playerRotation || 0;
+                        this.simulateKeyDown('KeyA');
+                        await this.wait(300);
+                        const newRot = this.gameWindow.playerRotation || 0;
+                        this.simulateKeyUp('KeyA');
+                        if (Math.abs(newRot - initialRot) < 0.01) {
+                            throw new Error(`Cart did not turn. Initial: ${initialRot}, New: ${newRot}`);
                         }
                     }
                 );
 
-                this.addTest('dodge-arrows', 'Keyboard Controls', 'Arrow keys control dodge',
-                    'Verifies arrow keys set left/right keys for dodging',
+                this.addTest('wasd-keys', 'Keyboard Controls', 'WASD keys control driving',
+                    'Verifies WASD keys set movement keys for driving',
                     async () => {
                         this.resetGame();
                         await this.wait(100);
@@ -1122,20 +1239,21 @@
                         this.simulateClick(startBtn);
                         await this.wait(200);
 
-                        // Arrow keys should set dodge keys
-                        this.simulateKeyDown('ArrowLeft');
+                        // W should set forward
+                        this.simulateKeyDown('KeyW');
                         await this.wait(50);
-                        if (!this.gameWindow.keys.left) {
-                            throw new Error('ArrowLeft did not set keys.left');
+                        if (!this.gameWindow.keys.forward) {
+                            throw new Error('W did not set keys.forward');
                         }
-                        this.simulateKeyUp('ArrowLeft');
+                        this.simulateKeyUp('KeyW');
 
-                        this.simulateKeyDown('ArrowRight');
+                        // A should set turnLeft
+                        this.simulateKeyDown('KeyA');
                         await this.wait(50);
-                        if (!this.gameWindow.keys.right) {
-                            throw new Error('ArrowRight did not set keys.right');
+                        if (!this.gameWindow.keys.turnLeft) {
+                            throw new Error('A did not set keys.turnLeft');
                         }
-                        this.simulateKeyUp('ArrowRight');
+                        this.simulateKeyUp('KeyA');
                     }
                 );
 
@@ -1518,100 +1636,45 @@
                         this.simulateClick(startBtn);
                         await this.wait(500);
 
-                        // Check if fpsWeapon exists and is visible
+                        // Check if fpsWeapon exists and is visible (v3.0 FPS only)
                         const fpsWeaponVisible = this.gameWindow.fpsWeapon?.visible;
-                        const cameraMode = this.gameWindow.cameraMode;
 
-                        if (cameraMode !== 'hybrid-fps') {
-                            throw new Error(`Expected FPS mode, got: ${cameraMode}`);
-                        }
                         if (!fpsWeaponVisible) {
-                            throw new Error('FPS weapon should be visible in FPS mode');
+                            throw new Error('FPS weapon should be visible');
                         }
                     }
                 );
 
-                this.addTest('fps-weapon-hidden-in-tps-mode', 'FPS Weapon', 'Slingshot hidden in third-person mode',
-                    'Verifies the FPS weapon is hidden when in third-person view',
+                // v3.0 - Third-person mode removed, FPS only
+                this.addTest('fps-only-mode', 'FPS Mode', 'Game is FPS only in v3.0',
+                    'Verifies the game runs in FPS mode only (no third-person)',
                     async () => {
                         this.resetGame();
                         await this.wait(100);
-
-                        // Select third-person mode
-                        const tpsBtn = this.getElement('#thirdperson-btn');
-                        if (tpsBtn) this.simulateClick(tpsBtn);
-                        await this.wait(50);
 
                         const startBtn = this.getElement('#start-btn');
                         this.simulateClick(startBtn);
                         await this.wait(500);
 
+                        // FPS weapon should always be visible in v3.0
                         const fpsWeaponVisible = this.gameWindow.fpsWeapon?.visible;
-                        const cameraMode = this.gameWindow.cameraMode;
-
-                        if (cameraMode !== 'third-person') {
-                            throw new Error(`Expected third-person mode, got: ${cameraMode}`);
-                        }
-                        if (fpsWeaponVisible) {
-                            throw new Error('FPS weapon should be hidden in third-person mode');
-                        }
-                    }
-                );
-
-                this.addTest('camera-mode-switch', 'Camera Mode', 'Camera mode can be switched',
-                    'Verifies camera mode buttons work correctly',
-                    async () => {
-                        this.resetGame();
-                        await this.wait(100);
-
-                        // First ensure we're in FPS mode
-                        const fpsBtnInit = this.getElement('#fps-btn');
-                        if (fpsBtnInit) {
-                            this.simulateClick(fpsBtnInit);
-                            await this.wait(100);
+                        if (!fpsWeaponVisible) {
+                            throw new Error('FPS weapon should be visible in v3.0');
                         }
 
-                        let cameraMode = this.gameWindow.cameraMode;
-                        if (cameraMode !== 'hybrid-fps') {
-                            throw new Error(`Expected FPS mode after init click, got: ${cameraMode}`);
-                        }
-
-                        // Switch to third-person
-                        const tpsBtn = this.getElement('#thirdperson-btn');
-                        if (tpsBtn) {
-                            this.simulateClick(tpsBtn);
-                            await this.wait(100);
-                        }
-
-                        cameraMode = this.gameWindow.cameraMode;
-                        if (cameraMode !== 'third-person') {
-                            throw new Error(`Expected third-person after click, got: ${cameraMode}`);
-                        }
-
-                        // Switch back to FPS
-                        const fpsBtn = this.getElement('#fps-btn');
-                        if (fpsBtn) {
-                            this.simulateClick(fpsBtn);
-                            await this.wait(100);
-                        }
-
-                        cameraMode = this.gameWindow.cameraMode;
-                        if (cameraMode !== 'hybrid-fps') {
-                            throw new Error(`Expected FPS after switching back, got: ${cameraMode}`);
+                        // Child model should be hidden (we ARE the child in FPS)
+                        const childVisible = this.gameWindow.playerChild?.visible;
+                        if (childVisible === true) {
+                            throw new Error('Child model should be hidden in FPS mode');
                         }
                     }
                 );
 
-                this.addTest('child-hidden-in-fps', 'Camera Mode', 'Child model hidden in FPS mode',
+                this.addTest('child-hidden-in-fps', 'FPS Mode', 'Child model hidden in FPS mode',
                     'Verifies the child character is hidden when in FPS mode (camera is the child)',
                     async () => {
                         this.resetGame();
                         await this.wait(100);
-
-                        // Ensure FPS mode
-                        const fpsBtn = this.getElement('#fps-btn');
-                        if (fpsBtn) this.simulateClick(fpsBtn);
-                        await this.wait(50);
 
                         const startBtn = this.getElement('#start-btn');
                         this.simulateClick(startBtn);
@@ -1624,24 +1687,27 @@
                     }
                 );
 
-                this.addTest('child-visible-in-tps', 'Camera Mode', 'Child model visible in third-person',
-                    'Verifies the child character is visible when in third-person view',
+                this.addTest('camera-follows-player', 'FPS Mode', 'Camera follows player position',
+                    'Verifies camera position matches player position',
                     async () => {
                         this.resetGame();
                         await this.wait(100);
-
-                        // Select third-person mode
-                        const tpsBtn = this.getElement('#thirdperson-btn');
-                        if (tpsBtn) this.simulateClick(tpsBtn);
-                        await this.wait(50);
 
                         const startBtn = this.getElement('#start-btn');
                         this.simulateClick(startBtn);
                         await this.wait(500);
 
-                        const childVisible = this.gameWindow.playerChild?.visible;
-                        if (childVisible !== true) {
-                            throw new Error('Child model should be visible in third-person mode');
+                        const camera = this.gameWindow.camera;
+                        const playerPos = this.gameWindow.playerPosition;
+                        if (!camera || !playerPos) {
+                            throw new Error('Camera or player position not found');
+                        }
+
+                        // Camera should be at player position
+                        const xDiff = Math.abs(camera.position.x - playerPos.x);
+                        const zDiff = Math.abs(camera.position.z - playerPos.z);
+                        if (xDiff > 1 || zDiff > 1) {
+                            throw new Error(`Camera not following player. Diff X: ${xDiff}, Z: ${zDiff}`);
                         }
                     }
                 );
@@ -1653,11 +1719,7 @@
                         this.resetGame();
                         await this.wait(100);
 
-                        // Ensure FPS mode
-                        const fpsBtn = this.getElement('#fps-btn');
-                        if (fpsBtn) this.simulateClick(fpsBtn);
-                        await this.wait(50);
-
+                        // v3.0 is FPS only, no mode selection needed
                         const startBtn = this.getElement('#start-btn');
                         this.simulateClick(startBtn);
                         await this.wait(500);
@@ -1681,11 +1743,7 @@
                         this.resetGame();
                         await this.wait(100);
 
-                        // Ensure FPS mode
-                        const fpsBtn = this.getElement('#fps-btn');
-                        if (fpsBtn) this.simulateClick(fpsBtn);
-                        await this.wait(50);
-
+                        // v3.0 is FPS only, no mode selection needed
                         const startBtn = this.getElement('#start-btn');
                         this.simulateClick(startBtn);
                         await this.wait(500);
@@ -1712,11 +1770,7 @@
                         this.resetGame();
                         await this.wait(100);
 
-                        // Ensure FPS mode
-                        const fpsBtn = this.getElement('#fps-btn');
-                        if (fpsBtn) this.simulateClick(fpsBtn);
-                        await this.wait(50);
-
+                        // v3.0 is FPS only, no mode selection needed
                         const startBtn = this.getElement('#start-btn');
                         this.simulateClick(startBtn);
                         await this.wait(500);
@@ -1826,6 +1880,165 @@
 
                         if (projectilesAfterFire <= initialProjectiles) {
                             throw new Error(`Projectile should be created after release: initial=${initialProjectiles}, afterFire=${projectilesAfterFire}`);
+                        }
+                    }
+                );
+
+                // === PROJECTILE SYSTEM TESTS ===
+                // Tests for projectile creation, movement, and collision
+
+                this.addTest('projectile-creation', 'Projectile System', 'Projectiles are created when shooting',
+                    'Verifies that shooting creates a projectile object in the scene',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(300);
+
+                        const initialCount = this.gameWindow.projectiles?.length || 0;
+
+                        // Start charging and release
+                        this.gameWindow.startCharging();
+                        await this.wait(200);
+                        this.gameWindow.releaseAndFire();
+                        await this.wait(50);
+
+                        const newCount = this.gameWindow.projectiles?.length || 0;
+                        if (newCount <= initialCount) {
+                            throw new Error(`Projectile not created: before=${initialCount}, after=${newCount}`);
+                        }
+                    }
+                );
+
+                this.addTest('projectile-movement', 'Projectile System', 'Projectiles move after creation',
+                    'Verifies that projectiles travel through the scene',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(300);
+
+                        // Fire a projectile
+                        this.gameWindow.startCharging();
+                        await this.wait(200);
+                        this.gameWindow.releaseAndFire();
+                        await this.wait(50);
+
+                        const projectiles = this.gameWindow.projectiles || [];
+                        if (projectiles.length === 0) {
+                            throw new Error('No projectile created');
+                        }
+
+                        const proj = projectiles[projectiles.length - 1];
+                        const initialZ = proj.position.z;
+
+                        // Wait for movement
+                        await this.wait(200);
+
+                        // Projectile should have moved (manual update if needed)
+                        if (this.gameWindow.manualUpdate) {
+                            this.gameWindow.manualUpdate(0.1);
+                        }
+                        await this.wait(50);
+
+                        const newZ = proj.position.z;
+                        if (Math.abs(newZ - initialZ) < 0.5) {
+                            throw new Error(`Projectile did not move: initial=${initialZ}, current=${newZ}`);
+                        }
+                    }
+                );
+
+                this.addTest('projectile-cleanup', 'Projectile System', 'Projectiles are cleaned up when out of bounds',
+                    'Verifies that projectiles are removed when they go too far',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(300);
+
+                        // Fire a projectile
+                        this.gameWindow.startCharging();
+                        await this.wait(200);
+                        this.gameWindow.releaseAndFire();
+                        await this.wait(50);
+
+                        const projectiles = this.gameWindow.projectiles || [];
+                        if (projectiles.length === 0) {
+                            throw new Error('No projectile created');
+                        }
+
+                        const proj = projectiles[projectiles.length - 1];
+                        // Force it far away
+                        proj.position.set(1000, 1000, 1000);
+
+                        // Trigger update
+                        if (this.gameWindow.manualUpdate) {
+                            this.gameWindow.manualUpdate(0.016);
+                        }
+                        await this.wait(100);
+
+                        // Projectile should be marked inactive
+                        if (proj.userData && proj.userData.active) {
+                            throw new Error('Projectile should be inactive when out of bounds');
+                        }
+                    }
+                );
+
+                // === WALL BUMP EFFECT TESTS ===
+
+                this.addTest('wall-bump-trigger', 'Wall Bump', 'Wall bump can be triggered',
+                    'Verifies the wall bump effect system responds to triggers',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(300);
+
+                        // Trigger a wall bump
+                        if (this.gameWindow.triggerWallBump) {
+                            this.gameWindow.triggerWallBump(0.8, -1, 0);
+                        }
+                        await this.wait(50);
+
+                        const intensity = this.gameWindow.wallBumpIntensity || 0;
+                        // Intensity may have decayed slightly due to game loop, but should still be positive
+                        if (intensity < 0.1) {
+                            throw new Error(`Wall bump intensity should be positive after trigger: ${intensity}`);
+                        }
+                    }
+                );
+
+                this.addTest('wall-bump-decay', 'Wall Bump', 'Wall bump decays over time',
+                    'Verifies the wall bump effect decays after being triggered',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(300);
+
+                        // Trigger a wall bump
+                        if (this.gameWindow.triggerWallBump) {
+                            this.gameWindow.triggerWallBump(1.0, -1, 0);
+                        }
+
+                        const initialIntensity = this.gameWindow.wallBumpIntensity || 0;
+
+                        // Run several updates to decay
+                        for (let i = 0; i < 10; i++) {
+                            if (this.gameWindow.manualUpdate) {
+                                this.gameWindow.manualUpdate(0.016);
+                            }
+                        }
+                        await this.wait(50);
+
+                        const finalIntensity = this.gameWindow.wallBumpIntensity || 0;
+                        if (finalIntensity >= initialIntensity * 0.5) {
+                            throw new Error(`Bump should decay: initial=${initialIntensity}, final=${finalIntensity}`);
                         }
                     }
                 );
