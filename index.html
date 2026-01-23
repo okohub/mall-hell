@@ -547,9 +547,9 @@
         const MOVEMENT_BOUND = 10;
 
         // Third-Person Camera Constants
-        const CAMERA_OFFSET_BEHIND = 5;
-        const CAMERA_OFFSET_UP = 3;
-        const CAMERA_OFFSET_SIDE = 1.2;
+        const CAMERA_OFFSET_BEHIND = 2.5;  // Closer to cart
+        const CAMERA_OFFSET_UP = 2.2;      // Lower, more intimate
+        const CAMERA_OFFSET_SIDE = 0.8;    // Less offset
         const CAMERA_LOOK_AHEAD = 12;
 
         // Dodge/Lean Constants
@@ -587,8 +587,12 @@
 
         // Player
         let playerCart;
+        let playerChild; // Child model reference (to hide in FPS)
         let slingshotArm;
-        let fpsWeapon; // Slingshot visible in FPS mode
+        let fpsWeapon; // Slingshot with hands visible in FPS mode
+        let fpsHands;  // Hands group for animation
+        let fpsBandL, fpsBandR, fpsPouch, fpsStone; // For pull animation
+        let fpsFireAnim = 0; // Firing animation progress (0 = ready, >0 = animating)
         let playerX = 0;
         let playerHealth = PLAYER_MAX_HEALTH;
         let lastDamageTime = 0;
@@ -695,9 +699,14 @@
         }
 
         function createFPSWeapon() {
-            // Create slingshot that's attached to camera for FPS view
+            // Create hands holding slingshot for FPS view
             fpsWeapon = new THREE.Group();
+            fpsHands = new THREE.Group();
 
+            const skinMat = new THREE.MeshStandardMaterial({
+                color: 0xffdbac,
+                roughness: 0.8
+            });
             const woodMat = new THREE.MeshStandardMaterial({
                 color: 0x8b4513,
                 roughness: 0.8
@@ -707,70 +716,145 @@
                 roughness: 0.6
             });
 
+            // === LEFT HAND (holding slingshot frame) ===
+            const leftHand = new THREE.Group();
+
+            // Palm
+            const palmGeo = new THREE.BoxGeometry(0.06, 0.08, 0.04);
+            const palmL = new THREE.Mesh(palmGeo, skinMat);
+            leftHand.add(palmL);
+
+            // Fingers wrapped around handle (using cylinders for r128 compatibility)
+            for (let i = 0; i < 4; i++) {
+                const fingerGeo = new THREE.CylinderGeometry(0.012, 0.01, 0.05, 8);
+                const finger = new THREE.Mesh(fingerGeo, skinMat);
+                finger.position.set(-0.02, -0.02 + i * 0.02, 0.03);
+                finger.rotation.x = Math.PI / 3;
+                leftHand.add(finger);
+            }
+            // Thumb
+            const thumbGeo = new THREE.CylinderGeometry(0.014, 0.012, 0.04, 8);
+            const thumbL = new THREE.Mesh(thumbGeo, skinMat);
+            thumbL.position.set(0.04, 0, 0.01);
+            thumbL.rotation.z = -Math.PI / 4;
+            leftHand.add(thumbL);
+
+            leftHand.position.set(-0.12, -0.08, -0.35);
+            leftHand.rotation.set(0.2, 0.3, 0);
+            fpsHands.add(leftHand);
+
+            // === RIGHT HAND (pulling back pouch) ===
+            const rightHand = new THREE.Group();
+
+            // Palm
+            const palmR = new THREE.Mesh(palmGeo, skinMat);
+            rightHand.add(palmR);
+
+            // Fingers pinching pouch
+            const fingerPinchGeo = new THREE.CylinderGeometry(0.012, 0.01, 0.045, 8);
+            const indexR = new THREE.Mesh(fingerPinchGeo, skinMat);
+            indexR.position.set(-0.02, 0.02, 0.03);
+            indexR.rotation.x = Math.PI / 4;
+            rightHand.add(indexR);
+
+            const middleR = new THREE.Mesh(fingerPinchGeo, skinMat);
+            middleR.position.set(0.02, 0.02, 0.03);
+            middleR.rotation.x = Math.PI / 4;
+            rightHand.add(middleR);
+
+            // Other fingers curled
+            for (let i = 0; i < 2; i++) {
+                const fingerGeo = new THREE.CylinderGeometry(0.01, 0.008, 0.035, 8);
+                const finger = new THREE.Mesh(fingerGeo, skinMat);
+                finger.position.set(-0.01 + i * 0.025, -0.02, 0.02);
+                finger.rotation.x = Math.PI / 2;
+                rightHand.add(finger);
+            }
+            // Thumb
+            const thumbR = new THREE.Mesh(thumbGeo, skinMat);
+            thumbR.position.set(-0.04, 0.01, 0.01);
+            thumbR.rotation.z = Math.PI / 4;
+            rightHand.add(thumbR);
+
+            rightHand.position.set(0.08, -0.05, -0.15);
+            rightHand.rotation.set(0, -0.3, 0);
+            fpsHands.add(rightHand);
+            fpsHands.userData.rightHand = rightHand;
+
+            // === SLINGSHOT ===
+            const slingshot = new THREE.Group();
+
             // Y-frame handle
-            const handleGeo = new THREE.CylinderGeometry(0.025, 0.03, 0.35, 8);
+            const handleGeo = new THREE.CylinderGeometry(0.02, 0.025, 0.25, 8);
             const handle = new THREE.Mesh(handleGeo, woodMat);
-            handle.rotation.x = Math.PI / 2.5;
-            handle.position.set(0, -0.1, 0);
-            fpsWeapon.add(handle);
+            handle.position.set(0, -0.08, 0);
+            slingshot.add(handle);
 
             // Fork prongs
-            const forkGeo = new THREE.CylinderGeometry(0.018, 0.022, 0.18, 8);
+            const forkGeo = new THREE.CylinderGeometry(0.015, 0.018, 0.14, 8);
             const forkL = new THREE.Mesh(forkGeo, woodMat);
             forkL.rotation.z = Math.PI / 5;
-            forkL.position.set(-0.06, 0.06, -0.12);
-            fpsWeapon.add(forkL);
+            forkL.position.set(-0.045, 0.05, 0);
+            slingshot.add(forkL);
 
             const forkR = new THREE.Mesh(forkGeo, woodMat);
             forkR.rotation.z = -Math.PI / 5;
-            forkR.position.set(0.06, 0.06, -0.12);
-            fpsWeapon.add(forkR);
+            forkR.position.set(0.045, 0.05, 0);
+            slingshot.add(forkR);
 
             // Fork tips
-            const tipGeo = new THREE.SphereGeometry(0.025, 8, 8);
+            const tipGeo = new THREE.SphereGeometry(0.02, 8, 8);
             const tipL = new THREE.Mesh(tipGeo, woodMat);
-            tipL.position.set(-0.09, 0.12, -0.12);
-            fpsWeapon.add(tipL);
+            tipL.position.set(-0.07, 0.1, 0);
+            slingshot.add(tipL);
 
             const tipR = new THREE.Mesh(tipGeo, woodMat);
-            tipR.position.set(0.09, 0.12, -0.12);
-            fpsWeapon.add(tipR);
+            tipR.position.set(0.07, 0.1, 0);
+            slingshot.add(tipR);
 
-            // Rubber bands
-            const bandGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.15, 6);
-            const bandL = new THREE.Mesh(bandGeo, rubberMat);
-            bandL.rotation.x = Math.PI / 4;
-            bandL.rotation.z = Math.PI / 10;
-            bandL.position.set(-0.05, 0.05, -0.05);
-            fpsWeapon.add(bandL);
+            // Rubber bands (will be animated)
+            const bandGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.12, 6);
+            fpsBandL = new THREE.Mesh(bandGeo, rubberMat);
+            fpsBandL.position.set(-0.04, 0.05, 0.05);
+            fpsBandL.rotation.x = Math.PI / 6;
+            fpsBandL.rotation.z = Math.PI / 12;
+            slingshot.add(fpsBandL);
 
-            const bandR = new THREE.Mesh(bandGeo, rubberMat);
-            bandR.rotation.x = Math.PI / 4;
-            bandR.rotation.z = -Math.PI / 10;
-            bandR.position.set(0.05, 0.05, -0.05);
-            fpsWeapon.add(bandR);
+            fpsBandR = new THREE.Mesh(bandGeo, rubberMat);
+            fpsBandR.position.set(0.04, 0.05, 0.05);
+            fpsBandR.rotation.x = Math.PI / 6;
+            fpsBandR.rotation.z = -Math.PI / 12;
+            slingshot.add(fpsBandR);
 
-            // Pouch with stone
+            // Pouch (will be animated)
             const pouchMat = new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.9 });
-            const pouchGeo = new THREE.SphereGeometry(0.03, 8, 8);
-            const pouch = new THREE.Mesh(pouchGeo, pouchMat);
-            pouch.position.set(0, 0, 0.02);
-            fpsWeapon.add(pouch);
+            const pouchGeo = new THREE.SphereGeometry(0.025, 8, 8);
+            fpsPouch = new THREE.Mesh(pouchGeo, pouchMat);
+            fpsPouch.scale.set(1.2, 0.6, 1);
+            fpsPouch.position.set(0, 0.02, 0.1);
+            slingshot.add(fpsPouch);
 
-            // Stone in pouch
+            // Stone in pouch (will be animated/hidden)
             const stoneMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.7 });
-            const stoneGeo = new THREE.SphereGeometry(0.02, 8, 8);
-            const stone = new THREE.Mesh(stoneGeo, stoneMat);
-            stone.position.set(0, 0, 0.02);
-            fpsWeapon.add(stone);
+            const stoneGeo = new THREE.SphereGeometry(0.018, 8, 8);
+            fpsStone = new THREE.Mesh(stoneGeo, stoneMat);
+            fpsStone.position.set(0, 0.02, 0.1);
+            slingshot.add(fpsStone);
 
-            // Position weapon in lower right of view
-            fpsWeapon.position.set(0.25, -0.2, -0.4);
-            fpsWeapon.rotation.set(0.1, -0.2, 0.1);
+            slingshot.position.set(-0.12, -0.03, -0.35);
+            slingshot.rotation.set(0.1, 0, 0.1);
+            fpsHands.add(slingshot);
+            fpsHands.userData.slingshot = slingshot;
+
+            fpsWeapon.add(fpsHands);
+
+            // Position weapon view (centered lower)
+            fpsWeapon.position.set(0.15, -0.25, -0.3);
+            fpsWeapon.rotation.set(0, 0, 0);
 
             // Add to camera so it moves with view
             camera.add(fpsWeapon);
-            fpsWeapon.visible = false; // Hidden by default, shown in FPS mode
+            fpsWeapon.visible = false;
         }
 
         function createEnvironment() {
@@ -1313,6 +1397,7 @@
 
             childGroup.position.z = 0.3;
             playerCart.add(childGroup);
+            playerChild = childGroup; // Store reference for FPS mode visibility
 
             // === SLINGSHOT ===
             slingshotArm = new THREE.Group();
@@ -1718,6 +1803,11 @@
             if (now - lastShootTime < SHOOT_COOLDOWN) return;
             lastShootTime = now;
 
+            // Trigger FPS firing animation
+            if (cameraMode === 'hybrid-fps') {
+                fpsFireAnim = 1.0; // Start animation
+            }
+
             // Get spawn position based on camera mode
             let spawnPos;
             if (cameraMode === 'hybrid-fps') {
@@ -1802,6 +1892,7 @@
             // Reset dodge/lean state
             dodgeVelocity = 0;
             currentLeanAngle = 0;
+            fpsFireAnim = 0; // Reset firing animation
 
             // Reset crosshair to center
             crosshairX = window.innerWidth / 2;
@@ -2046,27 +2137,65 @@
 
             // Camera mode handling
             if (cameraMode === 'hybrid-fps') {
-                // Hybrid FPS: Camera fixed inside cart, looking forward
-                // Position camera at child's eye level - NO smoothing (causes vibration)
+                // FPS: Camera IS the child's eyes
                 camera.position.x = playerX;
-                camera.position.y = 2.0; // Child's eye height
-                camera.position.z = playerCart.position.z - 0.3; // At front of cart
+                camera.position.y = 2.2;  // Child's eye height when sitting
+                camera.position.z = playerCart.position.z + 0.3; // Inside cart, seeing front
 
-                // FPS camera looks straight ahead with slight downward tilt
+                // Look down slightly to see cart front and aisle ahead
                 camera.rotation.set(0, 0, 0);
-                camera.rotation.x = -0.08; // Slight downward tilt to see aisle
+                camera.rotation.x = -0.12; // Downward tilt to see cart front
 
                 // Add subtle lean roll for immersion
                 camera.rotation.z = currentLeanAngle * CAMERA_ROLL_FACTOR * 0.5;
 
-                // Hide cart (we're inside it), show FPS weapon
-                playerCart.visible = false;
+                // Show cart but hide child (we ARE the child), show FPS hands
+                playerCart.visible = true;
+                if (playerChild) playerChild.visible = false;
+                if (slingshotArm) slingshotArm.visible = false;
                 if (fpsWeapon) fpsWeapon.visible = true;
+
+                // Animate FPS slingshot firing
+                if (fpsFireAnim > 0) {
+                    fpsFireAnim -= dt * 4; // Animation speed
+                    if (fpsFireAnim < 0) fpsFireAnim = 0;
+
+                    // Pull-back to release animation
+                    const pullBack = fpsFireAnim > 0.5 ? (1 - fpsFireAnim) * 2 : fpsFireAnim * 2;
+                    const pullZ = pullBack * 0.15;
+
+                    if (fpsPouch) fpsPouch.position.z = 0.1 + pullZ;
+                    if (fpsStone) {
+                        fpsStone.position.z = 0.1 + pullZ;
+                        fpsStone.visible = fpsFireAnim > 0.3; // Hide stone after release
+                    }
+                    if (fpsBandL) {
+                        fpsBandL.scale.z = 1 + pullBack * 0.8;
+                        fpsBandL.rotation.x = Math.PI / 6 + pullBack * 0.3;
+                    }
+                    if (fpsBandR) {
+                        fpsBandR.scale.z = 1 + pullBack * 0.8;
+                        fpsBandR.rotation.x = Math.PI / 6 + pullBack * 0.3;
+                    }
+                    // Pull right hand back
+                    if (fpsHands && fpsHands.userData.rightHand) {
+                        fpsHands.userData.rightHand.position.z = -0.15 + pullZ;
+                    }
+                } else {
+                    // Reset to ready position
+                    if (fpsPouch) fpsPouch.position.z = 0.1;
+                    if (fpsStone) { fpsStone.position.z = 0.1; fpsStone.visible = true; }
+                    if (fpsBandL) { fpsBandL.scale.z = 1; fpsBandL.rotation.x = Math.PI / 6; }
+                    if (fpsBandR) { fpsBandR.scale.z = 1; fpsBandR.rotation.x = Math.PI / 6; }
+                    if (fpsHands && fpsHands.userData.rightHand) {
+                        fpsHands.userData.rightHand.position.z = -0.15;
+                    }
+                }
             } else {
-                // Third-person camera follows cart from behind
+                // Third-person: camera behind and above cart
                 const targetCamX = playerX + CAMERA_OFFSET_SIDE;
-                const targetCamY = CAMERA_OFFSET_UP;
-                const targetCamZ = playerCart.position.z + CAMERA_OFFSET_BEHIND;
+                const targetCamY = CAMERA_OFFSET_UP + 0.8; // Higher view
+                const targetCamZ = playerCart.position.z + CAMERA_OFFSET_BEHIND - 0.5; // Closer
 
                 // Smooth camera follow (lerp)
                 camera.position.x += (targetCamX - camera.position.x) * 5 * dt;
@@ -2076,7 +2205,7 @@
                 // Camera looks ahead of cart position
                 const lookAtTarget = new THREE.Vector3(
                     playerX,
-                    2,
+                    1.8,
                     playerCart.position.z - CAMERA_LOOK_AHEAD
                 );
                 camera.lookAt(lookAtTarget);
@@ -2084,8 +2213,10 @@
                 // Add subtle camera roll for immersion
                 camera.rotation.z = currentLeanAngle * CAMERA_ROLL_FACTOR;
 
-                // Show cart, hide FPS weapon in third-person
+                // Show full cart with child, hide FPS hands
                 playerCart.visible = true;
+                if (playerChild) playerChild.visible = true;
+                if (slingshotArm) slingshotArm.visible = true;
                 if (fpsWeapon) fpsWeapon.visible = false;
             }
 
