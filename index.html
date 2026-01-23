@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mall Hell v1.4</title>
+    <title>Mall Hell v1.6</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -29,12 +29,10 @@
 
         #crosshair {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
             width: 40px;
             height: 40px;
             pointer-events: none;
+            transform: translate(-50%, -50%);
         }
         #crosshair::before, #crosshair::after {
             content: '';
@@ -215,6 +213,40 @@
             padding: 5px 15px;
             border-radius: 5px;
             margin: 0 5px;
+        }
+        .control-selector {
+            margin-bottom: 20px;
+        }
+        .control-label {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .control-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #888;
+            border: 2px solid #444;
+            padding: 10px 25px;
+            font-size: 14px;
+            font-family: 'Arial Black', Arial, sans-serif;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.2s;
+        }
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #666;
+        }
+        .control-btn.selected {
+            background: rgba(233, 69, 96, 0.3);
+            color: #e94560;
+            border-color: #e94560;
         }
 
         .btn {
@@ -453,12 +485,26 @@
 
             <div id="menu-screen">
                 <div class="title">MALL HELL</div>
-                <div class="version">v1.4</div>
+                <div class="version">v1.6</div>
                 <div class="subtitle">Supermarket Mayhem in 3D</div>
-                <div class="instructions">
-                    <span>← →</span> Move & Aim<br>
-                    <span>SPACE</span> Fire!<br>
-                    <span>ESC</span> Pause
+                <div class="control-selector">
+                    <div class="control-label">CONTROLS</div>
+                    <div class="control-buttons">
+                        <button class="control-btn selected" id="classic-btn">CLASSIC</button>
+                        <button class="control-btn" id="arcade-btn">ARCADE</button>
+                    </div>
+                </div>
+                <div class="control-selector">
+                    <div class="control-label">CAMERA</div>
+                    <div class="control-buttons">
+                        <button class="control-btn selected" id="fps-btn">FIRST PERSON</button>
+                        <button class="control-btn" id="thirdperson-btn">THIRD PERSON</button>
+                    </div>
+                </div>
+                <div class="instructions" id="instructions">
+                    <span>← →</span> Dodge<br>
+                    <span>MOUSE</span> Aim<br>
+                    <span>CLICK</span> Fire
                 </div>
                 <button class="btn" id="start-btn">START CHAOS</button>
             </div>
@@ -500,6 +546,23 @@
         const SLOWDOWN_MULTIPLIER = 0.5;
         const MOVEMENT_BOUND = 10;
 
+        // Third-Person Camera Constants
+        const CAMERA_OFFSET_BEHIND = 5;
+        const CAMERA_OFFSET_UP = 3;
+        const CAMERA_OFFSET_SIDE = 1.2;
+        const CAMERA_LOOK_AHEAD = 12;
+
+        // Dodge/Lean Constants
+        const DODGE_ACCELERATION = 25;
+        const DODGE_DECELERATION = 15;
+        const MAX_DODGE_VELOCITY = 12;
+        const CART_LEAN_ANGLE = 0.25;
+        const CAMERA_ROLL_FACTOR = 0.1;
+
+        // Crosshair Constants
+        const CROSSHAIR_SPEED = 400;
+        const CROSSHAIR_BOUNDS_MARGIN = 50;
+
         // Player Health Constants
         const PLAYER_MAX_HEALTH = 100;
         const ENEMY_COLLISION_DAMAGE = 20;
@@ -531,14 +594,32 @@
         let isInvulnerable = false;
         let speedMultiplier = 1;
 
-        // Keyboard input - Movement (Arrow keys)
+        // Dodge/Lean state
+        let dodgeVelocity = 0;
+        let currentLeanAngle = 0;
+
+        // Crosshair state
+        let crosshairX = window.innerWidth / 2;
+        let crosshairY = window.innerHeight / 2;
+
+        // Control scheme: 'classic' (mouse aim) or 'arcade' (keyboard aim)
+        let controlScheme = 'classic';
+
+        // Camera mode: 'third-person' or 'hybrid-fps'
+        let cameraMode = 'hybrid-fps';
+
+        // Keyboard input
         const keys = {
-            left: false,
-            right: false
+            left: false,   // A or Arrow based on scheme
+            right: false,  // D or Arrow based on scheme
+            aimLeft: false,  // Arrow left (arcade mode)
+            aimRight: false, // Arrow right (arcade mode)
+            aimUp: false,    // Arrow up (arcade mode)
+            aimDown: false   // Arrow down (arcade mode)
         };
 
-        // Aim follows movement - speed for keyboard aim
-        const AIM_SPEED = 800; // pixels per second for aim tracking
+        // Aim speed for keyboard aiming
+        const AIM_SPEED = 1000; // pixels per second
 
         // Mouse
         let mouseX = 0;
@@ -827,133 +908,392 @@
         function createPlayerCart() {
             playerCart = new THREE.Group();
 
-            // Cart body (wire mesh look)
-            const cartBodyGeo = new THREE.BoxGeometry(2, 1.5, 3);
-            const cartEdges = new THREE.EdgesGeometry(cartBodyGeo);
-            const cartLine = new THREE.LineSegments(
-                cartEdges,
-                new THREE.LineBasicMaterial({ color: 0x888888, linewidth: 2 })
-            );
-            cartLine.position.y = 1;
-            playerCart.add(cartLine);
-
-            // Cart solid base
-            const baseGeo = new THREE.BoxGeometry(1.9, 0.1, 2.9);
-            const baseMat = new THREE.MeshStandardMaterial({ color: 0x666666 });
-            const base = new THREE.Mesh(baseGeo, baseMat);
-            base.position.y = 0.3;
-            playerCart.add(base);
-
-            // Cart handle
-            const handleGeo = new THREE.BoxGeometry(2, 0.1, 0.1);
-            const handleMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
-            const handle = new THREE.Mesh(handleGeo, handleMat);
-            handle.position.set(0, 2.2, 1.5);
-            playerCart.add(handle);
-
-            // Handle supports
-            const supportGeo = new THREE.BoxGeometry(0.1, 0.8, 0.1);
-            const supportL = new THREE.Mesh(supportGeo, handleMat);
-            supportL.position.set(-0.9, 1.85, 1.5);
-            playerCart.add(supportL);
-            const supportR = new THREE.Mesh(supportGeo, handleMat);
-            supportR.position.set(0.9, 1.85, 1.5);
-            playerCart.add(supportR);
-
-            // Wheels
-            const wheelGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.1, 16);
-            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-            const wheelPositions = [
-                [-0.8, 0.2, -1.2],
-                [0.8, 0.2, -1.2],
-                [-0.8, 0.2, 1.2],
-                [0.8, 0.2, 1.2]
-            ];
-            wheelPositions.forEach(pos => {
-                const wheel = new THREE.Mesh(wheelGeo, wheelMat);
-                wheel.rotation.z = Math.PI / 2;
-                wheel.position.set(...pos);
-                playerCart.add(wheel);
+            // Materials
+            const chromeMat = new THREE.MeshStandardMaterial({
+                color: 0xc0c0c0,
+                metalness: 0.9,
+                roughness: 0.2
+            });
+            const darkChromeMat = new THREE.MeshStandardMaterial({
+                color: 0x606060,
+                metalness: 0.8,
+                roughness: 0.3
+            });
+            const redPlasticMat = new THREE.MeshStandardMaterial({
+                color: 0xe74c3c,
+                metalness: 0.1,
+                roughness: 0.6
+            });
+            const blackRubberMat = new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                metalness: 0.0,
+                roughness: 0.9
             });
 
-            // Child in cart
-            const childGroup = new THREE.Group();
+            // === CART FRAME ===
+            const cartGroup = new THREE.Group();
 
-            // Body
-            const bodyGeo = new THREE.CylinderGeometry(0.4, 0.35, 1.2, 16);
-            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3498db });
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
-            body.position.y = 1.4;
-            childGroup.add(body);
+            // Main basket frame - bottom
+            const bottomFrameGeo = new THREE.BoxGeometry(1.8, 0.08, 2.6);
+            const bottomFrame = new THREE.Mesh(bottomFrameGeo, chromeMat);
+            bottomFrame.position.set(0, 0.5, 0);
+            bottomFrame.castShadow = true;
+            cartGroup.add(bottomFrame);
+
+            // Wire mesh bottom (grid pattern)
+            for (let x = -0.8; x <= 0.8; x += 0.2) {
+                const wireGeo = new THREE.CylinderGeometry(0.015, 0.015, 2.5, 6);
+                const wire = new THREE.Mesh(wireGeo, chromeMat);
+                wire.rotation.x = Math.PI / 2;
+                wire.position.set(x, 0.52, 0);
+                cartGroup.add(wire);
+            }
+            for (let z = -1.2; z <= 1.2; z += 0.2) {
+                const wireGeo = new THREE.CylinderGeometry(0.015, 0.015, 1.7, 6);
+                const wire = new THREE.Mesh(wireGeo, chromeMat);
+                wire.rotation.z = Math.PI / 2;
+                wire.position.set(0, 0.52, z);
+                cartGroup.add(wire);
+            }
+
+            // Cart sides - wire mesh walls
+            const createWireSide = (width, height, posX, posZ, rotY) => {
+                const sideGroup = new THREE.Group();
+                // Vertical wires
+                const wireCount = Math.floor(width / 0.15);
+                for (let i = 0; i <= wireCount; i++) {
+                    const wireGeo = new THREE.CylinderGeometry(0.02, 0.02, height, 6);
+                    const wire = new THREE.Mesh(wireGeo, chromeMat);
+                    wire.position.set(-width/2 + i * (width/wireCount), height/2, 0);
+                    sideGroup.add(wire);
+                }
+                // Horizontal wires
+                for (let y = 0.15; y < height; y += 0.2) {
+                    const hWireGeo = new THREE.CylinderGeometry(0.015, 0.015, width, 6);
+                    const hWire = new THREE.Mesh(hWireGeo, chromeMat);
+                    hWire.rotation.z = Math.PI / 2;
+                    hWire.position.set(0, y, 0);
+                    sideGroup.add(hWire);
+                }
+                // Top rail
+                const topRailGeo = new THREE.CylinderGeometry(0.03, 0.03, width + 0.1, 8);
+                const topRail = new THREE.Mesh(topRailGeo, chromeMat);
+                topRail.rotation.z = Math.PI / 2;
+                topRail.position.set(0, height, 0);
+                sideGroup.add(topRail);
+
+                sideGroup.position.set(posX, 0.55, posZ);
+                sideGroup.rotation.y = rotY;
+                return sideGroup;
+            };
+
+            // Left side wall
+            cartGroup.add(createWireSide(2.5, 1.0, -0.9, 0, Math.PI / 2));
+            // Right side wall
+            cartGroup.add(createWireSide(2.5, 1.0, 0.9, 0, Math.PI / 2));
+            // Front wall
+            cartGroup.add(createWireSide(1.7, 1.0, 0, -1.25, 0));
+            // Back wall (shorter for child to sit)
+            cartGroup.add(createWireSide(1.7, 0.6, 0, 1.25, 0));
+
+            // Corner posts
+            const cornerPositions = [[-0.85, -1.2], [0.85, -1.2], [-0.85, 1.2], [0.85, 1.2]];
+            cornerPositions.forEach(([x, z]) => {
+                const postGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.1, 8);
+                const post = new THREE.Mesh(postGeo, chromeMat);
+                post.position.set(x, 1.05, z);
+                cartGroup.add(post);
+            });
+
+            // === RED PLASTIC CHILD SEAT ===
+            const seatGroup = new THREE.Group();
+            // Seat back
+            const seatBackGeo = new THREE.BoxGeometry(1.2, 0.6, 0.1);
+            const seatBack = new THREE.Mesh(seatBackGeo, redPlasticMat);
+            seatBack.position.set(0, 1.1, 0.9);
+            seatGroup.add(seatBack);
+            // Seat bottom
+            const seatBottomGeo = new THREE.BoxGeometry(1.2, 0.08, 0.5);
+            const seatBottom = new THREE.Mesh(seatBottomGeo, redPlasticMat);
+            seatBottom.position.set(0, 0.75, 1.05);
+            seatGroup.add(seatBottom);
+            // Leg holes
+            const legHoleGeo = new THREE.BoxGeometry(0.25, 0.08, 0.3);
+            const legHole1 = new THREE.Mesh(legHoleGeo, darkChromeMat);
+            legHole1.position.set(-0.3, 0.72, 1.2);
+            seatGroup.add(legHole1);
+            const legHole2 = new THREE.Mesh(legHoleGeo, darkChromeMat);
+            legHole2.position.set(0.3, 0.72, 1.2);
+            seatGroup.add(legHole2);
+            cartGroup.add(seatGroup);
+
+            // === HANDLE ===
+            // Handle bar (curved would be ideal, using segments)
+            const handleBarGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.9, 8);
+            const handleBar = new THREE.Mesh(handleBarGeo, darkChromeMat);
+            handleBar.rotation.z = Math.PI / 2;
+            handleBar.position.set(0, 2.0, 1.6);
+            cartGroup.add(handleBar);
+            // Handle grips (rubber)
+            const gripGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.4, 8);
+            const gripL = new THREE.Mesh(gripGeo, blackRubberMat);
+            gripL.rotation.z = Math.PI / 2;
+            gripL.position.set(-0.75, 2.0, 1.6);
+            cartGroup.add(gripL);
+            const gripR = new THREE.Mesh(gripGeo, blackRubberMat);
+            gripR.rotation.z = Math.PI / 2;
+            gripR.position.set(0.75, 2.0, 1.6);
+            cartGroup.add(gripR);
+            // Handle supports
+            const supportGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.5, 8);
+            const supportL = new THREE.Mesh(supportGeo, chromeMat);
+            supportL.position.set(-0.85, 1.75, 1.45);
+            supportL.rotation.x = -0.3;
+            cartGroup.add(supportL);
+            const supportR = new THREE.Mesh(supportGeo, chromeMat);
+            supportR.position.set(0.85, 1.75, 1.45);
+            supportR.rotation.x = -0.3;
+            cartGroup.add(supportR);
+
+            // === WHEELS WITH CASTERS ===
+            const createWheel = (x, z, isFront) => {
+                const wheelGroup = new THREE.Group();
+                // Caster housing
+                const casterGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.15, 8);
+                const caster = new THREE.Mesh(casterGeo, darkChromeMat);
+                caster.position.y = 0.35;
+                wheelGroup.add(caster);
+                // Caster fork
+                const forkGeo = new THREE.BoxGeometry(0.04, 0.2, 0.12);
+                const fork = new THREE.Mesh(forkGeo, chromeMat);
+                fork.position.set(0, 0.2, 0);
+                wheelGroup.add(fork);
+                // Wheel
+                const wheelGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.08, 16);
+                const wheel = new THREE.Mesh(wheelGeo, blackRubberMat);
+                wheel.rotation.z = Math.PI / 2;
+                wheel.position.y = 0.15;
+                wheelGroup.add(wheel);
+                // Wheel hub
+                const hubGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.1, 12);
+                const hub = new THREE.Mesh(hubGeo, chromeMat);
+                hub.rotation.z = Math.PI / 2;
+                hub.position.y = 0.15;
+                wheelGroup.add(hub);
+
+                wheelGroup.position.set(x, 0, z);
+                return wheelGroup;
+            };
+            cartGroup.add(createWheel(-0.75, -1.0, true));
+            cartGroup.add(createWheel(0.75, -1.0, true));
+            cartGroup.add(createWheel(-0.75, 1.0, false));
+            cartGroup.add(createWheel(0.75, 1.0, false));
+
+            // === FRAME LEGS ===
+            const legGeo = new THREE.CylinderGeometry(0.03, 0.035, 0.5, 8);
+            const legPositions = [[-0.8, -1.0], [0.8, -1.0], [-0.8, 1.0], [0.8, 1.0]];
+            legPositions.forEach(([x, z]) => {
+                const leg = new THREE.Mesh(legGeo, chromeMat);
+                leg.position.set(x, 0.4, z);
+                cartGroup.add(leg);
+            });
+
+            playerCart.add(cartGroup);
+
+            // === CHILD CHARACTER ===
+            const childGroup = new THREE.Group();
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.8 });
+            const shirtMat = new THREE.MeshStandardMaterial({ color: 0x3498db, roughness: 0.7 });
+            const pantsMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.7 });
+            const hairMat = new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.9 });
+
+            // Torso
+            const torsoGeo = new THREE.CylinderGeometry(0.28, 0.32, 0.7, 12);
+            const torso = new THREE.Mesh(torsoGeo, shirtMat);
+            torso.position.y = 1.2;
+            torso.castShadow = true;
+            childGroup.add(torso);
 
             // Head
-            const headGeo = new THREE.SphereGeometry(0.35, 16, 16);
-            const headMat = new THREE.MeshStandardMaterial({ color: 0xffd5b4 });
-            const head = new THREE.Mesh(headGeo, headMat);
-            head.position.y = 2.3;
+            const headGeo = new THREE.SphereGeometry(0.28, 16, 16);
+            const head = new THREE.Mesh(headGeo, skinMat);
+            head.position.y = 1.85;
+            head.castShadow = true;
             childGroup.add(head);
 
-            // Hair
-            const hairGeo = new THREE.SphereGeometry(0.37, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
-            const hairMat = new THREE.MeshStandardMaterial({ color: 0x4a3728 });
-            const hair = new THREE.Mesh(hairGeo, hairMat);
-            hair.position.y = 2.35;
-            childGroup.add(hair);
+            // Hair (spiky/messy)
+            const hairBaseGeo = new THREE.SphereGeometry(0.3, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2);
+            const hairBase = new THREE.Mesh(hairBaseGeo, hairMat);
+            hairBase.position.y = 1.9;
+            childGroup.add(hairBase);
+            // Hair spikes
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const spikeGeo = new THREE.ConeGeometry(0.06, 0.15, 6);
+                const spike = new THREE.Mesh(spikeGeo, hairMat);
+                spike.position.set(
+                    Math.cos(angle) * 0.2,
+                    2.1,
+                    Math.sin(angle) * 0.2
+                );
+                spike.rotation.x = Math.sin(angle) * 0.3;
+                spike.rotation.z = -Math.cos(angle) * 0.3;
+                childGroup.add(spike);
+            }
+
+            // Eyes
+            const eyeWhiteGeo = new THREE.SphereGeometry(0.06, 8, 8);
+            const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            const eyePupilGeo = new THREE.SphereGeometry(0.035, 8, 8);
+            const eyePupilMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50 });
+            // Left eye
+            const eyeWhiteL = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+            eyeWhiteL.position.set(-0.1, 1.88, -0.24);
+            childGroup.add(eyeWhiteL);
+            const eyePupilL = new THREE.Mesh(eyePupilGeo, eyePupilMat);
+            eyePupilL.position.set(-0.1, 1.88, -0.28);
+            childGroup.add(eyePupilL);
+            // Right eye
+            const eyeWhiteR = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+            eyeWhiteR.position.set(0.1, 1.88, -0.24);
+            childGroup.add(eyeWhiteR);
+            const eyePupilR = new THREE.Mesh(eyePupilGeo, eyePupilMat);
+            eyePupilR.position.set(0.1, 1.88, -0.28);
+            childGroup.add(eyePupilR);
+
+            // Eyebrows (mischievous angle)
+            const browGeo = new THREE.BoxGeometry(0.1, 0.02, 0.02);
+            const browMat = new THREE.MeshStandardMaterial({ color: 0x3d2817 });
+            const browL = new THREE.Mesh(browGeo, browMat);
+            browL.position.set(-0.1, 1.96, -0.26);
+            browL.rotation.z = 0.2;
+            childGroup.add(browL);
+            const browR = new THREE.Mesh(browGeo, browMat);
+            browR.position.set(0.1, 1.96, -0.26);
+            browR.rotation.z = -0.2;
+            childGroup.add(browR);
+
+            // Mouth (grin)
+            const mouthGeo = new THREE.TorusGeometry(0.06, 0.015, 8, 12, Math.PI);
+            const mouthMat = new THREE.MeshStandardMaterial({ color: 0xc0392b });
+            const mouth = new THREE.Mesh(mouthGeo, mouthMat);
+            mouth.position.set(0, 1.78, -0.25);
+            mouth.rotation.x = Math.PI;
+            childGroup.add(mouth);
+
+            // Nose
+            const noseGeo = new THREE.SphereGeometry(0.04, 8, 8);
+            const nose = new THREE.Mesh(noseGeo, skinMat);
+            nose.position.set(0, 1.84, -0.28);
+            childGroup.add(nose);
 
             // Arms
-            const armGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.6, 8);
-            const armMat = new THREE.MeshStandardMaterial({ color: 0xffd5b4 });
-
-            // Left arm (holding slingshot)
-            const leftArm = new THREE.Mesh(armGeo, armMat);
-            leftArm.rotation.z = Math.PI / 3;
-            leftArm.position.set(-0.5, 1.8, -0.3);
+            const armGeo = new THREE.CylinderGeometry(0.08, 0.07, 0.45, 8);
+            // Left arm (extended forward for slingshot)
+            const leftArm = new THREE.Mesh(armGeo, shirtMat);
+            leftArm.rotation.x = -Math.PI / 3;
+            leftArm.rotation.z = Math.PI / 6;
+            leftArm.position.set(-0.35, 1.35, -0.25);
             childGroup.add(leftArm);
-
-            // Right arm
-            const rightArm = new THREE.Mesh(armGeo, armMat);
-            rightArm.rotation.z = -Math.PI / 3;
-            rightArm.position.set(0.5, 1.8, -0.3);
+            // Right arm (pulling back slingshot)
+            const rightArm = new THREE.Mesh(armGeo, shirtMat);
+            rightArm.rotation.x = -Math.PI / 4;
+            rightArm.rotation.z = -Math.PI / 6;
+            rightArm.position.set(0.35, 1.35, -0.15);
             childGroup.add(rightArm);
 
+            // Hands
+            const handGeo = new THREE.SphereGeometry(0.07, 8, 8);
+            const handL = new THREE.Mesh(handGeo, skinMat);
+            handL.position.set(-0.45, 1.15, -0.5);
+            childGroup.add(handL);
+            const handR = new THREE.Mesh(handGeo, skinMat);
+            handR.position.set(0.4, 1.2, -0.35);
+            childGroup.add(handR);
+
+            // Legs (in seat holes)
+            const legGeoChild = new THREE.CylinderGeometry(0.1, 0.08, 0.4, 8);
+            const legL = new THREE.Mesh(legGeoChild, pantsMat);
+            legL.position.set(-0.2, 0.65, 1.15);
+            childGroup.add(legL);
+            const legR = new THREE.Mesh(legGeoChild, pantsMat);
+            legR.position.set(0.2, 0.65, 1.15);
+            childGroup.add(legR);
+
+            // Feet
+            const footGeo = new THREE.BoxGeometry(0.12, 0.08, 0.18);
+            const footMat = new THREE.MeshStandardMaterial({ color: 0x2ecc71 }); // Green sneakers
+            const footL = new THREE.Mesh(footGeo, footMat);
+            footL.position.set(-0.2, 0.45, 1.2);
+            childGroup.add(footL);
+            const footR = new THREE.Mesh(footGeo, footMat);
+            footR.position.set(0.2, 0.45, 1.2);
+            childGroup.add(footR);
+
+            childGroup.position.z = 0.3;
             playerCart.add(childGroup);
 
-            // Slingshot
+            // === SLINGSHOT ===
             slingshotArm = new THREE.Group();
+            const woodMat = new THREE.MeshStandardMaterial({
+                color: 0x8b4513,
+                roughness: 0.8
+            });
+            const rubberMat = new THREE.MeshStandardMaterial({
+                color: 0xc0392b,
+                roughness: 0.6
+            });
 
-            // Y-frame
-            const stickGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.8, 8);
-            const stickMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+            // Y-frame handle
+            const handleGeo = new THREE.CylinderGeometry(0.04, 0.05, 0.5, 8);
+            const slHandle = new THREE.Mesh(handleGeo, woodMat);
+            slHandle.rotation.x = Math.PI / 2;
+            slHandle.position.z = -0.25;
+            slingshotArm.add(slHandle);
 
-            const mainStick = new THREE.Mesh(stickGeo, stickMat);
-            mainStick.rotation.x = Math.PI / 2;
-            mainStick.position.z = -0.4;
-            slingshotArm.add(mainStick);
-
-            const forkL = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.3, 8), stickMat);
-            forkL.rotation.z = Math.PI / 6;
-            forkL.position.set(-0.1, 0.12, -0.8);
+            // Fork prongs
+            const forkGeo = new THREE.CylinderGeometry(0.03, 0.035, 0.25, 8);
+            const forkL = new THREE.Mesh(forkGeo, woodMat);
+            forkL.rotation.z = Math.PI / 5;
+            forkL.position.set(-0.1, 0.1, -0.5);
             slingshotArm.add(forkL);
-
-            const forkR = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.3, 8), stickMat);
-            forkR.rotation.z = -Math.PI / 6;
-            forkR.position.set(0.1, 0.12, -0.8);
+            const forkR = new THREE.Mesh(forkGeo, woodMat);
+            forkR.rotation.z = -Math.PI / 5;
+            forkR.position.set(0.1, 0.1, -0.5);
             slingshotArm.add(forkR);
 
-            // Rubber band
-            const bandMat = new THREE.MeshStandardMaterial({ color: 0xc0392b });
-            const bandGeoL = new THREE.CylinderGeometry(0.02, 0.02, 0.3, 8);
-            const bandL = new THREE.Mesh(bandGeoL, bandMat);
-            bandL.rotation.x = Math.PI / 4;
-            bandL.position.set(-0.15, 0.15, -0.65);
-            slingshotArm.add(bandL);
+            // Fork tips (rounded)
+            const tipGeo = new THREE.SphereGeometry(0.04, 8, 8);
+            const tipL = new THREE.Mesh(tipGeo, woodMat);
+            tipL.position.set(-0.15, 0.2, -0.5);
+            slingshotArm.add(tipL);
+            const tipR = new THREE.Mesh(tipGeo, woodMat);
+            tipR.position.set(0.15, 0.2, -0.5);
+            slingshotArm.add(tipR);
 
-            const bandR = new THREE.Mesh(bandGeoL, bandMat);
-            bandR.rotation.x = Math.PI / 4;
-            bandR.position.set(0.15, 0.15, -0.65);
+            // Rubber bands
+            const bandGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.25, 6);
+            const bandL = new THREE.Mesh(bandGeo, rubberMat);
+            bandL.rotation.x = Math.PI / 3;
+            bandL.rotation.z = Math.PI / 8;
+            bandL.position.set(-0.1, 0.1, -0.38);
+            slingshotArm.add(bandL);
+            const bandR = new THREE.Mesh(bandGeo, rubberMat);
+            bandR.rotation.x = Math.PI / 3;
+            bandR.rotation.z = -Math.PI / 8;
+            bandR.position.set(0.1, 0.1, -0.38);
             slingshotArm.add(bandR);
 
-            slingshotArm.position.set(0, 2.5, 0);
+            // Pouch
+            const pouchGeo = new THREE.SphereGeometry(0.06, 8, 8);
+            pouchGeo.scale(1, 0.5, 1);
+            const pouchMat = new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.9 });
+            const pouch = new THREE.Mesh(pouchGeo, pouchMat);
+            pouch.position.set(0, 0.02, -0.25);
+            slingshotArm.add(pouch);
+
+            slingshotArm.position.set(-0.45, 1.15, -0.2);
+            slingshotArm.rotation.x = -0.3;
             playerCart.add(slingshotArm);
 
             playerCart.position.set(0, 0, -5);
@@ -1127,7 +1467,7 @@
             return group;
         }
 
-        function createProjectile(direction) {
+        function createProjectile(direction, spawnPos) {
             const group = new THREE.Group();
 
             // Stone/ball projectile
@@ -1150,12 +1490,18 @@
             const glow = new THREE.Mesh(glowGeo, glowMat);
             group.add(glow);
 
-            group.position.copy(camera.position);
-            group.position.y -= 0.5;
+            // Use provided spawn position (slingshot) or fallback to camera
+            if (spawnPos) {
+                group.position.copy(spawnPos);
+            } else {
+                group.position.copy(camera.position);
+                group.position.y -= 0.5;
+            }
 
             group.userData = {
                 velocity: direction.clone().multiplyScalar(PROJECTILE_SPEED),
-                active: true
+                active: true,
+                prevPosition: group.position.clone() // For sweep collision detection
             };
 
             scene.add(group);
@@ -1212,16 +1558,136 @@
             showScorePopup(points, x, y);
         }
 
+        // Auto-aim: uses screen-space proximity to crosshair
+        function findAutoAimTarget() {
+            const AUTO_AIM_SCREEN_RADIUS = 100; // Pixels - how close crosshair needs to be
+            const AUTO_AIM_RANGE = 100; // Max world distance to consider
+
+            let bestTarget = null;
+            let bestScreenDist = Infinity;
+
+            // Check enemies
+            enemies.forEach(enemy => {
+                if (!enemy.userData.active) return;
+
+                // Get world distance
+                const toTarget = new THREE.Vector3();
+                toTarget.subVectors(enemy.position, camera.position);
+                const worldDist = toTarget.length();
+
+                // Skip if too far or behind camera
+                if (worldDist > AUTO_AIM_RANGE || toTarget.z > 0) return;
+
+                // Convert enemy position to screen coordinates
+                const targetPos = enemy.position.clone();
+                targetPos.y += 1.5; // Aim at center mass
+                const screenPos = worldToScreen(targetPos);
+
+                // Calculate screen-space distance to crosshair
+                const screenDist = Math.sqrt(
+                    Math.pow(screenPos.x - crosshairX, 2) +
+                    Math.pow(screenPos.y - crosshairY, 2)
+                );
+
+                if (screenDist < AUTO_AIM_SCREEN_RADIUS && screenDist < bestScreenDist) {
+                    bestScreenDist = screenDist;
+                    bestTarget = targetPos;
+                }
+            });
+
+            // Check obstacles
+            obstacles.forEach(obs => {
+                if (!obs.userData.active || obs.userData.hit) return;
+
+                const toTarget = new THREE.Vector3();
+                toTarget.subVectors(obs.position, camera.position);
+                const worldDist = toTarget.length();
+
+                if (worldDist > AUTO_AIM_RANGE || toTarget.z > 0) return;
+
+                const targetPos = obs.position.clone();
+                targetPos.y += 1; // Aim at obstacle center
+                const screenPos = worldToScreen(targetPos);
+
+                const screenDist = Math.sqrt(
+                    Math.pow(screenPos.x - crosshairX, 2) +
+                    Math.pow(screenPos.y - crosshairY, 2)
+                );
+
+                if (screenDist < AUTO_AIM_SCREEN_RADIUS && screenDist < bestScreenDist) {
+                    bestScreenDist = screenDist;
+                    bestTarget = targetPos;
+                }
+            });
+
+            return bestTarget;
+        }
+
+        // Convert world position to screen coordinates for crosshair
+        function worldToScreen(worldPos) {
+            const vector = worldPos.clone().project(camera);
+            return {
+                x: (vector.x * 0.5 + 0.5) * window.innerWidth,
+                y: (-vector.y * 0.5 + 0.5) * window.innerHeight
+            };
+        }
+
         function shoot() {
             const now = Date.now();
             if (now - lastShootTime < SHOOT_COOLDOWN) return;
             lastShootTime = now;
 
-            // Calculate direction from camera
-            const direction = new THREE.Vector3(0, 0, -1);
-            direction.applyQuaternion(camera.quaternion);
+            // Get spawn position based on camera mode
+            let spawnPos;
+            if (cameraMode === 'hybrid-fps') {
+                // FPS mode: spawn from camera position (offset slightly forward and down)
+                spawnPos = camera.position.clone();
+                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                spawnPos.add(forward.multiplyScalar(0.5));
+                spawnPos.y -= 0.3;
+            } else {
+                // Third-person: spawn from slingshot
+                spawnPos = new THREE.Vector3();
+                slingshotArm.getWorldPosition(spawnPos);
+            }
 
-            createProjectile(direction);
+            // Get direction from crosshair using raycaster
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2(
+                (crosshairX / window.innerWidth) * 2 - 1,
+                -(crosshairY / window.innerHeight) * 2 + 1
+            );
+            raycaster.setFromCamera(mouse, camera);
+
+            // Try auto-aim - check screen proximity to crosshair
+            const autoTarget = findAutoAimTarget();
+            let direction;
+
+            if (autoTarget) {
+                // Snap crosshair to target position
+                const screenPos = worldToScreen(autoTarget);
+                crosshairX = screenPos.x;
+                crosshairY = screenPos.y;
+                if (controlScheme === 'classic') {
+                    cumulativeX = screenPos.x;
+                    cumulativeY = screenPos.y;
+                }
+
+                // Direction from spawn position to target
+                direction = new THREE.Vector3();
+                direction.subVectors(autoTarget, spawnPos);
+                direction.normalize();
+            } else {
+                // No target near crosshair - use raycast direction
+                const farPoint = new THREE.Vector3();
+                farPoint.copy(raycaster.ray.direction).multiplyScalar(100).add(raycaster.ray.origin);
+
+                direction = new THREE.Vector3();
+                direction.subVectors(farPoint, spawnPos);
+                direction.normalize();
+            }
+
+            createProjectile(direction, spawnPos);
 
             // Visual feedback
             ammoDisplay.textContent = 'RELOADING...';
@@ -1247,6 +1713,18 @@
             speedMultiplier = 1;
             keys.left = false;
             keys.right = false;
+            keys.aimLeft = false;
+            keys.aimRight = false;
+            keys.aimUp = false;
+            keys.aimDown = false;
+
+            // Reset dodge/lean state
+            dodgeVelocity = 0;
+            currentLeanAngle = 0;
+
+            // Reset crosshair to center
+            crosshairX = window.innerWidth / 2;
+            crosshairY = window.innerHeight / 2;
 
             // Reset health UI
             healthFill.style.width = '100%';
@@ -1264,8 +1742,12 @@
             obstacles = [];
             particles = [];
 
-            // Reset camera
-            camera.position.set(0, 3, 0);
+            // Reset cart position
+            playerCart.position.set(0, 0, -5);
+            playerCart.rotation.set(0, 0, 0);
+
+            // Reset camera for third-person view
+            camera.position.set(CAMERA_OFFSET_SIDE, CAMERA_OFFSET_UP, CAMERA_OFFSET_BEHIND - 5);
             camera.rotation.set(0, 0, 0);
         }
 
@@ -1447,34 +1929,111 @@
             // Update invulnerability
             updateInvulnerability();
 
-            // Move camera forward (fixed speed)
+            // Move cart forward (fixed speed)
             const moveAmount = CART_SPEED * dt;
-            camera.position.z -= moveAmount;
             distance += moveAmount;
 
-            // Player lateral movement AND aim (arrows control both!)
+            // Acceleration-based dodge
             if (keys.left) {
-                playerX -= LATERAL_SPEED * dt;
-                cumulativeX -= AIM_SPEED * dt;
+                dodgeVelocity -= DODGE_ACCELERATION * dt;
+            } else if (keys.right) {
+                dodgeVelocity += DODGE_ACCELERATION * dt;
+            } else {
+                // Decelerate when no input
+                if (dodgeVelocity > 0) {
+                    dodgeVelocity = Math.max(0, dodgeVelocity - DODGE_DECELERATION * dt);
+                } else if (dodgeVelocity < 0) {
+                    dodgeVelocity = Math.min(0, dodgeVelocity + DODGE_DECELERATION * dt);
+                }
             }
-            if (keys.right) {
-                playerX += LATERAL_SPEED * dt;
-                cumulativeX += AIM_SPEED * dt;
-            }
+
+            // Clamp dodge velocity
+            dodgeVelocity = Math.max(-MAX_DODGE_VELOCITY, Math.min(MAX_DODGE_VELOCITY, dodgeVelocity));
+
+            // Update player position
+            playerX += dodgeVelocity * dt;
             playerX = Math.max(-MOVEMENT_BOUND, Math.min(MOVEMENT_BOUND, playerX));
-            camera.position.x = playerX;
 
-            // Keep aim within screen bounds
-            cumulativeX = Math.max(0, Math.min(window.innerWidth, cumulativeX));
-            cumulativeY = Math.max(0, Math.min(window.innerHeight, cumulativeY));
-            mouseX = cumulativeX;
-            mouseY = cumulativeY;
+            // Update cart position
+            playerCart.position.x = playerX;
+            playerCart.position.z = -distance - 5;
 
-            // Update slingshot aim
-            const aimX = (mouseX / window.innerWidth - 0.5) * 1.2;
-            const aimY = -(mouseY / window.innerHeight - 0.5) * 0.8;
-            camera.rotation.y = -aimX;
-            camera.rotation.x = aimY;
+            // Cart leaning based on velocity
+            const targetLeanAngle = -(dodgeVelocity / MAX_DODGE_VELOCITY) * CART_LEAN_ANGLE;
+            currentLeanAngle += (targetLeanAngle - currentLeanAngle) * 8 * dt;
+            playerCart.rotation.z = currentLeanAngle;
+
+            // Camera mode handling
+            if (cameraMode === 'hybrid-fps') {
+                // Hybrid FPS: Camera inside cart, looking forward
+                // Position camera at child's eye level
+                const targetCamX = playerX;
+                const targetCamY = 2.2; // Child's eye height
+                const targetCamZ = playerCart.position.z + 0.5; // Slightly forward in cart
+
+                // Smooth camera follow
+                camera.position.x += (targetCamX - camera.position.x) * 10 * dt;
+                camera.position.y += (targetCamY - camera.position.y) * 10 * dt;
+                camera.position.z += (targetCamZ - camera.position.z) * 10 * dt;
+
+                // FPS aiming based on crosshair
+                const aimX = (crosshairX / window.innerWidth - 0.5) * 1.0;
+                const aimY = -(crosshairY / window.innerHeight - 0.5) * 0.6;
+                camera.rotation.set(aimY, -aimX, currentLeanAngle * CAMERA_ROLL_FACTOR);
+
+                // Hide child and most of cart, show only front edges
+                playerCart.visible = true;
+                // Move slingshot to be visible in FPS view
+                slingshotArm.position.set(0.4, -0.3, -0.8);
+                slingshotArm.rotation.set(0.2, 0, 0.1);
+            } else {
+                // Third-person camera follows cart from behind
+                const targetCamX = playerX + CAMERA_OFFSET_SIDE;
+                const targetCamY = CAMERA_OFFSET_UP;
+                const targetCamZ = playerCart.position.z + CAMERA_OFFSET_BEHIND;
+
+                // Smooth camera follow (lerp)
+                camera.position.x += (targetCamX - camera.position.x) * 5 * dt;
+                camera.position.y += (targetCamY - camera.position.y) * 5 * dt;
+                camera.position.z += (targetCamZ - camera.position.z) * 5 * dt;
+
+                // Camera looks ahead of cart position
+                const lookAtTarget = new THREE.Vector3(
+                    playerX,
+                    2,
+                    playerCart.position.z - CAMERA_LOOK_AHEAD
+                );
+                camera.lookAt(lookAtTarget);
+
+                // Add subtle camera roll for immersion
+                camera.rotation.z = currentLeanAngle * CAMERA_ROLL_FACTOR;
+
+                // Reset slingshot position for third-person
+                slingshotArm.position.set(-0.45, 1.15, -0.2);
+                slingshotArm.rotation.set(-0.3, 0, 0);
+                playerCart.visible = true;
+            }
+
+            // Crosshair movement (arcade mode uses arrow keys)
+            if (controlScheme === 'arcade') {
+                if (keys.aimLeft) crosshairX -= CROSSHAIR_SPEED * dt;
+                if (keys.aimRight) crosshairX += CROSSHAIR_SPEED * dt;
+                if (keys.aimUp) crosshairY -= CROSSHAIR_SPEED * dt;
+                if (keys.aimDown) crosshairY += CROSSHAIR_SPEED * dt;
+            } else {
+                // Classic: Mouse controls crosshair
+                crosshairX = cumulativeX;
+                crosshairY = cumulativeY;
+            }
+
+            // Keep crosshair within screen bounds
+            crosshairX = Math.max(CROSSHAIR_BOUNDS_MARGIN, Math.min(window.innerWidth - CROSSHAIR_BOUNDS_MARGIN, crosshairX));
+            crosshairY = Math.max(CROSSHAIR_BOUNDS_MARGIN, Math.min(window.innerHeight - CROSSHAIR_BOUNDS_MARGIN, crosshairY));
+
+            // Update crosshair DOM position
+            const crosshairEl = document.getElementById('crosshair');
+            crosshairEl.style.left = crosshairX + 'px';
+            crosshairEl.style.top = crosshairY + 'px';
 
             // Update progress
             const progress = Math.min(distance / AISLE_LENGTH * 100, 100);
@@ -1540,13 +2099,13 @@
                     enemy.userData.active = false;
                 }
 
-                // Player collision with enemy
+                // Player collision with enemy (use cart position, not camera)
                 if (enemy.userData.active && !isInvulnerable) {
                     const distToPlayer = Math.sqrt(
-                        Math.pow(enemy.position.x - camera.position.x, 2) +
-                        Math.pow(enemy.position.z - camera.position.z, 2)
+                        Math.pow(enemy.position.x - playerCart.position.x, 2) +
+                        Math.pow(enemy.position.z - playerCart.position.z, 2)
                     );
-                    if (distToPlayer < 3) {
+                    if (distToPlayer < 3.5) {
                         damagePlayer(ENEMY_COLLISION_DAMAGE);
                     }
                 }
@@ -1571,14 +2130,14 @@
                     obs.userData.active = false;
                 }
 
-                // Player collision with obstacle (only if not already hit/falling)
+                // Player collision with obstacle (use cart position, not camera)
                 if (obs.userData.active && !obs.userData.hit && !isInvulnerable) {
                     const distToPlayer = Math.sqrt(
-                        Math.pow(obs.position.x - camera.position.x, 2) +
-                        Math.pow(obs.position.z - camera.position.z, 2)
+                        Math.pow(obs.position.x - playerCart.position.x, 2) +
+                        Math.pow(obs.position.z - playerCart.position.z, 2)
                     );
-                    const hitDist = (obs.userData.width || 2) * 0.5;
-                    if (distToPlayer < hitDist + 1) {
+                    const hitDist = (obs.userData.width || 2) * 0.6;
+                    if (distToPlayer < hitDist + 1.5) {
                         damagePlayer(OBSTACLE_COLLISION_DAMAGE);
                         obs.userData.hit = true; // Knock it over too
                     }
@@ -1594,56 +2153,96 @@
                 particle.material.transparent = true;
             });
 
-            // Collision detection
+            // Collision detection with improved accuracy
             projectiles.forEach(proj => {
                 if (!proj.userData.active) return;
 
+                // Store previous position for sweep check
+                const prevPos = proj.userData.prevPosition || proj.position.clone();
+                const currPos = proj.position;
+
                 // Check enemy collisions
                 enemies.forEach(enemy => {
-                    if (!enemy.userData.active) return;
+                    if (!enemy.userData.active || !proj.userData.active) return;
 
-                    const dist = proj.position.distanceTo(enemy.position);
-                    if (dist < 2) {
-                        proj.userData.active = false;
-                        enemy.userData.health--;
-                        enemy.userData.hitFlash = 1;
-                        showHitMarker();
+                    // Enemy hitbox center (slightly raised for center mass)
+                    const enemyCenter = enemy.position.clone();
+                    enemyCenter.y += 1.2;
 
-                        // Update health bar
-                        const healthBar = enemy.getObjectByName('healthBar');
-                        if (healthBar) {
-                            healthBar.scale.x = enemy.userData.health / ENEMY_HEALTH;
-                            healthBar.position.x = -(1 - healthBar.scale.x);
-                        }
+                    // Swept sphere collision - check along projectile path
+                    const hitRadius = 2.5;
+                    const toEnemy = enemyCenter.clone().sub(prevPos);
+                    const projDir = currPos.clone().sub(prevPos);
+                    const projLen = projDir.length();
 
-                        if (enemy.userData.health <= 0) {
-                            enemy.userData.active = false;
-                            addScore(300, enemy.position);
-                            spawnParticles(enemy.position, 0xe94560, 20);
-                        } else {
-                            addScore(100, enemy.position);
-                            spawnParticles(proj.position, 0xf39c12, 5);
+                    if (projLen > 0) {
+                        projDir.normalize();
+                        const dot = toEnemy.dot(projDir);
+                        const clampedDot = Math.max(0, Math.min(projLen, dot));
+                        const closestPoint = prevPos.clone().add(projDir.multiplyScalar(clampedDot));
+                        const dist = closestPoint.distanceTo(enemyCenter);
+
+                        if (dist < hitRadius) {
+                            proj.userData.active = false;
+                            enemy.userData.health--;
+                            enemy.userData.hitFlash = 1;
+                            showHitMarker();
+
+                            // Update health bar
+                            const healthBar = enemy.getObjectByName('healthBar');
+                            if (healthBar) {
+                                healthBar.scale.x = enemy.userData.health / ENEMY_HEALTH;
+                                healthBar.position.x = -(1 - healthBar.scale.x);
+                            }
+
+                            if (enemy.userData.health <= 0) {
+                                enemy.userData.active = false;
+                                addScore(300, enemy.position);
+                                spawnParticles(enemy.position, 0xe94560, 20);
+                            } else {
+                                addScore(100, enemy.position);
+                                spawnParticles(closestPoint, 0xf39c12, 5);
+                            }
                         }
                     }
                 });
 
                 // Check obstacle collisions
                 obstacles.forEach(obs => {
-                    if (!obs.userData.active || obs.userData.hit) return;
+                    if (!obs.userData.active || obs.userData.hit || !proj.userData.active) return;
 
-                    const dist = proj.position.distanceTo(obs.position);
-                    const hitDist = (obs.userData.width || 2) * 0.7;
+                    // Obstacle hitbox center
+                    const obsCenter = obs.position.clone();
+                    obsCenter.y += (obs.userData.height || 2) * 0.4;
 
-                    if (dist < hitDist) {
-                        proj.userData.active = false;
-                        obs.userData.hit = true;
-                        showHitMarker();
-                        addScore(150, obs.position);
+                    const hitRadius = (obs.userData.width || 2) * 0.8;
 
-                        const colors = [0xe74c3c, 0x3498db, 0x2ecc71, 0xf1c40f, 0x9b59b6];
-                        spawnParticles(obs.position, colors[Math.floor(Math.random() * colors.length)], 15);
+                    // Swept sphere collision
+                    const toObs = obsCenter.clone().sub(prevPos);
+                    const projDir = currPos.clone().sub(prevPos);
+                    const projLen = projDir.length();
+
+                    if (projLen > 0) {
+                        projDir.normalize();
+                        const dot = toObs.dot(projDir);
+                        const clampedDot = Math.max(0, Math.min(projLen, dot));
+                        const closestPoint = prevPos.clone().add(projDir.multiplyScalar(clampedDot));
+                        const dist = closestPoint.distanceTo(obsCenter);
+
+                        if (dist < hitRadius) {
+                            proj.userData.active = false;
+                            obs.userData.hit = true;
+                            showHitMarker();
+                            addScore(150, obs.position);
+
+                            const colors = [0xe74c3c, 0x3498db, 0x2ecc71, 0xf1c40f, 0x9b59b6];
+                            spawnParticles(obs.position, colors[Math.floor(Math.random() * colors.length)], 15);
+                        }
                     }
                 });
+
+                // Store current position for next frame's sweep check
+                proj.userData.prevPosition = proj.position.clone();
             });
 
             // Clean up inactive objects
@@ -1716,6 +2315,39 @@
         document.getElementById('resume-btn').addEventListener('click', resumeGame);
         document.getElementById('quit-btn').addEventListener('click', quitToMenu);
 
+        // Control scheme selector
+        const classicBtn = document.getElementById('classic-btn');
+        const arcadeBtn = document.getElementById('arcade-btn');
+        const instructionsEl = document.getElementById('instructions');
+
+        function setControlScheme(scheme) {
+            controlScheme = scheme;
+            classicBtn.classList.toggle('selected', scheme === 'classic');
+            arcadeBtn.classList.toggle('selected', scheme === 'arcade');
+
+            if (scheme === 'classic') {
+                instructionsEl.innerHTML = '<span>← →</span> Dodge<br><span>MOUSE</span> Aim<br><span>CLICK</span> Fire';
+            } else {
+                instructionsEl.innerHTML = '<span>A D</span> Dodge<br><span>← →</span> Aim<br><span>SPACE</span> Fire';
+            }
+        }
+
+        classicBtn.addEventListener('click', () => setControlScheme('classic'));
+        arcadeBtn.addEventListener('click', () => setControlScheme('arcade'));
+
+        // Camera mode selector
+        const fpsBtn = document.getElementById('fps-btn');
+        const thirdpersonBtn = document.getElementById('thirdperson-btn');
+
+        function setCameraMode(mode) {
+            cameraMode = mode;
+            fpsBtn.classList.toggle('selected', mode === 'hybrid-fps');
+            thirdpersonBtn.classList.toggle('selected', mode === 'third-person');
+        }
+
+        fpsBtn.addEventListener('click', () => setCameraMode('hybrid-fps'));
+        thirdpersonBtn.addEventListener('click', () => setCameraMode('third-person'));
+
         // Keyboard controls
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
@@ -1727,10 +2359,24 @@
             // Controls only during gameplay
             if (gameState === 'PLAYING') {
                 const key = e.key;
-                // Arrow keys: Move & Aim
-                if (key === 'ArrowLeft') keys.left = true;
-                if (key === 'ArrowRight') keys.right = true;
-                // Space: Fire
+
+                // A/D always for dodge (both schemes)
+                if (key === 'a' || key === 'A') keys.left = true;
+                if (key === 'd' || key === 'D') keys.right = true;
+
+                if (controlScheme === 'classic') {
+                    // Classic: Arrow left/right also for dodge
+                    if (key === 'ArrowLeft') keys.left = true;
+                    if (key === 'ArrowRight') keys.right = true;
+                } else {
+                    // Arcade: Arrows = aim crosshair
+                    if (key === 'ArrowLeft') keys.aimLeft = true;
+                    if (key === 'ArrowRight') keys.aimRight = true;
+                    if (key === 'ArrowUp') keys.aimUp = true;
+                    if (key === 'ArrowDown') keys.aimDown = true;
+                }
+
+                // Space: Fire (both schemes)
                 if (key === ' ') {
                     e.preventDefault();
                     shoot();
@@ -1740,8 +2386,22 @@
 
         document.addEventListener('keyup', (e) => {
             const key = e.key;
-            if (key === 'ArrowLeft') keys.left = false;
-            if (key === 'ArrowRight') keys.right = false;
+
+            // A/D always for dodge (both schemes)
+            if (key === 'a' || key === 'A') keys.left = false;
+            if (key === 'd' || key === 'D') keys.right = false;
+
+            if (controlScheme === 'classic') {
+                // Classic: Arrow left/right also for dodge
+                if (key === 'ArrowLeft') keys.left = false;
+                if (key === 'ArrowRight') keys.right = false;
+            } else {
+                // Arcade: Arrows = aim crosshair
+                if (key === 'ArrowLeft') keys.aimLeft = false;
+                if (key === 'ArrowRight') keys.aimRight = false;
+                if (key === 'ArrowUp') keys.aimUp = false;
+                if (key === 'ArrowDown') keys.aimDown = false;
+            }
         });
 
         // Pointer lock for better mouse control
@@ -1808,6 +2468,19 @@
         window.damagePlayer = damagePlayer;
         window.takeDamage = damagePlayer;
         window.keys = keys;
+        window.setControlScheme = setControlScheme;
+        Object.defineProperty(window, 'controlScheme', {
+            get: () => controlScheme,
+            set: (v) => { setControlScheme(v); }
+        });
+        window.setCameraMode = setCameraMode;
+        Object.defineProperty(window, 'cameraMode', {
+            get: () => cameraMode,
+            set: (v) => { setCameraMode(v); }
+        });
+        window.findAutoAimTarget = findAutoAimTarget;
+        window.enemies = enemies;
+        window.obstacles = obstacles;
 
         // Initialize and start
         initThree();
