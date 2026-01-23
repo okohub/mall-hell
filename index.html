@@ -841,16 +841,20 @@
             fpsStone.position.set(0, 0.02, 0.1);
             slingshot.add(fpsStone);
 
-            slingshot.position.set(-0.12, -0.03, -0.35);
-            slingshot.rotation.set(0.1, 0, 0.1);
+            slingshot.position.set(0, 0, 0);
+            slingshot.rotation.set(0.2, 0, 0);
             fpsHands.add(slingshot);
             fpsHands.userData.slingshot = slingshot;
 
+            // Position left hand to hold slingshot
+            leftHand.position.set(-0.04, -0.12, -0.08);
+            leftHand.rotation.set(0.3, 0.2, 0.1);
+
             fpsWeapon.add(fpsHands);
 
-            // Position weapon view (centered lower)
-            fpsWeapon.position.set(0.15, -0.25, -0.3);
-            fpsWeapon.rotation.set(0, 0, 0);
+            // Position weapon view - lower right, clearly visible
+            fpsWeapon.position.set(0.2, -0.18, -0.5);
+            fpsWeapon.rotation.set(0.1, -0.1, 0);
 
             // Add to camera so it moves with view
             camera.add(fpsWeapon);
@@ -2687,6 +2691,17 @@
         window.findAutoAimTarget = findAutoAimTarget;
         window.enemies = enemies;
         window.obstacles = obstacles;
+
+        // Expose 3D objects for testing
+        Object.defineProperty(window, 'fpsWeapon', {
+            get: () => fpsWeapon
+        });
+        Object.defineProperty(window, 'playerChild', {
+            get: () => playerChild
+        });
+        Object.defineProperty(window, 'playerCart', {
+            get: () => playerCart
+        });
 
         // Initialize and start
         initThree();

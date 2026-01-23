@@ -1241,6 +1241,297 @@
             });
         });
 
+        // Camera Mode System Tests
+        test.describe('Camera Mode System', () => {
+            const CameraModeSystem = {
+                currentMode: 'hybrid-fps',
+                validModes: ['hybrid-fps', 'third-person'],
+
+                setMode(mode) {
+                    if (this.validModes.includes(mode)) {
+                        this.currentMode = mode;
+                        return true;
+                    }
+                    return false;
+                },
+
+                getMode() {
+                    return this.currentMode;
+                },
+
+                isFPS() {
+                    return this.currentMode === 'hybrid-fps';
+                },
+
+                isThirdPerson() {
+                    return this.currentMode === 'third-person';
+                },
+
+                reset() {
+                    this.currentMode = 'hybrid-fps';
+                }
+            };
+
+            test.beforeEach(() => {
+                CameraModeSystem.reset();
+            });
+
+            test.it('should default to FPS mode', () => {
+                test.assertEqual(CameraModeSystem.getMode(), 'hybrid-fps');
+                test.assertTrue(CameraModeSystem.isFPS());
+            });
+
+            test.it('should switch to third-person mode', () => {
+                CameraModeSystem.setMode('third-person');
+                test.assertEqual(CameraModeSystem.getMode(), 'third-person');
+                test.assertTrue(CameraModeSystem.isThirdPerson());
+                test.assertFalse(CameraModeSystem.isFPS());
+            });
+
+            test.it('should switch back to FPS mode', () => {
+                CameraModeSystem.setMode('third-person');
+                CameraModeSystem.setMode('hybrid-fps');
+                test.assertTrue(CameraModeSystem.isFPS());
+            });
+
+            test.it('should reject invalid camera modes', () => {
+                const result = CameraModeSystem.setMode('invalid-mode');
+                test.assertFalse(result);
+                test.assertEqual(CameraModeSystem.getMode(), 'hybrid-fps');
+            });
+        });
+
+        // FPS Weapon System Tests
+        test.describe('FPS Weapon System', () => {
+            const FPSWeaponSystem = {
+                visible: false,
+                fireAnimProgress: 0,
+                FIRE_ANIM_DURATION: 1.0,
+                FIRE_ANIM_SPEED: 4,
+
+                show() {
+                    this.visible = true;
+                },
+
+                hide() {
+                    this.visible = false;
+                },
+
+                isVisible() {
+                    return this.visible;
+                },
+
+                startFireAnimation() {
+                    this.fireAnimProgress = this.FIRE_ANIM_DURATION;
+                },
+
+                updateAnimation(dt) {
+                    if (this.fireAnimProgress > 0) {
+                        this.fireAnimProgress -= dt * this.FIRE_ANIM_SPEED;
+                        if (this.fireAnimProgress < 0) {
+                            this.fireAnimProgress = 0;
+                        }
+                    }
+                },
+
+                isAnimating() {
+                    return this.fireAnimProgress > 0;
+                },
+
+                getAnimProgress() {
+                    return this.fireAnimProgress;
+                },
+
+                // Calculate pull-back amount for rubber bands
+                getPullBack() {
+                    if (this.fireAnimProgress <= 0) return 0;
+                    // Pull back peaks at 0.5, then releases
+                    return this.fireAnimProgress > 0.5
+                        ? (1 - this.fireAnimProgress) * 2
+                        : this.fireAnimProgress * 2;
+                },
+
+                reset() {
+                    this.visible = false;
+                    this.fireAnimProgress = 0;
+                }
+            };
+
+            test.beforeEach(() => {
+                FPSWeaponSystem.reset();
+            });
+
+            test.it('should be hidden by default', () => {
+                test.assertFalse(FPSWeaponSystem.isVisible());
+            });
+
+            test.it('should show weapon when show() is called', () => {
+                FPSWeaponSystem.show();
+                test.assertTrue(FPSWeaponSystem.isVisible());
+            });
+
+            test.it('should hide weapon when hide() is called', () => {
+                FPSWeaponSystem.show();
+                FPSWeaponSystem.hide();
+                test.assertFalse(FPSWeaponSystem.isVisible());
+            });
+
+            test.it('should start fire animation at full progress', () => {
+                FPSWeaponSystem.startFireAnimation();
+                test.assertEqual(FPSWeaponSystem.getAnimProgress(), 1.0);
+                test.assertTrue(FPSWeaponSystem.isAnimating());
+            });
+
+            test.it('should decrease animation progress over time', () => {
+                FPSWeaponSystem.startFireAnimation();
+                FPSWeaponSystem.updateAnimation(0.1); // 0.1 seconds
+                test.assertTrue(FPSWeaponSystem.getAnimProgress() < 1.0);
+                test.assertTrue(FPSWeaponSystem.isAnimating());
+            });
+
+            test.it('should complete animation and stop', () => {
+                FPSWeaponSystem.startFireAnimation();
+                // Run enough updates to complete animation
+                for (let i = 0; i < 10; i++) {
+                    FPSWeaponSystem.updateAnimation(0.1);
+                }
+                test.assertEqual(FPSWeaponSystem.getAnimProgress(), 0);
+                test.assertFalse(FPSWeaponSystem.isAnimating());
+            });
+
+            test.it('should calculate pull-back correctly during animation', () => {
+                FPSWeaponSystem.startFireAnimation();
+                // At progress 1.0, pull-back should be 0 (just started)
+                test.assertEqual(FPSWeaponSystem.getPullBack(), 0);
+
+                // At progress 0.5, pull-back should be at maximum (1.0)
+                FPSWeaponSystem.fireAnimProgress = 0.5;
+                test.assertEqual(FPSWeaponSystem.getPullBack(), 1.0);
+
+                // At progress 0.25, pull-back should be 0.5 (releasing)
+                FPSWeaponSystem.fireAnimProgress = 0.25;
+                test.assertEqual(FPSWeaponSystem.getPullBack(), 0.5);
+            });
+        });
+
+        // Slingshot Tension System Tests
+        test.describe('Slingshot Tension System', () => {
+            const TensionSystem = {
+                tension: 0,
+                isCharging: false,
+                MIN_TENSION: 0.2,
+                MAX_TENSION: 1.0,
+                CHARGE_RATE: 1.5,  // Per second
+                MIN_PROJECTILE_SPEED: 60,
+                MAX_PROJECTILE_SPEED: 180,
+
+                startCharging() {
+                    this.isCharging = true;
+                    this.tension = this.MIN_TENSION;
+                },
+
+                updateCharge(dt) {
+                    if (this.isCharging && this.tension < this.MAX_TENSION) {
+                        this.tension += this.CHARGE_RATE * dt;
+                        if (this.tension > this.MAX_TENSION) {
+                            this.tension = this.MAX_TENSION;
+                        }
+                    }
+                },
+
+                release() {
+                    const releaseTension = this.tension;
+                    this.isCharging = false;
+                    this.tension = 0;
+                    return releaseTension;
+                },
+
+                getTension() {
+                    return this.tension;
+                },
+
+                getProjectileSpeed() {
+                    const t = this.tension;
+                    return this.MIN_PROJECTILE_SPEED +
+                        (this.MAX_PROJECTILE_SPEED - this.MIN_PROJECTILE_SPEED) * t;
+                },
+
+                reset() {
+                    this.tension = 0;
+                    this.isCharging = false;
+                }
+            };
+
+            test.beforeEach(() => {
+                TensionSystem.reset();
+            });
+
+            test.it('should start with zero tension', () => {
+                test.assertEqual(TensionSystem.getTension(), 0);
+                test.assertFalse(TensionSystem.isCharging);
+            });
+
+            test.it('should start at minimum tension when charging begins', () => {
+                TensionSystem.startCharging();
+                test.assertEqual(TensionSystem.getTension(), TensionSystem.MIN_TENSION);
+                test.assertTrue(TensionSystem.isCharging);
+            });
+
+            test.it('should increase tension over time while charging', () => {
+                TensionSystem.startCharging();
+                const initialTension = TensionSystem.getTension();
+                TensionSystem.updateCharge(0.5); // 0.5 seconds
+                test.assertTrue(TensionSystem.getTension() > initialTension);
+            });
+
+            test.it('should cap tension at maximum', () => {
+                TensionSystem.startCharging();
+                // Charge for a long time
+                for (let i = 0; i < 10; i++) {
+                    TensionSystem.updateCharge(0.5);
+                }
+                test.assertEqual(TensionSystem.getTension(), TensionSystem.MAX_TENSION);
+            });
+
+            test.it('should return tension value on release', () => {
+                TensionSystem.startCharging();
+                TensionSystem.updateCharge(0.3);
+                const tensionBeforeRelease = TensionSystem.getTension();
+                const releasedTension = TensionSystem.release();
+                test.assertEqual(releasedTension, tensionBeforeRelease);
+            });
+
+            test.it('should reset to zero after release', () => {
+                TensionSystem.startCharging();
+                TensionSystem.updateCharge(0.5);
+                TensionSystem.release();
+                test.assertEqual(TensionSystem.getTension(), 0);
+                test.assertFalse(TensionSystem.isCharging);
+            });
+
+            test.it('should calculate projectile speed based on tension', () => {
+                // At zero tension, should be minimum speed
+                test.assertEqual(TensionSystem.getProjectileSpeed(), TensionSystem.MIN_PROJECTILE_SPEED);
+
+                // At max tension, should be maximum speed
+                TensionSystem.tension = TensionSystem.MAX_TENSION;
+                test.assertEqual(TensionSystem.getProjectileSpeed(), TensionSystem.MAX_PROJECTILE_SPEED);
+
+                // At half tension, should be halfway
+                TensionSystem.tension = 0.5;
+                const expectedSpeed = TensionSystem.MIN_PROJECTILE_SPEED +
+                    (TensionSystem.MAX_PROJECTILE_SPEED - TensionSystem.MIN_PROJECTILE_SPEED) * 0.5;
+                test.assertEqual(TensionSystem.getProjectileSpeed(), expectedSpeed);
+            });
+
+            test.it('should give minimum speed on quick tap (minimum tension)', () => {
+                TensionSystem.startCharging();
+                // Immediate release
+                const tension = TensionSystem.release();
+                test.assertEqual(tension, TensionSystem.MIN_TENSION);
+            });
+        });
+
         // ============================================
         // UI RENDERING
         // ============================================

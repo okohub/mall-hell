@@ -1623,6 +1623,150 @@
                         }
                     }
                 );
+
+                // FPS Weapon System Tests
+                this.addTest('fps-weapon-visible-in-fps-mode', 'FPS Weapon', 'Slingshot visible in FPS mode',
+                    'Verifies the FPS weapon (hands with slingshot) is visible during FPS gameplay',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+
+                        // Ensure FPS mode is selected
+                        const fpsBtn = this.getElement('#fps-btn');
+                        if (fpsBtn) this.simulateClick(fpsBtn);
+                        await this.wait(50);
+
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(500);
+
+                        // Check if fpsWeapon exists and is visible
+                        const fpsWeaponVisible = this.gameWindow.fpsWeapon?.visible;
+                        const cameraMode = this.gameWindow.cameraMode;
+
+                        if (cameraMode !== 'hybrid-fps') {
+                            throw new Error(`Expected FPS mode, got: ${cameraMode}`);
+                        }
+                        if (!fpsWeaponVisible) {
+                            throw new Error('FPS weapon should be visible in FPS mode');
+                        }
+                    }
+                );
+
+                this.addTest('fps-weapon-hidden-in-tps-mode', 'FPS Weapon', 'Slingshot hidden in third-person mode',
+                    'Verifies the FPS weapon is hidden when in third-person view',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+
+                        // Select third-person mode
+                        const tpsBtn = this.getElement('#thirdperson-btn');
+                        if (tpsBtn) this.simulateClick(tpsBtn);
+                        await this.wait(50);
+
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(500);
+
+                        const fpsWeaponVisible = this.gameWindow.fpsWeapon?.visible;
+                        const cameraMode = this.gameWindow.cameraMode;
+
+                        if (cameraMode !== 'third-person') {
+                            throw new Error(`Expected third-person mode, got: ${cameraMode}`);
+                        }
+                        if (fpsWeaponVisible) {
+                            throw new Error('FPS weapon should be hidden in third-person mode');
+                        }
+                    }
+                );
+
+                this.addTest('camera-mode-switch', 'Camera Mode', 'Camera mode can be switched',
+                    'Verifies camera mode buttons work correctly',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+
+                        // First ensure we're in FPS mode
+                        const fpsBtnInit = this.getElement('#fps-btn');
+                        if (fpsBtnInit) {
+                            this.simulateClick(fpsBtnInit);
+                            await this.wait(100);
+                        }
+
+                        let cameraMode = this.gameWindow.cameraMode;
+                        if (cameraMode !== 'hybrid-fps') {
+                            throw new Error(`Expected FPS mode after init click, got: ${cameraMode}`);
+                        }
+
+                        // Switch to third-person
+                        const tpsBtn = this.getElement('#thirdperson-btn');
+                        if (tpsBtn) {
+                            this.simulateClick(tpsBtn);
+                            await this.wait(100);
+                        }
+
+                        cameraMode = this.gameWindow.cameraMode;
+                        if (cameraMode !== 'third-person') {
+                            throw new Error(`Expected third-person after click, got: ${cameraMode}`);
+                        }
+
+                        // Switch back to FPS
+                        const fpsBtn = this.getElement('#fps-btn');
+                        if (fpsBtn) {
+                            this.simulateClick(fpsBtn);
+                            await this.wait(100);
+                        }
+
+                        cameraMode = this.gameWindow.cameraMode;
+                        if (cameraMode !== 'hybrid-fps') {
+                            throw new Error(`Expected FPS after switching back, got: ${cameraMode}`);
+                        }
+                    }
+                );
+
+                this.addTest('child-hidden-in-fps', 'Camera Mode', 'Child model hidden in FPS mode',
+                    'Verifies the child character is hidden when in FPS mode (camera is the child)',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+
+                        // Ensure FPS mode
+                        const fpsBtn = this.getElement('#fps-btn');
+                        if (fpsBtn) this.simulateClick(fpsBtn);
+                        await this.wait(50);
+
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(500);
+
+                        const childVisible = this.gameWindow.playerChild?.visible;
+                        if (childVisible === true) {
+                            throw new Error('Child model should be hidden in FPS mode');
+                        }
+                    }
+                );
+
+                this.addTest('child-visible-in-tps', 'Camera Mode', 'Child model visible in third-person',
+                    'Verifies the child character is visible when in third-person view',
+                    async () => {
+                        this.resetGame();
+                        await this.wait(100);
+
+                        // Select third-person mode
+                        const tpsBtn = this.getElement('#thirdperson-btn');
+                        if (tpsBtn) this.simulateClick(tpsBtn);
+                        await this.wait(50);
+
+                        const startBtn = this.getElement('#start-btn');
+                        this.simulateClick(startBtn);
+                        await this.wait(500);
+
+                        const childVisible = this.gameWindow.playerChild?.visible;
+                        if (childVisible !== true) {
+                            throw new Error('Child model should be visible in third-person mode');
+                        }
+                    }
+                );
             }
 
             addTest(id, group, name, description, fn) {
