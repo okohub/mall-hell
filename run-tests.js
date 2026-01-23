@@ -4,7 +4,7 @@ const fs = require('fs');
 const PNG = require('pngjs').PNG;
 
 // Directories
-const BASELINE_DIR = path.join(__dirname, 'tests/baselines');
+const BASELINE_DIR = path.join(__dirname, '.baselines');
 const CURRENT_DIR = path.join(__dirname, 'screenshots');
 const TEST_OUTPUT_DIR = path.join(__dirname, '.test-output');
 const OUTPUT_FILE = path.join(TEST_OUTPUT_DIR, 'test-results.txt');

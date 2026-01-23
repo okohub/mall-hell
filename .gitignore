@@ -23,6 +23,7 @@ npm-debug.log*
 # Test outputs
 /coverage/
 /screenshots/
+/.baselines/
 
 # Build artifacts (if any)
 /dist/
