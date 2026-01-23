@@ -69,7 +69,7 @@ Before claiming any feature is "done", I must confirm:
 ## Overview
 
 **Title:** Mall Hell
-**Version:** 2.0
+**Version:** 3.1
 **Platform:** Desktop Browser
 **Tech Stack:** HTML5, CSS3, JavaScript, Three.js (r128)
 **Delivery:** Single `index.html` file, runs locally without build tools
@@ -113,24 +113,21 @@ GAME_OVER → PLAYING (Play Again button)
 
 | Input | Action |
 |-------|--------|
-| Mouse Move | Aim slingshot |
-| Left Click | Fire projectile |
+| Arrow Keys | Aim crosshair |
+| A / D | Dodge cart left/right |
+| SPACE (hold) | Charge slingshot |
+| SPACE (release) | Fire projectile |
 | ESC | Pause/Resume game |
-| Arrow Left / A | Move cart left |
-| Arrow Right / D | Move cart right |
-| Arrow Up / W | Speed boost (temporary) |
-| Arrow Down / S | Slow down (temporary) |
 
 ## Core Mechanics
 
 ### Player Cart
 - First-person POV from inside shopping cart
-- Automatic forward movement with player steering
+- Automatic forward movement
+- Acceleration-based dodge with cart leaning (A/D keys)
 - Camera height: 3 units
 - Base movement speed: 25 units/second
 - Lateral movement speed: 8 units/second
-- Speed boost: 1.5x (while holding Up/W)
-- Slow down: 0.5x (while holding Down/S)
 - Movement bounds: ±10 units from center
 
 ### Player Health
@@ -144,9 +141,14 @@ GAME_OVER → PLAYING (Play Again button)
 - On death: Game Over (early checkout)
 
 ### Weapon System
-- Slingshot with infinite ammo
-- Projectile speed: 120 units/second
-- Shooting cooldown: 500ms
+- Slingshot with infinite ammo (visible in first-person view)
+- Tension-based charging: hold SPACE to charge, release to fire
+- Minimum tension: 0.2 (quick tap)
+- Maximum tension: 1.0 (fully charged)
+- Charge rate: 1.2 per second
+- Projectile speed: 60-180 units/second (based on tension)
+- Shooting cooldown: 300ms
+- Aim-assist locks onto nearby targets
 - Projectiles despawn when out of bounds
 - Visual: Orange glowing sphere
 
@@ -207,8 +209,9 @@ All obstacles fall/topple when hit.
 - **Score** (top-left): "CHAOS SCORE" label with value
 - **Progress Bar** (top-center): Distance to checkout
 - **Ammo Status** (bottom-right): "SLINGSHOT READY" / "RELOADING..."
-- **Cooldown Indicator** (bottom-center): Circular progress ring
-- **Crosshair** (center): White cross with red dot
+- **Tension Indicator** (around crosshair): Ring showing charge level
+- **Crosshair** (center): White cross with red dot, turns green on aim-assist lock
+- **Health Bar** (bottom-left): Current player health
 - **Pause Hint** (top-right): "ESC to Pause"
 
 ### Menus
@@ -218,12 +221,16 @@ All obstacles fall/topple when hit.
 
 ## Visual Effects
 
+- Visible slingshot weapon in first-person view
+- Slingshot arm animates with tension charge
 - Hit marker (X shape) on successful hits
 - Floating score popups at hit location
 - Particle explosions on destruction
 - Health bar color (green) with background (dark)
 - Enemy flash white when hit
 - Obstacle falling/toppling animation
+- Screen flash red on damage
+- Invulnerability flashing effect
 
 ## Spawn System
 
@@ -248,13 +255,20 @@ Objects are removed when:
 
 ```
 mall-hell/
-├── index.html      # Complete game (single file)
-└── CLAUDE.md       # This document
+├── index.html          # Complete game (single file)
+├── CLAUDE.md           # Project definition & acceptance criteria
+├── README.md           # Player-facing documentation
+├── BUILD_LIFECYCLE.md  # Build and release procedures
+├── package.json        # Dependencies (puppeteer, pngjs for tests)
+├── run-tests.js        # Test runner script
+└── tests/
+    ├── unit-tests.html # Unit tests
+    ├── ui-tests.html   # UI/integration tests
+    └── baselines/      # Visual regression baseline images
 ```
 
-## Future Considerations (v2+)
+## Future Considerations
 
-- Player steering/dodge mechanics
 - Multiple weapon types
 - Power-ups
 - Multiple aisles/levels
@@ -286,12 +300,13 @@ mall-hell/
 - [ ] No stuck states or invalid transitions possible
 
 ### AC3: Player Controls
-- [ ] Mouse movement aims camera (limited range)
-- [ ] Left click fires projectile
-- [ ] Shooting respects 500ms cooldown
+- [ ] Arrow keys move crosshair/aim
+- [ ] SPACE (hold) charges slingshot with tension indicator
+- [ ] SPACE (release) fires projectile at tension-based speed
+- [ ] Shooting respects 300ms cooldown
+- [ ] Aim-assist locks onto nearby targets
 - [ ] Cannot shoot during MENU, PAUSED, or GAME_OVER states
-- [ ] Pointer lock activates on game canvas click
-- [ ] ESC exits pointer lock AND pauses game
+- [ ] ESC pauses game
 
 ### AC4: Player Movement
 - [ ] Cart moves forward automatically at constant speed
@@ -348,7 +363,8 @@ mall-hell/
 - [ ] Main menu displays title, version, instructions, start button
 - [ ] HUD shows score, progress bar, ammo status, pause hint
 - [ ] Crosshair visible and centered during gameplay
-- [ ] Cooldown indicator animates correctly
+- [ ] Tension indicator (ring around crosshair) shows charge level
+- [ ] Aim-assist indicator shows when locked on target
 - [ ] Pause menu shows current score, resume, quit buttons
 - [ ] Game over shows final score, rating, play again button
 - [ ] All buttons respond to hover state
@@ -388,16 +404,14 @@ mall-hell/
 - [ ] Game handles alt-tab/focus loss gracefully
 
 ### AC15: Player Movement Controls
-- [ ] Left arrow / A key moves cart left
-- [ ] Right arrow / D key moves cart right
-- [ ] Up arrow / W key increases speed (boost)
-- [ ] Down arrow / S key decreases speed (slow)
+- [ ] A key dodges cart left
+- [ ] D key dodges cart right
+- [ ] Cart uses acceleration-based movement with leaning
 - [ ] Cart stays within aisle bounds (±10 units)
 - [ ] Movement is smooth (no jitter)
 - [ ] Controls work during PLAYING state only
 - [ ] Controls disabled during PAUSED state
-- [ ] Multiple keys can be held simultaneously
-- [ ] Movement stops when key released
+- [ ] Movement decelerates when key released
 
 ### AC16: Player Health System
 - [ ] Health bar displays in HUD (bottom-left)
@@ -450,7 +464,10 @@ mall-hell/
 
 - All 3D models are procedurally generated using Three.js primitives
 - Canvas textures used for signs and floor tiles
-- Pointer lock API for smooth FPS-style aiming
+- Keyboard-based crosshair aiming (arrow keys)
+- Tension-based shooting with visual feedback
+- Aim-assist with target proximity detection
 - requestAnimationFrame for game loop
 - Delta time used for frame-rate independent movement
 - Objects stored in arrays, filtered each frame for cleanup
+- Puppeteer-based automated testing with visual regression

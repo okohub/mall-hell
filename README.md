@@ -7,33 +7,28 @@ A fast, chaotic first-person browser game where you're a mischievous kid in a sh
 ## How to Play
 
 1. Open `index.html` in your browser
-2. Select your preferred control scheme and camera mode
-3. Click "START CHAOS"
-4. Shoot enemies and obstacles to score points
+2. Click "START CHAOS"
+3. Hold SPACE to charge your slingshot, release to fire
+4. Dodge enemies and obstacles with A/D keys
 5. Reach the checkout to win!
 
 ## Controls
 
-### Classic Mode (Mouse + Keyboard)
-| Input | Action |
-|-------|--------|
-| **A / D** or **Arrow Keys** | Dodge left/right |
-| **Mouse** | Aim |
-| **Click** | Fire |
-| **ESC** | Pause |
-
-### Arcade Mode (Full Keyboard)
 | Input | Action |
 |-------|--------|
 | **A / D** | Dodge left/right |
-| **Arrow Keys** | Move crosshair |
-| **Space** | Fire |
+| **Arrow Keys** | Aim crosshair |
+| **SPACE (hold)** | Charge slingshot |
+| **SPACE (release)** | Fire projectile |
 | **ESC** | Pause |
 
-## Camera Modes
+## Slingshot Mechanics
 
-- **First Person** - Hybrid FPS view with visible slingshot
-- **Third Person** - Over-the-shoulder view showing cart and character
+The slingshot uses a **tension system** - hold SPACE to charge up power:
+- Quick tap = weak shot (minimum speed)
+- Hold longer = more power (maximum speed)
+- Visual indicator shows charge level around crosshair
+- Aim-assist helps lock onto nearby targets
 
 ## Scoring
 
@@ -43,13 +38,28 @@ A fast, chaotic first-person browser game where you're a mischievous kid in a sh
 | Destroy enemy cart | +300 |
 | Hit obstacle | +150 |
 
+### Score Ratings
+
+| Score | Rating |
+|-------|--------|
+| 0-800 | Mild Mischief |
+| 801-2000 | Rowdy Kid |
+| 2001-4000 | Troublemaker |
+| 4001-7000 | Chaos Master |
+| 7001-10000 | Total Mayhem! |
+| 10001+ | LEGENDARY CHAOS! |
+
 ## Features
 
-- Two camera modes (FPS / Third-person)
-- Two control schemes (Classic / Arcade)
+- First-person view with visible slingshot weapon
+- Tension-based shooting mechanic (hold to charge)
+- Aim-assist that locks onto nearby targets
 - Acceleration-based dodge with cart leaning
-- Auto-aim assist near crosshair
-- Procedurally generated 3D environment
+- Player health system with damage and invulnerability
+- Procedurally generated 3D supermarket environment
+- Enemy carts with health bars and AI behavior
+- Three obstacle types: stacks, barrels, and displays
+- Particle effects on destruction
 - No external assets - everything generated with code
 
 ## Tech Stack
@@ -62,8 +72,17 @@ A fast, chaotic first-person browser game where you're a mischievous kid in a sh
 ## Development
 
 ```bash
-# Run tests
-node run-tests.js
+# Run all tests
+bun run test
+
+# Run specific test
+bun run-tests.js --test=<test-id>
+
+# Run test group
+bun run-tests.js --group=menu
+
+# Update visual baselines (only after intentional UI changes)
+bun run-tests.js --update-baselines
 
 # Or just open in browser
 open index.html
@@ -71,11 +90,13 @@ open index.html
 
 ## Version History
 
-- **v1.6** - Third-person/FPS camera modes, improved collision detection, visual overhaul
+- **v3.1** - Menu redesign, aim-assist improvements, enhanced test suite
+- **v3.0** - Slingshot tension/power mechanic, FPS-only camera with visible weapon
+- **v1.9** - Bug fixes, code quality tests
+- **v1.6** - Third-person/FPS camera modes, improved collision detection
 - **v1.5** - Control scheme selector, arcade mode
 - **v1.4** - Simplified arcade controls
-- **v1.3** - Twin-stick controls
 
 ## License
 
-MIT
+All rights reserved.
