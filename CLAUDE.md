@@ -37,12 +37,31 @@ Before claiming any feature is "done", I must confirm:
 [ ] AC verified: YES
 ```
 
+### Test Workflow Rules (MANDATORY)
+
+**NEVER run the full test suite repeatedly. Follow this workflow:**
+
+1. **Test output is persisted** - When tests run, output is saved to files. READ the output file instead of re-running tests.
+
+2. **Run only failing tests** - Use `bun run-tests.js --test=<test-id>` to run a specific failing test, not the entire suite.
+
+3. **Check output files first** - Before running any test command, check if there's already a recent output file with the results you need.
+
+4. **One test run per change** - After making a fix, run tests ONCE. Read the output. Don't run again unless you made another code change.
+
+**Commands:**
+- `bun run test` - Full suite (use sparingly)
+- `bun run-tests.js --test=<id>` - Single test
+- `bun run-tests.js --update-baselines` - Update visual baselines
+
+**Output files location:** `/Users/onurkagan/.claude/projects/-Users-onurkagan-projects-mall-hell/.../tool-results/`
+
 ---
 
 ## Overview
 
 **Title:** Mall Hell
-**Version:** 1.4
+**Version:** 1.9
 **Platform:** Desktop Browser
 **Tech Stack:** HTML5, CSS3, JavaScript, Three.js (r128)
 **Delivery:** Single `index.html` file, runs locally without build tools

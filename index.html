@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mall Hell v1.6</title>
+    <title>Mall Hell v1.9</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -64,6 +64,20 @@
             background: #e94560;
             border-radius: 50%;
             box-shadow: 0 0 10px #e94560;
+            transition: all 0.15s ease;
+        }
+
+        /* Aim-assist locked on */
+        #crosshair.aim-assist-active::before,
+        #crosshair.aim-assist-active::after {
+            background: rgba(0, 255, 136, 0.95);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.9);
+        }
+        #crosshair.aim-assist-active #crosshair-dot {
+            background: #00ff88;
+            box-shadow: 0 0 15px #00ff88, 0 0 30px #00ff88;
+            width: 8px;
+            height: 8px;
         }
 
         /* Tension Indicator */
@@ -128,22 +142,51 @@
             display: none;
         }
 
+        /* Glass morphism mixin for HUD elements */
+        .glass-panel {
+            background: rgba(10, 10, 20, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
         #score-container {
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(10, 10, 20, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             padding: 15px 25px;
-            border-radius: 10px;
-            border: 2px solid #e94560;
+            border-radius: 12px;
+            border: 1px solid rgba(233, 69, 96, 0.4);
+            border-top: 1px solid rgba(233, 69, 96, 0.6);
             display: inline-block;
+            box-shadow: 0 8px 32px rgba(233, 69, 96, 0.15),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
+        }
+        #score-container.bump {
+            transform: scale(1.05);
+            box-shadow: 0 12px 40px rgba(233, 69, 96, 0.3),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
         #score-label {
             color: #e94560;
             font-size: 14px;
             letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
         }
         #score {
             color: #f1c40f;
             font-size: 36px;
-            text-shadow: 0 0 20px rgba(241, 196, 15, 0.5);
+            text-shadow: 0 0 20px rgba(241, 196, 15, 0.6),
+                         0 0 40px rgba(241, 196, 15, 0.3);
+            transition: transform 0.15s ease-out, text-shadow 0.15s ease-out;
+        }
+        #score.bump {
+            transform: scale(1.1);
+            text-shadow: 0 0 30px rgba(241, 196, 15, 0.8),
+                         0 0 60px rgba(241, 196, 15, 0.5);
         }
 
         #progress-container {
@@ -152,10 +195,15 @@
             left: 50%;
             transform: translateX(-50%);
             width: 400px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px 20px;
-            border-radius: 10px;
-            border: 2px solid #27ae60;
+            background: rgba(10, 10, 20, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(39, 174, 96, 0.4);
+            border-top: 1px solid rgba(39, 174, 96, 0.6);
+            box-shadow: 0 8px 32px rgba(39, 174, 96, 0.1),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.05);
         }
         #progress-label {
             color: #fff;
@@ -163,20 +211,23 @@
             text-align: center;
             margin-bottom: 5px;
             letter-spacing: 3px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
         }
         #progress-bar {
             width: 100%;
             height: 20px;
-            background: #1a1a2e;
+            background: rgba(26, 26, 46, 0.8);
             border-radius: 10px;
             overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
         }
         #progress-fill {
             width: 0%;
             height: 100%;
-            background: linear-gradient(90deg, #e94560, #f39c12);
+            background: linear-gradient(90deg, #e94560 0%, #f39c12 50%, #f1c40f 100%);
             border-radius: 10px;
-            transition: width 0.1s;
+            transition: width 0.15s ease-out;
+            box-shadow: 0 0 15px rgba(243, 156, 18, 0.4);
         }
 
         #cooldown-indicator {
@@ -191,8 +242,11 @@
             width: 100%;
             height: 100%;
             border-radius: 50%;
-            border: 4px solid rgba(255, 255, 255, 0.2);
+            border: 4px solid rgba(255, 255, 255, 0.15);
             position: relative;
+            background: rgba(10, 10, 20, 0.4);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
         }
         #cooldown-fill {
             position: absolute;
@@ -205,6 +259,7 @@
             border-top-color: #e94560;
             transform: rotate(0deg);
             transition: transform 0.05s linear;
+            filter: drop-shadow(0 0 4px rgba(233, 69, 96, 0.5));
         }
 
         #ammo-display {
@@ -213,10 +268,21 @@
             right: 40px;
             color: #fff;
             font-size: 18px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: 2px solid #3498db;
+            background: rgba(10, 10, 20, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 12px 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(52, 152, 219, 0.4);
+            border-top: 1px solid rgba(52, 152, 219, 0.6);
+            box-shadow: 0 8px 32px rgba(52, 152, 219, 0.1),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        #ammo-display.ready {
+            border-color: rgba(46, 204, 113, 0.5);
+            box-shadow: 0 8px 32px rgba(46, 204, 113, 0.15),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.05);
         }
 
         #menu-screen, #gameover-screen, #pause-screen {
@@ -235,23 +301,50 @@
 
         #gameover-screen, #pause-screen { display: none; }
 
+        /* Menu entrance animations */
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @keyframes glowPulse {
+            0%, 100% {
+                text-shadow: 0 0 40px rgba(233, 69, 96, 0.6), 0 0 80px rgba(233, 69, 96, 0.3);
+            }
+            50% {
+                text-shadow: 0 0 60px rgba(233, 69, 96, 0.8), 0 0 120px rgba(233, 69, 96, 0.5);
+            }
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+
         .title {
             font-size: 84px;
             color: #e94560;
             text-shadow: 0 0 40px rgba(233, 69, 96, 0.6), 0 0 80px rgba(233, 69, 96, 0.3);
             margin-bottom: 10px;
             letter-spacing: 5px;
+            animation: slideInUp 0.6s ease-out, glowPulse 3s ease-in-out infinite;
         }
         .subtitle {
             font-size: 24px;
             color: #fff;
             margin-bottom: 50px;
             letter-spacing: 3px;
+            animation: slideInUp 0.6s ease-out 0.1s both;
         }
         .version {
             font-size: 16px;
             color: #e94560;
             margin-bottom: 30px;
+            animation: slideInUp 0.6s ease-out 0.15s both;
         }
         .instructions {
             color: #888;
@@ -259,6 +352,7 @@
             margin-bottom: 40px;
             text-align: center;
             line-height: 2;
+            animation: slideInUp 0.6s ease-out 0.2s both;
         }
         .instructions span {
             color: #f1c40f;
@@ -266,6 +360,76 @@
             padding: 5px 15px;
             border-radius: 5px;
             margin: 0 5px;
+            border: 1px solid rgba(241, 196, 15, 0.2);
+        }
+        .how-to-play-btn {
+            color: #3498db;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: underline;
+            margin-top: 10px;
+            transition: color 0.2s;
+        }
+        .how-to-play-btn:hover {
+            color: #5dade2;
+        }
+        #how-to-play-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        #how-to-play-modal.visible {
+            display: flex;
+        }
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 500px;
+            border: 2px solid #e94560;
+            text-align: left;
+        }
+        .modal-content h2 {
+            color: #e94560;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .modal-content h3 {
+            color: #f1c40f;
+            margin: 20px 0 10px 0;
+            font-size: 16px;
+        }
+        .modal-content p {
+            color: #aaa;
+            line-height: 1.6;
+            margin: 10px 0;
+        }
+        .modal-content .key {
+            color: #f1c40f;
+            background: rgba(241, 196, 15, 0.1);
+            padding: 3px 10px;
+            border-radius: 4px;
+        }
+        .modal-close {
+            display: block;
+            margin: 30px auto 0;
+            padding: 10px 30px;
+            background: #e94560;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .modal-close:hover {
+            background: #ff6b6b;
         }
         .control-selector {
             margin-bottom: 20px;
@@ -310,35 +474,64 @@
             font-size: 24px;
             font-family: 'Arial Black', Arial, sans-serif;
             cursor: pointer;
-            border-radius: 10px;
-            transition: all 0.3s;
+            border-radius: 12px;
+            transition: all 0.3s ease-out;
             text-transform: uppercase;
             letter-spacing: 3px;
             box-shadow: 0 10px 30px rgba(233, 69, 96, 0.4);
+            animation: slideInUp 0.6s ease-out 0.3s both;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent);
+            transition: left 0.5s ease-out;
         }
         .btn:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(233, 69, 96, 0.6);
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 15px 40px rgba(233, 69, 96, 0.6),
+                        0 0 60px rgba(233, 69, 96, 0.3);
+        }
+        .btn:hover::before {
+            left: 100%;
+        }
+        .btn:active {
+            transform: translateY(-2px) scale(0.98);
         }
 
         #final-score-container {
             margin: 30px 0;
             text-align: center;
+            animation: slideInUp 0.6s ease-out 0.1s both;
         }
         #final-score-label {
             color: #f1c40f;
             font-size: 28px;
             letter-spacing: 5px;
+            text-shadow: 0 0 20px rgba(241, 196, 15, 0.5);
         }
         #final-score {
             color: #fff;
             font-size: 96px;
-            text-shadow: 0 0 40px rgba(255, 255, 255, 0.5);
+            text-shadow: 0 0 40px rgba(255, 255, 255, 0.5),
+                         0 0 80px rgba(255, 255, 255, 0.3);
+            animation: glowPulse 2s ease-in-out infinite;
         }
         #rating {
             color: #e94560;
             font-size: 32px;
             margin-top: 10px;
+            text-shadow: 0 0 20px rgba(233, 69, 96, 0.5);
+            animation: slideInUp 0.6s ease-out 0.2s both;
         }
 
         #hit-marker {
@@ -426,38 +619,63 @@
             position: absolute;
             bottom: 40px;
             left: 40px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px 20px;
-            border-radius: 10px;
-            border: 2px solid #e74c3c;
+            background: rgba(10, 10, 20, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(231, 76, 60, 0.4);
+            border-top: 1px solid rgba(231, 76, 60, 0.6);
             display: none;
             z-index: 100;
+            box-shadow: 0 8px 32px rgba(231, 76, 60, 0.15),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        #health-container.low-health {
+            border-color: rgba(231, 76, 60, 0.8);
+            box-shadow: 0 8px 32px rgba(231, 76, 60, 0.4),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            animation: healthPulse 0.5s ease-in-out infinite;
+        }
+        @keyframes healthPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
         }
         #health-label {
             color: #e74c3c;
             font-size: 12px;
             letter-spacing: 2px;
             margin-bottom: 5px;
+            text-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
         }
         #health-bar {
             width: 150px;
             height: 20px;
-            background: #333;
+            background: rgba(26, 26, 46, 0.8);
             border-radius: 10px;
             overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
         }
         #health-fill {
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, #e74c3c, #2ecc71);
+            background: linear-gradient(90deg,
+                #e74c3c 0%,
+                #e67e22 30%,
+                #f1c40f 60%,
+                #2ecc71 100%);
+            background-size: 200% 100%;
             border-radius: 10px;
-            transition: width 0.2s;
+            transition: width 0.2s ease-out;
+            box-shadow: 0 0 10px rgba(46, 204, 113, 0.3);
         }
         #health-value {
             color: #fff;
             font-size: 14px;
             text-align: center;
             margin-top: 5px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
         }
 
         #controls-hint {
@@ -525,7 +743,7 @@
 
                 <div id="pause-indicator">ESC to Pause</div>
 
-                <div id="controls-hint">WASD / Arrows to steer</div>
+                <div id="controls-hint">← → Dodge | SPACE Fire | Auto-Aim</div>
             </div>
 
             <div id="health-container">
@@ -547,15 +765,8 @@
 
             <div id="menu-screen">
                 <div class="title">MALL HELL</div>
-                <div class="version">v1.6</div>
+                <div class="version">v1.9</div>
                 <div class="subtitle">Supermarket Mayhem in 3D</div>
-                <div class="control-selector">
-                    <div class="control-label">CONTROLS</div>
-                    <div class="control-buttons">
-                        <button class="control-btn selected" id="classic-btn">CLASSIC</button>
-                        <button class="control-btn" id="arcade-btn">ARCADE</button>
-                    </div>
-                </div>
                 <div class="control-selector">
                     <div class="control-label">CAMERA</div>
                     <div class="control-buttons">
@@ -565,10 +776,28 @@
                 </div>
                 <div class="instructions" id="instructions">
                     <span>← →</span> Dodge<br>
-                    <span>MOUSE</span> Aim<br>
-                    <span>CLICK</span> Fire
+                    <span>SPACE</span> Hold to Charge, Release to Fire
                 </div>
+                <div class="how-to-play-btn" id="how-to-play-btn">How to Play?</div>
                 <button class="btn" id="start-btn">START CHAOS</button>
+            </div>
+
+            <div id="how-to-play-modal">
+                <div class="modal-content">
+                    <h2>HOW TO PLAY</h2>
+                    <h3>YOU ARE A KID IN A SHOPPING CART</h3>
+                    <p>Your cart moves forward automatically through the supermarket. Cause as much chaos as possible!</p>
+                    <h3>CONTROLS</h3>
+                    <p><span class="key">← →</span> Dodge left and right to avoid obstacles</p>
+                    <p><span class="key">SPACE</span> Hold to charge your slingshot, release to fire</p>
+                    <h3>SMART AIMING</h3>
+                    <p>Your crosshair automatically tracks the most dangerous target. Focus on timing your shots!</p>
+                    <h3>SCORING</h3>
+                    <p>Hit enemies: +100 points<br>Destroy enemies: +300 points<br>Hit obstacles: +150 points</p>
+                    <h3>TIP</h3>
+                    <p>Charge your shot fully for maximum damage - one-shot kills!</p>
+                    <button class="modal-close" id="modal-close">GOT IT!</button>
+                </div>
             </div>
 
             <div id="gameover-screen">
@@ -615,9 +844,9 @@
         const MOVEMENT_BOUND = 10;
 
         // Third-Person Camera Constants
-        const CAMERA_OFFSET_BEHIND = 2.5;  // Closer to cart
-        const CAMERA_OFFSET_UP = 2.2;      // Lower, more intimate
-        const CAMERA_OFFSET_SIDE = 0.8;    // Less offset
+        const CAMERA_OFFSET_BEHIND = 3.0;  // Behind cart
+        const CAMERA_OFFSET_UP = 3.5;      // Higher to see hallway
+        const CAMERA_OFFSET_SIDE = 0.5;    // Slight offset
         const CAMERA_LOOK_AHEAD = 12;
 
         // Dodge/Lean Constants
@@ -628,7 +857,6 @@
         const CAMERA_ROLL_FACTOR = 0.1;
 
         // Crosshair Constants
-        const CROSSHAIR_SPEED = 400;
         const CROSSHAIR_BOUNDS_MARGIN = 50;
 
         // Player Health Constants
@@ -680,34 +908,126 @@
         let crosshairX = window.innerWidth / 2;
         let crosshairY = window.innerHeight / 2;
 
-        // Control scheme: 'classic' (mouse aim) or 'arcade' (keyboard aim)
-        let controlScheme = 'classic';
+        // Locked target for sticky aim (don't switch until target gone)
+        let lockedTarget = null;
 
         // Camera mode: 'third-person' or 'hybrid-fps'
         let cameraMode = 'hybrid-fps';
 
         // Keyboard input
         const keys = {
-            left: false,   // A or Arrow based on scheme
-            right: false,  // D or Arrow based on scheme
-            aimLeft: false,  // Arrow left (arcade mode)
-            aimRight: false, // Arrow right (arcade mode)
-            aimUp: false,    // Arrow up (arcade mode)
-            aimDown: false   // Arrow down (arcade mode)
+            left: false,   // A key - dodge left
+            right: false,  // D key - dodge right
         };
 
         // Aim speed for keyboard aiming
-        const AIM_SPEED = 1000; // pixels per second
-
-        // Mouse
-        let mouseX = 0;
-        let mouseY = 0;
-        let cumulativeX = window.innerWidth / 2;
-        let cumulativeY = window.innerHeight / 2;
-        const MOUSE_SENSITIVITY = 2.5;
+        const AIM_SPEED = 600; // pixels per second (crosshair movement)
 
         // Clock
         const clock = new THREE.Clock();
+
+        // === MATERIAL LIBRARY (Shared materials for performance) ===
+        const Materials = {
+            // Chrome for cart frames - MeshPhysicalMaterial for better reflections
+            chrome: null,
+            darkChrome: null,
+            // Skin tones
+            skin: null,
+            skinDark: null,
+            nail: null,
+            // Environment
+            wood: null,
+            rubber: null,
+            // Will be initialized after Three.js loads
+        };
+
+        function initMaterialLibrary() {
+            Materials.chrome = new THREE.MeshPhysicalMaterial({
+                color: 0xc0c0c0,
+                metalness: 1.0,
+                roughness: 0.15,
+                clearcoat: 0.3,
+                clearcoatRoughness: 0.2,
+                reflectivity: 0.9
+            });
+            Materials.darkChrome = new THREE.MeshPhysicalMaterial({
+                color: 0x606060,
+                metalness: 0.9,
+                roughness: 0.25,
+                clearcoat: 0.2
+            });
+            Materials.skin = new THREE.MeshStandardMaterial({
+                color: 0xf5d0c5,
+                roughness: 0.7,
+                metalness: 0.0
+            });
+            Materials.skinDark = new THREE.MeshStandardMaterial({
+                color: 0xe8c4b8,
+                roughness: 0.8,
+                metalness: 0.0
+            });
+            Materials.nail = new THREE.MeshStandardMaterial({
+                color: 0xfce4dc,
+                roughness: 0.3,
+                metalness: 0.1
+            });
+            Materials.wood = new THREE.MeshStandardMaterial({
+                color: 0x8b4513,
+                roughness: 0.7
+            });
+            Materials.rubber = new THREE.MeshStandardMaterial({
+                color: 0xc0392b,
+                roughness: 0.5,
+                metalness: 0.1
+            });
+            Materials.redPlastic = new THREE.MeshStandardMaterial({
+                color: 0xe74c3c,
+                metalness: 0.1,
+                roughness: 0.6
+            });
+            Materials.blackRubber = new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                metalness: 0.0,
+                roughness: 0.9
+            });
+            // Product colors for instanced rendering
+            Materials.products = [
+                new THREE.MeshStandardMaterial({ color: 0xe74c3c }),
+                new THREE.MeshStandardMaterial({ color: 0x3498db }),
+                new THREE.MeshStandardMaterial({ color: 0x2ecc71 }),
+                new THREE.MeshStandardMaterial({ color: 0xf1c40f }),
+                new THREE.MeshStandardMaterial({ color: 0x9b59b6 }),
+                new THREE.MeshStandardMaterial({ color: 0xe67e22 })
+            ];
+        }
+
+        // === SCENE HIERARCHY GROUPS ===
+        const sceneGroups = {
+            environment: null,  // floor, ceiling, walls, shelves
+            gameplay: null,     // player, enemies, obstacles
+            effects: null,      // particles, projectiles
+            lighting: null      // all lights
+        };
+
+        function initSceneGroups() {
+            sceneGroups.environment = new THREE.Group();
+            sceneGroups.environment.name = 'environment';
+            sceneGroups.gameplay = new THREE.Group();
+            sceneGroups.gameplay.name = 'gameplay';
+            sceneGroups.effects = new THREE.Group();
+            sceneGroups.effects.name = 'effects';
+            sceneGroups.lighting = new THREE.Group();
+            sceneGroups.lighting.name = 'lighting';
+
+            scene.add(sceneGroups.environment);
+            scene.add(sceneGroups.gameplay);
+            scene.add(sceneGroups.effects);
+            scene.add(sceneGroups.lighting);
+        }
+
+        // === POST-PROCESSING (disabled - using direct rendering) ===
+        let composer = null;
+        let damageVignetteStrength = 0;
 
         // DOM Elements
         const container = document.getElementById('game-container');
@@ -738,6 +1058,7 @@
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.set(0, 3, 0);
             camera.rotation.order = 'YXZ';
+            scene.add(camera); // Required for camera children (FPS weapon) to render
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -745,8 +1066,14 @@
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             container.insertBefore(renderer.domElement, container.firstChild);
 
-            // Lighting
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            // Initialize material library
+            initMaterialLibrary();
+
+            // Initialize scene hierarchy groups
+            initSceneGroups();
+
+            // Lighting - stronger ambient to compensate for removed point lights
+            const ambientLight = new THREE.AmbientLight(0xfff8f0, 0.6);
             scene.add(ambientLight);
 
             // Main directional light
@@ -763,171 +1090,600 @@
             dirLight.shadow.camera.bottom = -30;
             scene.add(dirLight);
 
+            // Post-processing disabled (direct rendering used instead)
+
             // Create supermarket environment
             createEnvironment();
             createPlayerCart();
             createFPSWeapon();
 
             window.addEventListener('resize', onWindowResize);
+
+            // Expose for testing
+            window.scene = scene;
+            window.camera = camera;
+            window.renderer = renderer;
+        }
+
+        // === POST-PROCESSING SETUP ===
+        function initPostProcessing() {
+            // EffectComposer - inline implementation for r128 compatibility
+            // Based on Three.js examples/jsm/postprocessing
+
+            // RenderPass - renders scene to texture
+            class RenderPass {
+                constructor(scene, camera) {
+                    this.scene = scene;
+                    this.camera = camera;
+                    this.clear = true;
+                    this.clearDepth = false;
+                    this.needsSwap = false;
+                    this.enabled = true;
+                }
+                render(renderer, writeBuffer, readBuffer) {
+                    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+                    if (this.clear) renderer.clear();
+                    renderer.render(this.scene, this.camera);
+                }
+            }
+
+            // ShaderPass - applies a shader to the scene
+            class ShaderPass {
+                constructor(shader) {
+                    this.uniforms = THREE.UniformsUtils.clone(shader.uniforms);
+                    this.material = new THREE.ShaderMaterial({
+                        uniforms: this.uniforms,
+                        vertexShader: shader.vertexShader,
+                        fragmentShader: shader.fragmentShader
+                    });
+                    this.fsQuad = new FullScreenQuad(this.material);
+                    this.enabled = true;
+                    this.needsSwap = true;
+                    this.clear = false;
+                    this.renderToScreen = false;
+                }
+                render(renderer, writeBuffer, readBuffer) {
+                    this.uniforms.tDiffuse.value = readBuffer.texture;
+                    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+                    if (this.clear) renderer.clear();
+                    this.fsQuad.render(renderer);
+                }
+            }
+
+            // FullScreenQuad helper
+            class FullScreenQuad {
+                constructor(material) {
+                    const geo = new THREE.PlaneGeometry(2, 2);
+                    this.mesh = new THREE.Mesh(geo, material);
+                    this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+                    this.scene = new THREE.Scene();
+                    this.scene.add(this.mesh);
+                }
+                render(renderer) {
+                    renderer.render(this.scene, this.camera);
+                }
+                get material() { return this.mesh.material; }
+                set material(v) { this.mesh.material = v; }
+            }
+
+            // EffectComposer
+            class EffectComposer {
+                constructor(renderer, renderTarget) {
+                    this.renderer = renderer;
+                    const size = renderer.getSize(new THREE.Vector2());
+                    this.renderTarget1 = renderTarget || new THREE.WebGLRenderTarget(size.x, size.y, {
+                        minFilter: THREE.LinearFilter,
+                        magFilter: THREE.LinearFilter,
+                        format: THREE.RGBAFormat
+                    });
+                    this.renderTarget2 = this.renderTarget1.clone();
+                    this.writeBuffer = this.renderTarget1;
+                    this.readBuffer = this.renderTarget2;
+                    this.passes = [];
+                }
+                addPass(pass) {
+                    this.passes.push(pass);
+                    const size = this.renderer.getSize(new THREE.Vector2());
+                    pass.setSize && pass.setSize(size.x, size.y);
+                }
+                render(deltaTime) {
+                    let maskActive = false;
+                    for (let i = 0; i < this.passes.length; i++) {
+                        const pass = this.passes[i];
+                        if (!pass.enabled) continue;
+                        pass.renderToScreen = (i === this.passes.length - 1);
+                        pass.render(this.renderer, this.writeBuffer, this.readBuffer, deltaTime, maskActive);
+                        if (pass.needsSwap) {
+                            const tmp = this.readBuffer;
+                            this.readBuffer = this.writeBuffer;
+                            this.writeBuffer = tmp;
+                        }
+                    }
+                }
+                setSize(width, height) {
+                    this.renderTarget1.setSize(width, height);
+                    this.renderTarget2.setSize(width, height);
+                    this.passes.forEach(pass => pass.setSize && pass.setSize(width, height));
+                }
+            }
+
+            // Bloom shader (simplified UnrealBloom)
+            const BloomShader = {
+                uniforms: {
+                    tDiffuse: { value: null },
+                    bloomStrength: { value: 0.5 },
+                    bloomThreshold: { value: 0.85 }
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform sampler2D tDiffuse;
+                    uniform float bloomStrength;
+                    uniform float bloomThreshold;
+                    varying vec2 vUv;
+
+                    void main() {
+                        vec4 texel = texture2D(tDiffuse, vUv);
+                        float brightness = dot(texel.rgb, vec3(0.2126, 0.7152, 0.0722));
+                        vec3 bloom = vec3(0.0);
+                        if (brightness > bloomThreshold) {
+                            bloom = (texel.rgb - bloomThreshold) * bloomStrength;
+                        }
+                        // Simple box blur for bloom spread
+                        vec2 texelSize = vec2(1.0 / 1920.0, 1.0 / 1080.0);
+                        for (int x = -2; x <= 2; x++) {
+                            for (int y = -2; y <= 2; y++) {
+                                vec4 neighbor = texture2D(tDiffuse, vUv + vec2(float(x), float(y)) * texelSize * 2.0);
+                                float nb = dot(neighbor.rgb, vec3(0.2126, 0.7152, 0.0722));
+                                if (nb > bloomThreshold) {
+                                    bloom += (neighbor.rgb - bloomThreshold) * bloomStrength * 0.04;
+                                }
+                            }
+                        }
+                        gl_FragColor = vec4(texel.rgb + bloom, texel.a);
+                    }
+                `
+            };
+
+            // Vignette + Color Grading shader
+            const VignetteShader = {
+                uniforms: {
+                    tDiffuse: { value: null },
+                    damageIntensity: { value: 0.0 },
+                    saturation: { value: 1.1 },
+                    contrast: { value: 1.05 }
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform sampler2D tDiffuse;
+                    uniform float damageIntensity;
+                    uniform float saturation;
+                    uniform float contrast;
+                    varying vec2 vUv;
+
+                    void main() {
+                        vec4 texel = texture2D(tDiffuse, vUv);
+
+                        // Subtle always-on vignette for atmosphere
+                        float baseVignette = 1.0 - smoothstep(0.4, 1.0, length(vUv - 0.5) * 1.2);
+
+                        // Damage vignette (red edges)
+                        float damageVignette = smoothstep(0.3, 0.9, length(vUv - 0.5) * 1.5);
+                        vec3 damageColor = vec3(0.9, 0.1, 0.05);
+
+                        // Apply color grading
+                        vec3 color = texel.rgb;
+
+                        // Saturation
+                        float gray = dot(color, vec3(0.2126, 0.7152, 0.0722));
+                        color = mix(vec3(gray), color, saturation);
+
+                        // Contrast
+                        color = (color - 0.5) * contrast + 0.5;
+
+                        // Apply vignettes
+                        color *= baseVignette * 0.15 + 0.85;
+                        color = mix(color, damageColor, damageVignette * damageIntensity);
+
+                        gl_FragColor = vec4(color, texel.a);
+                    }
+                `
+            };
+
+            // Create composer
+            composer = new EffectComposer(renderer);
+
+            // Render pass
+            const renderPass = new RenderPass(scene, camera);
+            composer.addPass(renderPass);
+
+            // Bloom pass
+            bloomPass = new ShaderPass(BloomShader);
+            bloomPass.uniforms.bloomStrength.value = 0.4;
+            bloomPass.uniforms.bloomThreshold.value = 0.8;
+            composer.addPass(bloomPass);
+
+            // Vignette + color grading pass
+            vignettePass = new ShaderPass(VignetteShader);
+            vignettePass.uniforms.damageIntensity.value = 0.0;
+            composer.addPass(vignettePass);
+
+            // Store for resize
+            window.composer = composer;
         }
 
         function createFPSWeapon() {
             // Create hands holding slingshot for FPS view
+            // RIGHT hand holds slingshot frame, LEFT hand pulls back pouch
             fpsWeapon = new THREE.Group();
             fpsHands = new THREE.Group();
 
+            // Materials
             const skinMat = new THREE.MeshStandardMaterial({
-                color: 0xffdbac,
-                roughness: 0.8
+                color: 0xf5d0c5,  // Warm skin tone
+                roughness: 0.7,
+                metalness: 0.0
+            });
+            const skinMatDark = new THREE.MeshStandardMaterial({
+                color: 0xe8c4b8,  // Slightly darker for palm/creases
+                roughness: 0.8,
+                metalness: 0.0
+            });
+            const nailMat = new THREE.MeshStandardMaterial({
+                color: 0xfce4dc,  // Nail color
+                roughness: 0.3,
+                metalness: 0.1
             });
             const woodMat = new THREE.MeshStandardMaterial({
                 color: 0x8b4513,
-                roughness: 0.8
+                roughness: 0.7
             });
             const rubberMat = new THREE.MeshStandardMaterial({
                 color: 0xc0392b,
-                roughness: 0.6
+                roughness: 0.5,
+                metalness: 0.1
             });
 
-            // === LEFT HAND (holding slingshot frame) ===
-            const leftHand = new THREE.Group();
-
-            // Palm
-            const palmGeo = new THREE.BoxGeometry(0.06, 0.08, 0.04);
-            const palmL = new THREE.Mesh(palmGeo, skinMat);
-            leftHand.add(palmL);
-
-            // Fingers wrapped around handle (using cylinders for r128 compatibility)
-            for (let i = 0; i < 4; i++) {
-                const fingerGeo = new THREE.CylinderGeometry(0.012, 0.01, 0.05, 8);
-                const finger = new THREE.Mesh(fingerGeo, skinMat);
-                finger.position.set(-0.02, -0.02 + i * 0.02, 0.03);
-                finger.rotation.x = Math.PI / 3;
-                leftHand.add(finger);
+            // Helper function to create capsule-like geometry (r128 compatible)
+            function createCapsule(radius, height, radialSegs, heightSegs) {
+                const group = new THREE.Group();
+                // Cylinder body
+                const cylGeo = new THREE.CylinderGeometry(radius, radius, height, radialSegs, heightSegs);
+                const cyl = new THREE.Mesh(cylGeo, skinMat);
+                group.add(cyl);
+                // Top hemisphere
+                const topGeo = new THREE.SphereGeometry(radius, radialSegs, Math.ceil(radialSegs/2), 0, Math.PI * 2, 0, Math.PI / 2);
+                const top = new THREE.Mesh(topGeo, skinMat);
+                top.position.y = height / 2;
+                group.add(top);
+                // Bottom hemisphere
+                const botGeo = new THREE.SphereGeometry(radius, radialSegs, Math.ceil(radialSegs/2), 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
+                const bot = new THREE.Mesh(botGeo, skinMat);
+                bot.position.y = -height / 2;
+                group.add(bot);
+                return group;
             }
-            // Thumb
-            const thumbGeo = new THREE.CylinderGeometry(0.014, 0.012, 0.04, 8);
-            const thumbL = new THREE.Mesh(thumbGeo, skinMat);
-            thumbL.position.set(0.04, 0, 0.01);
-            thumbL.rotation.z = -Math.PI / 4;
-            leftHand.add(thumbL);
 
-            leftHand.position.set(-0.12, -0.08, -0.35);
-            leftHand.rotation.set(0.2, 0.3, 0);
-            fpsHands.add(leftHand);
+            // Helper function to create a realistic finger with 3 segments
+            function createFinger(length, baseRadius, isThumb = false) {
+                const finger = new THREE.Group();
+                const segments = isThumb ? 2 : 3;
+                const segmentLength = length / segments;
 
-            // === RIGHT HAND (pulling back pouch) ===
-            const rightHand = new THREE.Group();
+                for (let i = 0; i < segments; i++) {
+                    const radius = baseRadius * (1 - i * 0.15); // Taper towards tip
+                    // Use cylinder + spheres for capsule shape (r128 compatible)
+                    const segHeight = segmentLength * 0.6;
+                    const segGroup = new THREE.Group();
 
-            // Palm
-            const palmR = new THREE.Mesh(palmGeo, skinMat);
-            rightHand.add(palmR);
+                    const cylGeo = new THREE.CylinderGeometry(radius, radius * 0.95, segHeight, 8);
+                    const cyl = new THREE.Mesh(cylGeo, skinMat);
+                    segGroup.add(cyl);
 
-            // Fingers pinching pouch
-            const fingerPinchGeo = new THREE.CylinderGeometry(0.012, 0.01, 0.045, 8);
-            const indexR = new THREE.Mesh(fingerPinchGeo, skinMat);
-            indexR.position.set(-0.02, 0.02, 0.03);
-            indexR.rotation.x = Math.PI / 4;
-            rightHand.add(indexR);
+                    // Rounded caps
+                    const topSphere = new THREE.Mesh(
+                        new THREE.SphereGeometry(radius, 6, 4),
+                        skinMat
+                    );
+                    topSphere.scale.y = 0.5;
+                    topSphere.position.y = segHeight / 2;
+                    segGroup.add(topSphere);
 
-            const middleR = new THREE.Mesh(fingerPinchGeo, skinMat);
-            middleR.position.set(0.02, 0.02, 0.03);
-            middleR.rotation.x = Math.PI / 4;
-            rightHand.add(middleR);
+                    const botSphere = new THREE.Mesh(
+                        new THREE.SphereGeometry(radius * 0.95, 6, 4),
+                        skinMat
+                    );
+                    botSphere.scale.y = 0.5;
+                    botSphere.position.y = -segHeight / 2;
+                    segGroup.add(botSphere);
 
-            // Other fingers curled
-            for (let i = 0; i < 2; i++) {
-                const fingerGeo = new THREE.CylinderGeometry(0.01, 0.008, 0.035, 8);
-                const finger = new THREE.Mesh(fingerGeo, skinMat);
-                finger.position.set(-0.01 + i * 0.025, -0.02, 0.02);
-                finger.rotation.x = Math.PI / 2;
-                rightHand.add(finger);
+                    segGroup.position.y = i * segmentLength + segmentLength * 0.3;
+                    segGroup.castShadow = true;
+                    finger.add(segGroup);
+
+                    // Add knuckle joint (small sphere)
+                    if (i < segments - 1) {
+                        const jointGeo = new THREE.SphereGeometry(radius * 1.05, 6, 6);
+                        const joint = new THREE.Mesh(jointGeo, skinMat);
+                        joint.position.y = (i + 1) * segmentLength;
+                        joint.scale.y = 0.6;
+                        finger.add(joint);
+                    }
+                }
+
+                // Fingernail at tip
+                const nailGeo = new THREE.BoxGeometry(baseRadius * 1.2, baseRadius * 0.3, baseRadius * 1.5);
+                const nail = new THREE.Mesh(nailGeo, nailMat);
+                nail.position.set(0, length - baseRadius * 0.3, baseRadius * 0.4);
+                finger.add(nail);
+
+                return finger;
             }
-            // Thumb
-            const thumbR = new THREE.Mesh(thumbGeo, skinMat);
-            thumbR.position.set(-0.04, 0.01, 0.01);
-            thumbR.rotation.z = Math.PI / 4;
-            rightHand.add(thumbR);
 
-            rightHand.position.set(0.08, -0.05, -0.15);
-            rightHand.rotation.set(0, -0.3, 0);
+            // Helper function to create anatomical hand
+            function createHand(isRight) {
+                const hand = new THREE.Group();
+                const mirror = isRight ? 1 : -1;
+
+                // Palm - more anatomical shape using merged boxes
+                const palmBase = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.07, 0.09, 0.025),
+                    skinMatDark
+                );
+                palmBase.position.set(0, 0, 0);
+                hand.add(palmBase);
+
+                // Palm curve (makes it less boxy)
+                const palmCurve = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.035, 0.035, 0.025, 8, 1, false, 0, Math.PI),
+                    skinMat
+                );
+                palmCurve.rotation.x = Math.PI / 2;
+                palmCurve.rotation.z = Math.PI / 2;
+                palmCurve.position.set(mirror * 0.035, 0, 0);
+                hand.add(palmCurve);
+
+                // Back of hand (slight dome)
+                const backHand = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.04, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2),
+                    skinMat
+                );
+                backHand.scale.set(1.5, 0.3, 1);
+                backHand.position.set(0, 0.02, -0.012);
+                backHand.rotation.x = Math.PI;
+                hand.add(backHand);
+
+                // Wrist
+                const wristGeo = new THREE.CylinderGeometry(0.028, 0.032, 0.05, 8);
+                const wrist = new THREE.Mesh(wristGeo, skinMat);
+                wrist.position.set(0, -0.07, 0);
+                hand.add(wrist);
+
+                // Fingers (index, middle, ring, pinky)
+                const fingerLengths = [0.065, 0.075, 0.07, 0.055];
+                const fingerRadii = [0.009, 0.01, 0.009, 0.008];
+                const fingerSpacing = [0.024, 0.008, -0.008, -0.024];
+
+                hand.userData.fingers = [];
+                for (let i = 0; i < 4; i++) {
+                    const finger = createFinger(fingerLengths[i], fingerRadii[i]);
+                    finger.position.set(mirror * fingerSpacing[i], 0.045, 0.005);
+                    finger.userData.baseRotation = { x: 0, y: 0, z: 0 };
+                    hand.add(finger);
+                    hand.userData.fingers.push(finger);
+                }
+
+                // Thumb (attached to side of palm)
+                const thumb = createFinger(0.05, 0.012, true);
+                thumb.position.set(mirror * 0.04, -0.01, 0.015);
+                thumb.rotation.set(0.3, mirror * 0.8, mirror * 0.5);
+                hand.add(thumb);
+                hand.userData.thumb = thumb;
+
+                return hand;
+            }
+
+            // === RIGHT HAND (holding slingshot frame) ===
+            const rightHand = createHand(true);
+
+            // Curl fingers around slingshot handle (grip pose)
+            rightHand.userData.fingers.forEach((finger, i) => {
+                finger.rotation.x = 1.2 + i * 0.1;  // Curl inward
+                finger.rotation.z = -0.1 * (i - 1.5); // Slight spread
+            });
+            rightHand.userData.thumb.rotation.set(0.2, 0.5, 0.8);  // Thumb wraps around
+
+            rightHand.position.set(0.12, -0.15, -0.35);
+            rightHand.rotation.set(-0.3, -0.4, 0.2);  // Angled to hold handle
             fpsHands.add(rightHand);
             fpsHands.userData.rightHand = rightHand;
 
-            // === SLINGSHOT ===
+            // === LEFT HAND (pulling back pouch - pinch grip) ===
+            const leftHand = createHand(false);
+
+            // Pinch pose for holding pouch: index and thumb pinch, others curled
+            leftHand.userData.fingers[0].rotation.x = 0.8;   // Index - extended for pinch
+            leftHand.userData.fingers[0].rotation.z = 0.2;   // Slightly inward
+            leftHand.userData.fingers[1].rotation.x = 1.5;   // Middle - curled
+            leftHand.userData.fingers[2].rotation.x = 1.6;   // Ring - curled
+            leftHand.userData.fingers[3].rotation.x = 1.7;   // Pinky - curled tight
+            leftHand.userData.thumb.rotation.set(0.4, -0.9, -0.3);  // Thumb meets index
+
+            leftHand.position.set(-0.05, -0.08, -0.15);  // Will be animated when pulling
+            leftHand.rotation.set(0.2, 0.5, -0.3);
+            fpsHands.add(leftHand);
+            fpsHands.userData.leftHand = leftHand;  // Store for animation
+
+            // === FOREARMS / SLEEVES (connect hands to body) ===
+            const sleeveMat = new THREE.MeshStandardMaterial({
+                color: 0x2980b9,  // Blue sleeve (kid's shirt)
+                roughness: 0.9,
+                metalness: 0.0
+            });
+
+            // Right forearm - connects right hand to lower right of screen
+            const rightArmGeo = new THREE.CylinderGeometry(0.035, 0.045, 0.35, 8);
+            const rightArm = new THREE.Mesh(rightArmGeo, sleeveMat);
+            rightArm.position.set(0.18, -0.35, -0.2);
+            rightArm.rotation.set(-0.8, 0.3, 0.4);
+            fpsHands.add(rightArm);
+
+            // Right wrist (skin connection between sleeve and hand)
+            const rightWrist = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.028, 0.032, 0.06, 8),
+                skinMat
+            );
+            rightWrist.position.set(0.13, -0.22, -0.3);
+            rightWrist.rotation.set(-0.4, 0, 0.2);
+            fpsHands.add(rightWrist);
+
+            // Left forearm - connects left hand to lower left of screen
+            const leftArmGeo = new THREE.CylinderGeometry(0.035, 0.045, 0.35, 8);
+            const leftArm = new THREE.Mesh(leftArmGeo, sleeveMat);
+            leftArm.position.set(-0.12, -0.32, -0.05);
+            leftArm.rotation.set(-0.5, -0.4, -0.3);
+            fpsHands.add(leftArm);
+            fpsHands.userData.leftArm = leftArm; // Store for animation
+
+            // Left wrist
+            const leftWrist = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.028, 0.032, 0.06, 8),
+                skinMat
+            );
+            leftWrist.position.set(-0.06, -0.15, -0.12);
+            leftWrist.rotation.set(0.1, 0, -0.2);
+            fpsHands.add(leftWrist);
+            fpsHands.userData.leftWrist = leftWrist; // Store for animation
+
+            // === SLINGSHOT (held by right hand) ===
             const slingshot = new THREE.Group();
 
-            // Y-frame handle
-            const handleGeo = new THREE.CylinderGeometry(0.02, 0.025, 0.25, 8);
+            // Y-frame handle (held in right hand)
+            const handleGeo = new THREE.CylinderGeometry(0.018, 0.022, 0.2, 12);
             const handle = new THREE.Mesh(handleGeo, woodMat);
-            handle.position.set(0, -0.08, 0);
+            handle.position.set(0, -0.06, 0);
+            handle.castShadow = true;
             slingshot.add(handle);
 
-            // Fork prongs
-            const forkGeo = new THREE.CylinderGeometry(0.015, 0.018, 0.14, 8);
+            // Handle grip texture (wrapped cord)
+            for (let i = 0; i < 6; i++) {
+                const wrapGeo = new THREE.TorusGeometry(0.022, 0.003, 4, 12);
+                const wrap = new THREE.Mesh(wrapGeo, new THREE.MeshStandardMaterial({
+                    color: 0x4a3520, roughness: 0.9
+                }));
+                wrap.position.set(0, -0.12 + i * 0.015, 0);
+                wrap.rotation.x = Math.PI / 2;
+                slingshot.add(wrap);
+            }
+
+            // Fork prongs (Y-shape)
+            const forkGeo = new THREE.CylinderGeometry(0.012, 0.016, 0.12, 8);
             const forkL = new THREE.Mesh(forkGeo, woodMat);
             forkL.rotation.z = Math.PI / 5;
-            forkL.position.set(-0.045, 0.05, 0);
+            forkL.position.set(-0.04, 0.04, 0);
+            forkL.castShadow = true;
             slingshot.add(forkL);
 
             const forkR = new THREE.Mesh(forkGeo, woodMat);
             forkR.rotation.z = -Math.PI / 5;
-            forkR.position.set(0.045, 0.05, 0);
+            forkR.position.set(0.04, 0.04, 0);
+            forkR.castShadow = true;
             slingshot.add(forkR);
 
-            // Fork tips
-            const tipGeo = new THREE.SphereGeometry(0.02, 8, 8);
+            // Fork tips (where rubber bands attach)
+            const tipGeo = new THREE.SphereGeometry(0.018, 12, 12);
             const tipL = new THREE.Mesh(tipGeo, woodMat);
-            tipL.position.set(-0.07, 0.1, 0);
+            tipL.position.set(-0.065, 0.09, 0);
             slingshot.add(tipL);
+            slingshot.userData.tipL = tipL;
 
             const tipR = new THREE.Mesh(tipGeo, woodMat);
-            tipR.position.set(0.07, 0.1, 0);
+            tipR.position.set(0.065, 0.09, 0);
             slingshot.add(tipR);
+            slingshot.userData.tipR = tipR;
 
-            // Rubber bands (will be animated)
-            const bandGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.12, 6);
-            fpsBandL = new THREE.Mesh(bandGeo, rubberMat);
+            // === RUBBER BANDS (dynamic - will stretch to pouch) ===
+            // Create band geometry that can be updated
+            const bandMat = rubberMat.clone();
+
+            // Left rubber band
+            fpsBandL = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.005, 0.005, 0.1, 8),
+                bandMat
+            );
             fpsBandL.position.set(-0.04, 0.05, 0.05);
-            fpsBandL.rotation.x = Math.PI / 6;
-            fpsBandL.rotation.z = Math.PI / 12;
             slingshot.add(fpsBandL);
 
-            fpsBandR = new THREE.Mesh(bandGeo, rubberMat);
+            // Right rubber band
+            fpsBandR = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.005, 0.005, 0.1, 8),
+                bandMat
+            );
             fpsBandR.position.set(0.04, 0.05, 0.05);
-            fpsBandR.rotation.x = Math.PI / 6;
-            fpsBandR.rotation.z = -Math.PI / 12;
             slingshot.add(fpsBandR);
 
-            // Pouch (will be animated)
-            const pouchMat = new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.9 });
-            const pouchGeo = new THREE.SphereGeometry(0.025, 8, 8);
+            // === POUCH (leather pocket that holds stone) ===
+            const pouchMat = new THREE.MeshStandardMaterial({
+                color: 0x5c4033,
+                roughness: 0.95,
+                metalness: 0.0
+            });
+            const pouchGeo = new THREE.SphereGeometry(0.022, 12, 8);
             fpsPouch = new THREE.Mesh(pouchGeo, pouchMat);
-            fpsPouch.scale.set(1.2, 0.6, 1);
-            fpsPouch.position.set(0, 0.02, 0.1);
+            fpsPouch.scale.set(1.4, 0.5, 1.2);
+            fpsPouch.position.set(0, 0.02, 0.08);
             slingshot.add(fpsPouch);
 
-            // Stone in pouch (will be animated/hidden)
-            const stoneMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.7 });
-            const stoneGeo = new THREE.SphereGeometry(0.018, 8, 8);
+            // Pouch edges (makes it look like leather strap)
+            const pouchEdge1 = new THREE.Mesh(
+                new THREE.BoxGeometry(0.008, 0.003, 0.04),
+                pouchMat
+            );
+            pouchEdge1.position.set(-0.025, 0.02, 0.08);
+            slingshot.add(pouchEdge1);
+
+            const pouchEdge2 = new THREE.Mesh(
+                new THREE.BoxGeometry(0.008, 0.003, 0.04),
+                pouchMat
+            );
+            pouchEdge2.position.set(0.025, 0.02, 0.08);
+            slingshot.add(pouchEdge2);
+
+            // === STONE (ammo in pouch) ===
+            const stoneMat = new THREE.MeshStandardMaterial({
+                color: 0x707070,
+                roughness: 0.8,
+                metalness: 0.1
+            });
+            const stoneGeo = new THREE.SphereGeometry(0.016, 10, 10);
             fpsStone = new THREE.Mesh(stoneGeo, stoneMat);
-            fpsStone.position.set(0, 0.02, 0.1);
+            fpsStone.position.set(0, 0.025, 0.08);
+            // Slightly irregular shape
+            fpsStone.scale.set(1.1, 0.9, 1.0);
             slingshot.add(fpsStone);
 
-            slingshot.position.set(0, 0, 0);
-            slingshot.rotation.set(0.2, 0, 0);
+            // Position slingshot in right hand grip
+            slingshot.position.set(0.12, -0.02, -0.32);
+            slingshot.rotation.set(0.1, -0.2, 0.1);  // Angled towards screen
             fpsHands.add(slingshot);
             fpsHands.userData.slingshot = slingshot;
 
-            // Position left hand to hold slingshot
-            leftHand.position.set(-0.04, -0.12, -0.08);
-            leftHand.rotation.set(0.3, 0.2, 0.1);
-
             fpsWeapon.add(fpsHands);
 
-            // Position weapon view - lower right, clearly visible
-            fpsWeapon.position.set(0.2, -0.18, -0.5);
-            fpsWeapon.rotation.set(0.1, -0.1, 0);
+            // Position whole weapon view - center-right, clearly visible
+            fpsWeapon.position.set(0.15, -0.12, -0.45);
+            fpsWeapon.rotation.set(0.05, -0.15, 0);
 
             // Add to camera so it moves with view
             camera.add(fpsWeapon);
@@ -992,23 +1748,17 @@
             });
             const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
             ceiling.rotation.x = Math.PI / 2;
-            ceiling.position.y = 12;
+            ceiling.position.y = 16;  // Higher ceiling - kid perspective
             ceiling.position.z = -400;
             scene.add(ceiling);
 
-            // Ceiling lights
-            for (let z = 0; z > -AISLE_LENGTH - 100; z -= 20) {
+            // Ceiling lights - optimized: fewer fixtures, no PointLights (use ambient instead)
+            for (let z = 0; z > -AISLE_LENGTH - 100; z -= 40) {  // Every 40 units instead of 20
                 const lightFixture = createCeilingLight();
-                lightFixture.position.set(0, 11.5, z);
+                lightFixture.position.set(0, 15.5, z);
                 scene.add(lightFixture);
-
-                if (z % 40 === 0) {
-                    const pointLight = new THREE.PointLight(0xffffee, 0.5, 30);
-                    pointLight.position.set(0, 10, z);
-                    scene.add(pointLight);
-                    lights.push(pointLight);
-                }
             }
+            // Use stronger ambient light instead of many PointLights (much cheaper)
 
             // Walls with shelving units
             createWalls();
@@ -1039,22 +1789,22 @@
         }
 
         function createWalls() {
-            // Left wall
-            const wallGeoL = new THREE.BoxGeometry(1, 12, 1000);
+            // Left wall - taller for kid perspective
+            const wallGeoL = new THREE.BoxGeometry(1, 16, 1000);
             const wallMatL = new THREE.MeshStandardMaterial({ color: 0x34495e });
             const wallL = new THREE.Mesh(wallGeoL, wallMatL);
-            wallL.position.set(-15, 6, -400);
+            wallL.position.set(-15, 8, -400);
             wallL.receiveShadow = true;
             scene.add(wallL);
 
             // Right wall
             const wallR = new THREE.Mesh(wallGeoL, wallMatL);
-            wallR.position.set(15, 6, -400);
+            wallR.position.set(15, 8, -400);
             wallR.receiveShadow = true;
             scene.add(wallR);
 
-            // Create shelf units along walls
-            for (let z = 5; z > -AISLE_LENGTH; z -= 15) {
+            // Create shelf units along walls - optimized: larger spacing
+            for (let z = 5; z > -AISLE_LENGTH; z -= 25) {  // Every 25 units instead of 15
                 createShelfUnit(-12, z, true);
                 createShelfUnit(12, z, false);
             }
@@ -1065,36 +1815,34 @@
             group.position.set(x, 0, z);
             if (!leftSide) group.rotation.y = Math.PI;
 
-            // Shelf frame
-            const frameGeo = new THREE.BoxGeometry(4, 8, 1);
+            // Shelf frame - taller for kid perspective
+            const frameGeo = new THREE.BoxGeometry(5, 12, 1.5);
             const frameMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
             const frame = new THREE.Mesh(frameGeo, frameMat);
-            frame.position.y = 4;
+            frame.position.y = 6;
             frame.castShadow = true;
             frame.receiveShadow = true;
             group.add(frame);
 
-            // Shelf boards
-            const boardGeo = new THREE.BoxGeometry(3.8, 0.15, 1.2);
+            // Shelf boards - optimized: fewer boards, shared geometry/material
+            const boardGeo = new THREE.BoxGeometry(4.8, 0.2, 1.8);
             const boardMat = new THREE.MeshStandardMaterial({ color: 0x5c2e0a });
 
-            for (let i = 0; i < 4; i++) {
-                const board = new THREE.Mesh(boardGeo, boardMat);
-                board.position.set(0, 1 + i * 2, 0.2);
-                board.castShadow = true;
-                group.add(board);
+            // Shared product geometry and materials (reuse instead of creating new)
+            const productGeo = new THREE.BoxGeometry(0.8, 1.5, 0.7);
+            const productColors = [0xe74c3c, 0x3498db, 0x2ecc71, 0xf1c40f, 0x9b59b6, 0xe67e22];
+            const productMats = productColors.map(c => new THREE.MeshLambertMaterial({ color: c }));  // Lambert is cheaper
 
-                // Products on shelf
-                const productColors = [0xe74c3c, 0x3498db, 0x2ecc71, 0xf1c40f, 0x9b59b6];
-                for (let j = 0; j < 5; j++) {
-                    const productGeo = new THREE.BoxGeometry(0.5, 1, 0.5);
-                    const productMat = new THREE.MeshStandardMaterial({
-                        color: productColors[Math.floor(Math.random() * productColors.length)]
-                    });
-                    const product = new THREE.Mesh(productGeo, productMat);
-                    product.position.set(-1.5 + j * 0.7, 1.6 + i * 2, 0.2);
-                    product.castShadow = true;
-                    group.add(product);
+            for (let i = 0; i < 4; i++) {  // 4 shelves instead of 5
+                const board = new THREE.Mesh(boardGeo, boardMat);
+                board.position.set(0, 0.8 + i * 3.0, 0.3);  // Larger spacing
+                group.add(board);  // No shadow casting
+
+                // Products - only 3 per shelf, no shadows
+                for (let j = 0; j < 3; j++) {
+                    const product = new THREE.Mesh(productGeo, productMats[Math.floor(Math.random() * productMats.length)]);
+                    product.position.set(-1.2 + j * 1.2, 1.6 + i * 3.0, 0.3);
+                    group.add(product);  // No shadow casting for products
                 }
             }
 
@@ -1106,11 +1854,11 @@
             const group = new THREE.Group();
             group.position.set(0, 0, -AISLE_LENGTH);
 
-            // Checkout counter
-            const counterGeo = new THREE.BoxGeometry(20, 3, 2);
+            // Checkout counter - taller for kid perspective
+            const counterGeo = new THREE.BoxGeometry(20, 4, 2);
             const counterMat = new THREE.MeshStandardMaterial({ color: 0x27ae60 });
             const counter = new THREE.Mesh(counterGeo, counterMat);
-            counter.position.y = 1.5;
+            counter.position.y = 2;
             counter.castShadow = true;
             counter.receiveShadow = true;
             group.add(counter);
@@ -1742,10 +2490,14 @@
                 group.position.y -= 0.5;
             }
 
+            // Calculate power (0-1) based on speed
+            const power = (speed - PROJECTILE_SPEED_MIN) / (PROJECTILE_SPEED_MAX - PROJECTILE_SPEED_MIN);
+
             group.userData = {
                 velocity: direction.clone().multiplyScalar(speed),
                 active: true,
-                prevPosition: group.position.clone() // For sweep collision detection
+                prevPosition: group.position.clone(), // For sweep collision detection
+                power: Math.max(0, Math.min(1, power)) // Clamped 0-1
             };
 
             scene.add(group);
@@ -1753,10 +2505,16 @@
             return group;
         }
 
+        // Shared particle geometry for performance
+        const particleGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+        const MAX_PARTICLES = 50;  // Limit particle count
+
         function createParticle(position, color) {
-            const geo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+            // Enforce particle limit
+            if (particles.length >= MAX_PARTICLES) return;
+
             const mat = new THREE.MeshBasicMaterial({ color: color });
-            const particle = new THREE.Mesh(geo, mat);
+            const particle = new THREE.Mesh(particleGeo, mat);
             particle.position.copy(position);
             particle.userData = {
                 velocity: new THREE.Vector3(
@@ -1764,14 +2522,17 @@
                     Math.random() * 8 + 2,
                     (Math.random() - 0.5) * 10
                 ),
-                life: 1
+                life: 0.8  // Shorter life
             };
             scene.add(particle);
             particles.push(particle);
         }
 
         function spawnParticles(position, color, count) {
-            for (let i = 0; i < count; i++) {
+            // Limit particles based on current count
+            const available = MAX_PARTICLES - particles.length;
+            const toSpawn = Math.min(count, available);
+            for (let i = 0; i < toSpawn; i++) {
                 createParticle(position, color);
             }
         }
@@ -1795,76 +2556,20 @@
             score += points;
             scoreElement.textContent = score;
 
+            // Trigger score bump animation
+            const scoreContainer = document.getElementById('score-container');
+            scoreElement.classList.add('bump');
+            scoreContainer.classList.add('bump');
+            setTimeout(() => {
+                scoreElement.classList.remove('bump');
+                scoreContainer.classList.remove('bump');
+            }, 150);
+
             // Convert 3D position to screen position
             const screenPos = position.clone().project(camera);
             const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
             const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
             showScorePopup(points, x, y);
-        }
-
-        // Auto-aim: uses screen-space proximity to crosshair
-        function findAutoAimTarget() {
-            const AUTO_AIM_SCREEN_RADIUS = 100; // Pixels - how close crosshair needs to be
-            const AUTO_AIM_RANGE = 100; // Max world distance to consider
-
-            let bestTarget = null;
-            let bestScreenDist = Infinity;
-
-            // Check enemies
-            enemies.forEach(enemy => {
-                if (!enemy.userData.active) return;
-
-                // Get world distance
-                const toTarget = new THREE.Vector3();
-                toTarget.subVectors(enemy.position, camera.position);
-                const worldDist = toTarget.length();
-
-                // Skip if too far or behind camera
-                if (worldDist > AUTO_AIM_RANGE || toTarget.z > 0) return;
-
-                // Convert enemy position to screen coordinates
-                const targetPos = enemy.position.clone();
-                targetPos.y += 1.5; // Aim at center mass
-                const screenPos = worldToScreen(targetPos);
-
-                // Calculate screen-space distance to crosshair
-                const screenDist = Math.sqrt(
-                    Math.pow(screenPos.x - crosshairX, 2) +
-                    Math.pow(screenPos.y - crosshairY, 2)
-                );
-
-                if (screenDist < AUTO_AIM_SCREEN_RADIUS && screenDist < bestScreenDist) {
-                    bestScreenDist = screenDist;
-                    bestTarget = targetPos;
-                }
-            });
-
-            // Check obstacles
-            obstacles.forEach(obs => {
-                if (!obs.userData.active || obs.userData.hit) return;
-
-                const toTarget = new THREE.Vector3();
-                toTarget.subVectors(obs.position, camera.position);
-                const worldDist = toTarget.length();
-
-                if (worldDist > AUTO_AIM_RANGE || toTarget.z > 0) return;
-
-                const targetPos = obs.position.clone();
-                targetPos.y += 1; // Aim at obstacle center
-                const screenPos = worldToScreen(targetPos);
-
-                const screenDist = Math.sqrt(
-                    Math.pow(screenPos.x - crosshairX, 2) +
-                    Math.pow(screenPos.y - crosshairY, 2)
-                );
-
-                if (screenDist < AUTO_AIM_SCREEN_RADIUS && screenDist < bestScreenDist) {
-                    bestScreenDist = screenDist;
-                    bestTarget = targetPos;
-                }
-            });
-
-            return bestTarget;
         }
 
         // Convert world position to screen coordinates for crosshair
@@ -1946,33 +2651,13 @@
             );
             raycaster.setFromCamera(mouse, camera);
 
-            // Try auto-aim - check screen proximity to crosshair
-            const autoTarget = findAutoAimTarget();
-            let direction;
+            // Shoot toward where crosshair is pointing (auto-aim keeps it on target)
+            const farPoint = new THREE.Vector3();
+            farPoint.copy(raycaster.ray.direction).multiplyScalar(100).add(raycaster.ray.origin);
 
-            if (autoTarget) {
-                // Snap crosshair to target position
-                const screenPos = worldToScreen(autoTarget);
-                crosshairX = screenPos.x;
-                crosshairY = screenPos.y;
-                if (controlScheme === 'classic') {
-                    cumulativeX = screenPos.x;
-                    cumulativeY = screenPos.y;
-                }
-
-                // Direction from spawn position to target
-                direction = new THREE.Vector3();
-                direction.subVectors(autoTarget, spawnPos);
-                direction.normalize();
-            } else {
-                // No target near crosshair - use raycast direction
-                const farPoint = new THREE.Vector3();
-                farPoint.copy(raycaster.ray.direction).multiplyScalar(100).add(raycaster.ray.origin);
-
-                direction = new THREE.Vector3();
-                direction.subVectors(farPoint, spawnPos);
-                direction.normalize();
-            }
+            const direction = new THREE.Vector3();
+            direction.subVectors(farPoint, spawnPos);
+            direction.normalize();
 
             createProjectile(direction, spawnPos, speed);
 
@@ -2000,10 +2685,6 @@
             speedMultiplier = 1;
             keys.left = false;
             keys.right = false;
-            keys.aimLeft = false;
-            keys.aimRight = false;
-            keys.aimUp = false;
-            keys.aimDown = false;
 
             // Reset dodge/lean state
             dodgeVelocity = 0;
@@ -2017,6 +2698,7 @@
             // Reset crosshair to center
             crosshairX = window.innerWidth / 2;
             crosshairY = window.innerHeight / 2;
+            lockedTarget = null;
 
             // Reset health UI
             healthFill.style.width = '100%';
@@ -2044,21 +2726,14 @@
         }
 
         function updateCursor() {
+            // Hide cursor during gameplay (we have a crosshair overlay)
             const canvas = renderer.domElement;
-            switch(gameState) {
-                case 'PLAYING':
-                    canvas.style.cursor = 'crosshair';
-                    document.body.style.cursor = 'crosshair';
-                    break;
-                case 'MENU':
-                case 'GAME_OVER':
-                    canvas.style.cursor = 'default';
-                    document.body.style.cursor = 'default';
-                    break;
-                case 'PAUSED':
-                    canvas.style.cursor = 'default';
-                    document.body.style.cursor = 'default';
-                    break;
+            if (gameState === 'PLAYING') {
+                canvas.style.cursor = 'none';
+                document.body.style.cursor = 'none';
+            } else {
+                canvas.style.cursor = 'default';
+                document.body.style.cursor = 'default';
             }
         }
 
@@ -2069,11 +2744,9 @@
             gameoverScreen.style.display = 'none';
             hud.style.display = 'block';
             healthContainer.style.display = 'block';
-            // Center aim on start
-            cumulativeX = window.innerWidth / 2;
-            cumulativeY = window.innerHeight / 2;
-            mouseX = cumulativeX;
-            mouseY = cumulativeY;
+            // Center crosshair on start
+            crosshairX = window.innerWidth / 2;
+            crosshairY = window.innerHeight / 2;
             updateCursor();
 
             spawnInitialObjects();
@@ -2103,10 +2776,24 @@
             if (isInvulnerable || gameState !== 'PLAYING') return;
 
             playerHealth = Math.max(0, playerHealth - amount);
-            healthFill.style.width = (playerHealth / PLAYER_MAX_HEALTH * 100) + '%';
+            const healthPercent = playerHealth / PLAYER_MAX_HEALTH * 100;
+            healthFill.style.width = healthPercent + '%';
             healthValue.textContent = playerHealth;
 
-            // Flash damage overlay
+            // Update health bar gradient position (shows color based on health)
+            healthFill.style.backgroundPosition = (100 - healthPercent) + '% 0';
+
+            // Low health pulsing indicator
+            if (playerHealth <= 30) {
+                healthContainer.classList.add('low-health');
+            } else {
+                healthContainer.classList.remove('low-health');
+            }
+
+            // Trigger GPU-based damage vignette (scales with damage)
+            damageVignetteStrength = Math.min(1.0, damageVignetteStrength + amount / 50);
+
+            // Also flash CSS overlay for immediate feedback
             damageOverlay.classList.add('flash');
             setTimeout(() => damageOverlay.classList.remove('flash'), 200);
 
@@ -2134,9 +2821,6 @@
             pauseScreen.style.display = 'flex';
             hud.style.display = 'none';
             healthContainer.style.display = 'none';
-            if (document.pointerLockElement) {
-                document.exitPointerLock();
-            }
             updateCursor();
         }
 
@@ -2147,11 +2831,6 @@
             hud.style.display = 'block';
             healthContainer.style.display = 'block';
             clock.getDelta(); // Reset delta to avoid jump
-            // Reset mouse to center for smooth resume
-            cumulativeX = window.innerWidth / 2;
-            cumulativeY = window.innerHeight / 2;
-            mouseX = cumulativeX;
-            mouseY = cumulativeY;
             updateCursor();
         }
 
@@ -2260,7 +2939,7 @@
             if (cameraMode === 'hybrid-fps') {
                 // FPS: Camera IS the child's eyes
                 camera.position.x = playerX;
-                camera.position.y = 2.2;  // Child's eye height when sitting
+                camera.position.y = 2.2;  // Raised for better hallway visibility
                 camera.position.z = playerCart.position.z + 0.3; // Inside cart, seeing front
 
                 // Look down slightly to see cart front and aisle ahead
@@ -2279,69 +2958,135 @@
                 // Update charging
                 updateCharging(dt);
 
-                // Animate FPS slingshot - either charging or firing
+                // Animate FPS slingshot - LEFT hand pulls back pouch
                 if (isChargingSlingshot) {
-                    // CHARGING: Pull back based on tension
+                    // CHARGING: Left hand pulls back based on tension
                     const pullBack = slingshotTension; // 0 to 1
-                    const pullZ = pullBack * 0.25; // More stretch when charging
+                    const pullZ = pullBack * 0.2;  // Pull back distance
+                    const pullY = pullBack * 0.03; // Slight upward pull
 
-                    if (fpsPouch) fpsPouch.position.z = 0.1 + pullZ;
-                    if (fpsStone) {
-                        fpsStone.position.z = 0.1 + pullZ;
-                        fpsStone.visible = true; // Stone visible while charging
+                    // Move pouch and stone back with left hand
+                    if (fpsPouch) {
+                        fpsPouch.position.z = 0.08 + pullZ;
+                        fpsPouch.position.y = 0.02 + pullY;
                     }
+                    if (fpsStone) {
+                        fpsStone.position.z = 0.08 + pullZ;
+                        fpsStone.position.y = 0.025 + pullY;
+                        fpsStone.visible = true;
+                    }
+
+                    // Rubber bands stretch and thin out with tension
+                    const bandStretch = 1 + pullBack * 1.8;  // Length multiplier
+                    const bandThin = 1 - pullBack * 0.3;     // Thinner when stretched
+                    const bandAngle = pullBack * 0.6;        // Angle toward pull point
+
                     if (fpsBandL) {
-                        fpsBandL.scale.z = 1 + pullBack * 1.2; // Stretch bands more
-                        fpsBandL.rotation.x = Math.PI / 6 + pullBack * 0.4;
+                        fpsBandL.scale.set(bandThin, bandStretch, bandThin);
+                        fpsBandL.position.z = 0.04 + pullZ * 0.5;
+                        fpsBandL.rotation.x = 0.3 + bandAngle;
+                        fpsBandL.rotation.z = 0.1 - pullBack * 0.05;
                     }
                     if (fpsBandR) {
-                        fpsBandR.scale.z = 1 + pullBack * 1.2;
-                        fpsBandR.rotation.x = Math.PI / 6 + pullBack * 0.4;
+                        fpsBandR.scale.set(bandThin, bandStretch, bandThin);
+                        fpsBandR.position.z = 0.04 + pullZ * 0.5;
+                        fpsBandR.rotation.x = 0.3 + bandAngle;
+                        fpsBandR.rotation.z = -0.1 + pullBack * 0.05;
                     }
-                    // Pull right hand back with pouch
-                    if (fpsHands && fpsHands.userData.rightHand) {
-                        fpsHands.userData.rightHand.position.z = -0.15 + pullZ;
+
+                    // Pull LEFT hand back with pouch (pinching gesture)
+                    if (fpsHands && fpsHands.userData.leftHand) {
+                        const leftHand = fpsHands.userData.leftHand;
+                        leftHand.position.z = -0.15 + pullZ;
+                        leftHand.position.y = -0.08 + pullY;
+                        // Tighten pinch as tension increases
+                        if (leftHand.userData.fingers) {
+                            leftHand.userData.fingers[0].rotation.x = 0.8 + pullBack * 0.3; // Index curls more
+                        }
+                        if (leftHand.userData.thumb) {
+                            leftHand.userData.thumb.rotation.x = 0.4 + pullBack * 0.2;
+                        }
                     }
                 } else if (fpsFireAnim > 0) {
-                    // FIRING: Quick release animation
-                    fpsFireAnim -= dt * 6; // Faster release
+                    // FIRING: Quick release animation - bands snap back
+                    fpsFireAnim -= dt * 8; // Fast snap
                     if (fpsFireAnim < 0) fpsFireAnim = 0;
 
-                    // Snap forward animation (release)
                     const snapProgress = 1 - fpsFireAnim; // 0 to 1
-                    const snapZ = (1 - snapProgress) * 0.1; // Quickly return to 0
+                    const snapZ = (1 - snapProgress) * 0.08;
+                    const snapY = (1 - snapProgress) * 0.02;
 
-                    if (fpsPouch) fpsPouch.position.z = 0.1 + snapZ;
-                    if (fpsStone) {
-                        fpsStone.position.z = 0.1 + snapZ;
-                        fpsStone.visible = fpsFireAnim > 0.5; // Hide stone quickly after release
+                    // Pouch snaps forward
+                    if (fpsPouch) {
+                        fpsPouch.position.z = 0.08 + snapZ;
+                        fpsPouch.position.y = 0.02 + snapY;
                     }
+                    if (fpsStone) {
+                        fpsStone.position.z = 0.08 + snapZ;
+                        fpsStone.position.y = 0.025 + snapY;
+                        fpsStone.visible = fpsFireAnim > 0.7; // Stone disappears quickly (fired)
+                    }
+
+                    // Bands snap back with slight overshoot
+                    const bandSnap = 1 + (1 - snapProgress) * 0.4;
+                    const overshoot = snapProgress > 0.8 ? Math.sin((snapProgress - 0.8) * Math.PI * 5) * 0.1 : 0;
+
                     if (fpsBandL) {
-                        fpsBandL.scale.z = 1 + (1 - snapProgress) * 0.3;
-                        fpsBandL.rotation.x = Math.PI / 6 + (1 - snapProgress) * 0.1;
+                        fpsBandL.scale.set(1, bandSnap + overshoot, 1);
+                        fpsBandL.position.z = 0.04 + snapZ * 0.3;
+                        fpsBandL.rotation.x = 0.3 + (1 - snapProgress) * 0.3;
                     }
                     if (fpsBandR) {
-                        fpsBandR.scale.z = 1 + (1 - snapProgress) * 0.3;
-                        fpsBandR.rotation.x = Math.PI / 6 + (1 - snapProgress) * 0.1;
+                        fpsBandR.scale.set(1, bandSnap + overshoot, 1);
+                        fpsBandR.position.z = 0.04 + snapZ * 0.3;
+                        fpsBandR.rotation.x = 0.3 + (1 - snapProgress) * 0.3;
                     }
-                    if (fpsHands && fpsHands.userData.rightHand) {
-                        fpsHands.userData.rightHand.position.z = -0.15 + snapZ;
+
+                    // Left hand follows release
+                    if (fpsHands && fpsHands.userData.leftHand) {
+                        const leftHand = fpsHands.userData.leftHand;
+                        leftHand.position.z = -0.15 + snapZ;
+                        leftHand.position.y = -0.08 + snapY;
+                        // Open fingers after release
+                        if (leftHand.userData.fingers) {
+                            leftHand.userData.fingers[0].rotation.x = 0.8 + (1 - snapProgress) * 0.3;
+                        }
                     }
                 } else {
                     // READY: Reset to ready position
-                    if (fpsPouch) fpsPouch.position.z = 0.1;
-                    if (fpsStone) { fpsStone.position.z = 0.1; fpsStone.visible = true; }
-                    if (fpsBandL) { fpsBandL.scale.z = 1; fpsBandL.rotation.x = Math.PI / 6; }
-                    if (fpsBandR) { fpsBandR.scale.z = 1; fpsBandR.rotation.x = Math.PI / 6; }
-                    if (fpsHands && fpsHands.userData.rightHand) {
-                        fpsHands.userData.rightHand.position.z = -0.15;
+                    if (fpsPouch) {
+                        fpsPouch.position.set(0, 0.02, 0.08);
+                    }
+                    if (fpsStone) {
+                        fpsStone.position.set(0, 0.025, 0.08);
+                        fpsStone.visible = true;
+                    }
+                    if (fpsBandL) {
+                        fpsBandL.scale.set(1, 1, 1);
+                        fpsBandL.position.z = 0.04;
+                        fpsBandL.rotation.set(0.3, 0, 0.1);
+                    }
+                    if (fpsBandR) {
+                        fpsBandR.scale.set(1, 1, 1);
+                        fpsBandR.position.z = 0.04;
+                        fpsBandR.rotation.set(0.3, 0, -0.1);
+                    }
+                    if (fpsHands && fpsHands.userData.leftHand) {
+                        const leftHand = fpsHands.userData.leftHand;
+                        leftHand.position.set(-0.05, -0.08, -0.15);
+                        if (leftHand.userData.fingers) {
+                            leftHand.userData.fingers[0].rotation.x = 0.8;
+                        }
+                        if (leftHand.userData.thumb) {
+                            leftHand.userData.thumb.rotation.x = 0.4;
+                        }
                     }
                 }
             } else {
                 // Third-person: camera behind and above cart
                 const targetCamX = playerX + CAMERA_OFFSET_SIDE;
-                const targetCamY = CAMERA_OFFSET_UP + 0.8; // Higher view
-                const targetCamZ = playerCart.position.z + CAMERA_OFFSET_BEHIND - 0.5; // Closer
+                const targetCamY = CAMERA_OFFSET_UP + 0.5; // Higher view
+                const targetCamZ = playerCart.position.z + CAMERA_OFFSET_BEHIND; // Behind cart
 
                 // Smooth camera follow (lerp)
                 camera.position.x += (targetCamX - camera.position.x) * 5 * dt;
@@ -2380,24 +3125,119 @@
                 }
             }
 
-            // Crosshair movement (arcade mode uses arrow keys)
-            if (controlScheme === 'arcade') {
-                if (keys.aimLeft) crosshairX -= CROSSHAIR_SPEED * dt;
-                if (keys.aimRight) crosshairX += CROSSHAIR_SPEED * dt;
-                if (keys.aimUp) crosshairY -= CROSSHAIR_SPEED * dt;
-                if (keys.aimDown) crosshairY += CROSSHAIR_SPEED * dt;
+            // Smart Auto-Aim with Sticky Targeting
+            let aimAssistActive = false;
+
+            // Helper to check if a target object is still valid
+            function isTargetValid(obj) {
+                if (!obj || !obj.userData?.active) return false;
+                if (obj.userData.hit) return false; // Obstacle already hit
+
+                // Check if in front of camera
+                const pos = obj.position.clone();
+                pos.project(camera);
+                if (pos.z >= 1 || pos.z <= 0) return false;
+
+                // Check if passed behind player
+                const zDist = camera.position.z - obj.position.z;
+                if (zDist < -10) return false; // Too far behind
+
+                return true;
+            }
+
+            // Helper to get screen position of target
+            function getTargetScreenPos(obj, yOffset = 0) {
+                const pos = obj.position.clone();
+                pos.y += yOffset;
+                pos.project(camera);
+                return {
+                    x: (pos.x * 0.5 + 0.5) * window.innerWidth,
+                    y: (-pos.y * 0.5 + 0.5) * window.innerHeight
+                };
+            }
+
+            // Check if current locked target is still valid
+            if (lockedTarget && isTargetValid(lockedTarget)) {
+                // Keep tracking current target
+                aimAssistActive = true;
+                const yOffset = lockedTarget.userData.height ? lockedTarget.userData.height * 0.4 : 1.5;
+                const screenPos = getTargetScreenPos(lockedTarget, yOffset);
+                crosshairX = screenPos.x;
+                crosshairY = screenPos.y;
             } else {
-                // Classic: Mouse controls crosshair
-                crosshairX = cumulativeX;
-                crosshairY = cumulativeY;
+                // Find new best target
+                lockedTarget = null;
+                let bestTarget = null;
+                let bestScore = -Infinity;
+
+                // Evaluate enemies
+                enemies.forEach(enemy => {
+                    if (!isTargetValid(enemy)) return;
+
+                    const zDist = camera.position.z - enemy.position.z;
+                    const xDist = Math.abs(enemy.position.x - playerX);
+                    const isAhead = zDist > 0 && zDist < 100;
+                    const inPath = xDist < 4;
+
+                    let score = 0;
+                    if (isAhead && inPath) {
+                        score = 1000 - zDist * 5 - xDist * 20;
+                    } else if (isAhead) {
+                        score = 500 - zDist * 2 - xDist * 5;
+                    } else {
+                        score = 100 - enemy.position.distanceTo(camera.position);
+                    }
+
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestTarget = enemy;
+                    }
+                });
+
+                // Evaluate obstacles
+                obstacles.forEach(obs => {
+                    if (!isTargetValid(obs)) return;
+
+                    const zDist = camera.position.z - obs.position.z;
+                    const xDist = Math.abs(obs.position.x - playerX);
+                    const isAhead = zDist > 0 && zDist < 80;
+                    const inPath = xDist < 3;
+
+                    let score = 0;
+                    if (isAhead && inPath) {
+                        score = 800 - zDist * 4 - xDist * 15;
+                    } else if (isAhead) {
+                        score = 300 - zDist * 2 - xDist * 5;
+                    }
+
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestTarget = obs;
+                    }
+                });
+
+                // Lock onto new target
+                if (bestTarget) {
+                    lockedTarget = bestTarget;
+                    aimAssistActive = true;
+                    const yOffset = bestTarget.userData.height ? bestTarget.userData.height * 0.4 : 1.5;
+                    const screenPos = getTargetScreenPos(bestTarget, yOffset);
+                    crosshairX = screenPos.x;
+                    crosshairY = screenPos.y;
+                }
             }
 
             // Keep crosshair within screen bounds
             crosshairX = Math.max(CROSSHAIR_BOUNDS_MARGIN, Math.min(window.innerWidth - CROSSHAIR_BOUNDS_MARGIN, crosshairX));
             crosshairY = Math.max(CROSSHAIR_BOUNDS_MARGIN, Math.min(window.innerHeight - CROSSHAIR_BOUNDS_MARGIN, crosshairY));
 
-            // Update crosshair DOM position
+            // Update crosshair DOM position and aim-assist visual feedback
             const crosshairEl = document.getElementById('crosshair');
+            if (aimAssistActive) {
+                crosshairEl.classList.add('aim-assist-active');
+            } else {
+                crosshairEl.classList.remove('aim-assist-active');
+            }
             crosshairEl.style.left = crosshairX + 'px';
             crosshairEl.style.top = crosshairY + 'px';
 
@@ -2564,34 +3404,43 @@
                 const prevPos = proj.userData.prevPosition || proj.position.clone();
                 const currPos = proj.position;
 
-                // Check enemy collisions
-                enemies.forEach(enemy => {
-                    if (!enemy.userData.active || !proj.userData.active) return;
+                // Check enemy collisions - optimized with early exit and reused vectors
+                const projDir = currPos.clone().sub(prevPos);
+                const projLen = projDir.length();
+                if (projLen > 0) {
+                    projDir.normalize();
+                }
 
-                    // Enemy hitbox center (slightly raised for center mass)
+                for (let i = 0; i < enemies.length && proj.userData.active; i++) {
+                    const enemy = enemies[i];
+                    if (!enemy.userData.active) continue;
+
+                    // Quick distance check first (cheaper than full calculation)
+                    const dx = enemy.position.x - currPos.x;
+                    const dz = enemy.position.z - currPos.z;
+                    if (dx * dx + dz * dz > 100) continue;  // Skip if > 10 units away
+
+                    // Enemy hitbox center
                     const enemyCenter = enemy.position.clone();
                     enemyCenter.y += 1.2;
 
-                    // Swept sphere collision - check along projectile path
                     const hitRadius = 2.5;
-                    const toEnemy = enemyCenter.clone().sub(prevPos);
-                    const projDir = currPos.clone().sub(prevPos);
-                    const projLen = projDir.length();
+                    const toEnemy = enemyCenter.sub(prevPos);  // Reuse enemyCenter vector
 
                     if (projLen > 0) {
-                        projDir.normalize();
                         const dot = toEnemy.dot(projDir);
                         const clampedDot = Math.max(0, Math.min(projLen, dot));
-                        const closestPoint = prevPos.clone().add(projDir.multiplyScalar(clampedDot));
+                        const closestPoint = prevPos.clone().addScaledVector(projDir, clampedDot);
+                        enemyCenter.copy(enemy.position).y += 1.2;  // Restore for distance check
                         const dist = closestPoint.distanceTo(enemyCenter);
 
                         if (dist < hitRadius) {
                             proj.userData.active = false;
-                            enemy.userData.health--;
+                            const damage = 1 + Math.round((proj.userData.power || 0) * 2);
+                            enemy.userData.health -= damage;
                             enemy.userData.hitFlash = 1;
                             showHitMarker();
 
-                            // Update health bar
                             const healthBar = enemy.getObjectByName('healthBar');
                             if (healthBar) {
                                 healthBar.scale.x = enemy.userData.health / ENEMY_HEALTH;
@@ -2601,35 +3450,36 @@
                             if (enemy.userData.health <= 0) {
                                 enemy.userData.active = false;
                                 addScore(300, enemy.position);
-                                spawnParticles(enemy.position, 0xe94560, 20);
+                                spawnParticles(enemy.position, 0xe94560, 15);  // Fewer particles
                             } else {
                                 addScore(100, enemy.position);
-                                spawnParticles(closestPoint, 0xf39c12, 5);
+                                spawnParticles(closestPoint, 0xf39c12, 3);  // Fewer particles
                             }
                         }
                     }
-                });
+                }
 
-                // Check obstacle collisions
-                obstacles.forEach(obs => {
-                    if (!obs.userData.active || obs.userData.hit || !proj.userData.active) return;
+                // Check obstacle collisions - optimized
+                for (let i = 0; i < obstacles.length && proj.userData.active; i++) {
+                    const obs = obstacles[i];
+                    if (!obs.userData.active || obs.userData.hit) continue;
 
-                    // Obstacle hitbox center
+                    // Quick distance check
+                    const dx = obs.position.x - currPos.x;
+                    const dz = obs.position.z - currPos.z;
+                    if (dx * dx + dz * dz > 64) continue;  // Skip if > 8 units away
+
                     const obsCenter = obs.position.clone();
                     obsCenter.y += (obs.userData.height || 2) * 0.4;
-
                     const hitRadius = (obs.userData.width || 2) * 0.8;
 
-                    // Swept sphere collision
-                    const toObs = obsCenter.clone().sub(prevPos);
-                    const projDir = currPos.clone().sub(prevPos);
-                    const projLen = projDir.length();
+                    const toObs = obsCenter.sub(prevPos);
 
                     if (projLen > 0) {
-                        projDir.normalize();
                         const dot = toObs.dot(projDir);
                         const clampedDot = Math.max(0, Math.min(projLen, dot));
-                        const closestPoint = prevPos.clone().add(projDir.multiplyScalar(clampedDot));
+                        const closestPoint = prevPos.clone().addScaledVector(projDir, clampedDot);
+                        obsCenter.copy(obs.position).y += (obs.userData.height || 2) * 0.4;
                         const dist = closestPoint.distanceTo(obsCenter);
 
                         if (dist < hitRadius) {
@@ -2637,12 +3487,10 @@
                             obs.userData.hit = true;
                             showHitMarker();
                             addScore(150, obs.position);
-
-                            const colors = [0xe74c3c, 0x3498db, 0x2ecc71, 0xf1c40f, 0x9b59b6];
-                            spawnParticles(obs.position, colors[Math.floor(Math.random() * colors.length)], 15);
+                            spawnParticles(obs.position, 0xf1c40f, 10);  // Fewer particles
                         }
                     }
-                });
+                }
 
                 // Store current position for next frame's sweep check
                 proj.userData.prevPosition = proj.position.clone();
@@ -2688,6 +3536,7 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            if (composer) composer.setSize(window.innerWidth, window.innerHeight);
         }
 
         function animate() {
@@ -2696,54 +3545,36 @@
             const dt = Math.min(clock.getDelta(), 0.1);
             update(dt);
 
-            renderer.render(scene, camera);
+            // Decay damage vignette (for CSS overlay)
+            damageVignetteStrength *= 0.95;
+
+            // Render with post-processing
+            if (composer) {
+                composer.render(dt);
+            } else {
+                renderer.render(scene, camera);
+            }
         }
 
         // Event Listeners
-        document.addEventListener('mousemove', (e) => {
-            mouseX = e.clientX;
-            mouseY = e.clientY;
-        });
-
-        // Mouse controls for slingshot (Classic mode)
-        document.addEventListener('mousedown', (e) => {
-            if (e.button === 0 && gameState === 'PLAYING' && controlScheme === 'classic') {
-                startCharging();
-            }
-        });
-
-        document.addEventListener('mouseup', (e) => {
-            if (e.button === 0 && gameState === 'PLAYING' && controlScheme === 'classic') {
-                releaseAndFire();
-            }
-        });
-
-        document.addEventListener('contextmenu', (e) => e.preventDefault());
-
         document.getElementById('start-btn').addEventListener('click', startGame);
         document.getElementById('restart-btn').addEventListener('click', startGame);
         document.getElementById('resume-btn').addEventListener('click', resumeGame);
         document.getElementById('quit-btn').addEventListener('click', quitToMenu);
 
-        // Control scheme selector
-        const classicBtn = document.getElementById('classic-btn');
-        const arcadeBtn = document.getElementById('arcade-btn');
-        const instructionsEl = document.getElementById('instructions');
-
-        function setControlScheme(scheme) {
-            controlScheme = scheme;
-            classicBtn.classList.toggle('selected', scheme === 'classic');
-            arcadeBtn.classList.toggle('selected', scheme === 'arcade');
-
-            if (scheme === 'classic') {
-                instructionsEl.innerHTML = '<span>← →</span> Dodge<br><span>MOUSE</span> Aim<br><span>CLICK</span> Fire';
-            } else {
-                instructionsEl.innerHTML = '<span>A D</span> Dodge<br><span>← →</span> Aim<br><span>SPACE</span> Fire';
+        // How to Play modal
+        const howToPlayModal = document.getElementById('how-to-play-modal');
+        document.getElementById('how-to-play-btn').addEventListener('click', () => {
+            howToPlayModal.classList.add('visible');
+        });
+        document.getElementById('modal-close').addEventListener('click', () => {
+            howToPlayModal.classList.remove('visible');
+        });
+        howToPlayModal.addEventListener('click', (e) => {
+            if (e.target === howToPlayModal) {
+                howToPlayModal.classList.remove('visible');
             }
-        }
-
-        classicBtn.addEventListener('click', () => setControlScheme('classic'));
-        arcadeBtn.addEventListener('click', () => setControlScheme('arcade'));
+        });
 
         // Camera mode selector
         const fpsBtn = document.getElementById('fps-btn');
@@ -2770,31 +3601,15 @@
             if (gameState === 'PLAYING') {
                 const key = e.key;
 
-                // A/D always for dodge (both schemes)
-                if (key === 'a' || key === 'A') keys.left = true;
-                if (key === 'd' || key === 'D') keys.right = true;
+                // Arrow keys for dodge
+                if (key === 'ArrowLeft') keys.left = true;
+                if (key === 'ArrowRight') keys.right = true;
 
-                if (controlScheme === 'classic') {
-                    // Classic: Arrow left/right also for dodge
-                    if (key === 'ArrowLeft') keys.left = true;
-                    if (key === 'ArrowRight') keys.right = true;
-                } else {
-                    // Arcade: Arrows = aim crosshair
-                    if (key === 'ArrowLeft') keys.aimLeft = true;
-                    if (key === 'ArrowRight') keys.aimRight = true;
-                    if (key === 'ArrowUp') keys.aimUp = true;
-                    if (key === 'ArrowDown') keys.aimDown = true;
-                }
 
-                // Space: Start charging (arcade mode) or fire (classic mode fallback)
+                // Space: Start charging
                 if (key === ' ') {
                     e.preventDefault();
-                    if (controlScheme === 'arcade') {
-                        startCharging();
-                    } else {
-                        // Classic mode: space also works as instant fire
-                        startCharging();
-                    }
+                    startCharging();
                 }
             }
         });
@@ -2802,55 +3617,16 @@
         document.addEventListener('keyup', (e) => {
             const key = e.key;
 
-            // A/D always for dodge (both schemes)
-            if (key === 'a' || key === 'A') keys.left = false;
-            if (key === 'd' || key === 'D') keys.right = false;
+            // Arrow keys for dodge
+            if (key === 'ArrowLeft') keys.left = false;
+            if (key === 'ArrowRight') keys.right = false;
 
-            if (controlScheme === 'classic') {
-                // Classic: Arrow left/right also for dodge
-                if (key === 'ArrowLeft') keys.left = false;
-                if (key === 'ArrowRight') keys.right = false;
-            } else {
-                // Arcade: Arrows = aim crosshair
-                if (key === 'ArrowLeft') keys.aimLeft = false;
-                if (key === 'ArrowRight') keys.aimRight = false;
-                if (key === 'ArrowUp') keys.aimUp = false;
-                if (key === 'ArrowDown') keys.aimDown = false;
-            }
 
             // Space: Release and fire
             if (key === ' ' && gameState === 'PLAYING') {
                 releaseAndFire();
             }
         });
-
-        // Pointer lock for better mouse control
-        document.addEventListener('click', () => {
-            if (gameState === 'PLAYING' && !document.pointerLockElement) {
-                renderer.domElement.requestPointerLock();
-            }
-        });
-
-        document.addEventListener('pointerlockchange', () => {
-            if (document.pointerLockElement === renderer.domElement) {
-                document.addEventListener('mousemove', onMouseMove);
-            } else {
-                document.removeEventListener('mousemove', onMouseMove);
-                // ESC exits pointer lock - auto pause if we're playing
-                if (gameState === 'PLAYING') {
-                    pauseGame();
-                }
-            }
-        });
-
-        function onMouseMove(e) {
-            cumulativeX += e.movementX * MOUSE_SENSITIVITY;
-            cumulativeY += e.movementY * MOUSE_SENSITIVITY;
-            cumulativeX = Math.max(0, Math.min(window.innerWidth, cumulativeX));
-            cumulativeY = Math.max(0, Math.min(window.innerHeight, cumulativeY));
-            mouseX = cumulativeX;
-            mouseY = cumulativeY;
-        }
 
         // Expose game state and functions for testing
         Object.defineProperty(window, 'gameState', {
@@ -2888,17 +3664,11 @@
         window.damagePlayer = damagePlayer;
         window.takeDamage = damagePlayer;
         window.keys = keys;
-        window.setControlScheme = setControlScheme;
-        Object.defineProperty(window, 'controlScheme', {
-            get: () => controlScheme,
-            set: (v) => { setControlScheme(v); }
-        });
         window.setCameraMode = setCameraMode;
         Object.defineProperty(window, 'cameraMode', {
             get: () => cameraMode,
             set: (v) => { setCameraMode(v); }
         });
-        window.findAutoAimTarget = findAutoAimTarget;
         window.enemies = enemies;
         window.obstacles = obstacles;
 
@@ -2915,14 +3685,28 @@
 
         // Expose slingshot tension for testing
         Object.defineProperty(window, 'slingshotTension', {
-            get: () => slingshotTension
+            get: () => slingshotTension,
+            set: (v) => { slingshotTension = v; }
         });
         Object.defineProperty(window, 'isChargingSlingshot', {
-            get: () => isChargingSlingshot
+            get: () => isChargingSlingshot,
+            set: (v) => { isChargingSlingshot = v; }
         });
         window.startCharging = startCharging;
         window.releaseAndFire = releaseAndFire;
         window.cancelCharging = cancelCharging;
+        window.resetGame = resetGame;
+        // Expose lastShootTime for test to reset cooldown
+        Object.defineProperty(window, 'lastShootTime', {
+            get: () => lastShootTime,
+            set: (v) => { lastShootTime = v; }
+        });
+        Object.defineProperty(window, 'camera', {
+            get: () => camera
+        });
+        Object.defineProperty(window, 'projectiles', {
+            get: () => projectiles
+        });
 
         // Initialize and start
         initThree();

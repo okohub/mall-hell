@@ -26,3 +26,4 @@ npm-debug.log*
 # Environment files
 .env
 .env.local
+.test-output/

@@ -6,6 +6,23 @@ const PNG = require('pngjs').PNG;
 // Directories
 const BASELINE_DIR = path.join(__dirname, 'tests/baselines');
 const CURRENT_DIR = path.join(__dirname, 'screenshots');
+const TEST_OUTPUT_DIR = path.join(__dirname, '.test-output');
+const OUTPUT_FILE = path.join(TEST_OUTPUT_DIR, 'test-results.txt');
+const JSON_OUTPUT = path.join(TEST_OUTPUT_DIR, 'test-results.json');
+
+// Ensure test output directory exists
+if (!fs.existsSync(TEST_OUTPUT_DIR)) {
+    fs.mkdirSync(TEST_OUTPUT_DIR, { recursive: true });
+}
+
+// Capture console output
+let outputLines = [];
+const originalLog = console.log;
+console.log = (...args) => {
+    const line = args.join(' ');
+    outputLines.push(line);
+    originalLog.apply(console, args);
+};
 
 // Ensure directories exist
 if (!fs.existsSync(BASELINE_DIR)) {
@@ -17,6 +34,24 @@ if (!fs.existsSync(CURRENT_DIR)) {
 
 // Check if we're updating baselines
 const UPDATE_BASELINES = process.argv.includes('--update-baselines');
+
+// Check for --only or --test flag to run specific tests
+// Supports: --only testname, --test=testname, --test testname
+let ONLY_TESTS = [];
+const onlyIndex = process.argv.indexOf('--only');
+if (onlyIndex !== -1) {
+    ONLY_TESTS = process.argv.slice(onlyIndex + 1).filter(arg => !arg.startsWith('--'));
+}
+// Also support --test=name syntax
+process.argv.forEach(arg => {
+    if (arg.startsWith('--test=')) {
+        ONLY_TESTS.push(arg.substring(7));
+    }
+});
+const testIndex = process.argv.indexOf('--test');
+if (testIndex !== -1 && process.argv[testIndex + 1] && !process.argv[testIndex + 1].startsWith('--')) {
+    ONLY_TESTS.push(process.argv[testIndex + 1]);
+}
 
 // Shared progress state
 const progress = {
@@ -101,8 +136,11 @@ function cleanupScreenshots() {
 }
 
 async function runTests() {
-    // Clean up old screenshots at start
+    // Clean up old screenshots and result files at start
     cleanupScreenshots();
+    if (fs.existsSync(OUTPUT_FILE)) fs.unlinkSync(OUTPUT_FILE);
+    if (fs.existsSync(JSON_OUTPUT)) fs.unlinkSync(JSON_OUTPUT);
+    outputLines = [];
 
     const browser = await puppeteer.launch({
         headless: true,
@@ -113,10 +151,12 @@ async function runTests() {
     console.log('='.repeat(60));
 
     if (UPDATE_BASELINES) {
-        console.log('\n📸 MODE: Updating baseline screenshots\n');
-    } else {
-        console.log('\n⚡ Running Unit Tests and UI Tests in parallel...\n');
+        console.log('\n📸 MODE: Updating baseline screenshots');
     }
+    if (ONLY_TESTS.length > 0) {
+        console.log(`\n🎯 Running only: ${ONLY_TESTS.join(', ')}`);
+    }
+    console.log('\n⚡ Running Unit Tests and UI Tests in parallel...\n');
 
     const progressInterval = setInterval(updateProgressDisplay, 200);
 
@@ -192,6 +232,31 @@ async function runTests() {
         console.log(`   ⚠️  ${visualFailed} visual regression(s) detected`);
     }
     console.log('');
+
+    // Write results to files
+    const jsonResults = {
+        timestamp: new Date().toISOString(),
+        summary: {
+            totalPassed,
+            totalFailed,
+            visualRegressions: visualFailed
+        },
+        unit: {
+            passed: unitResults.passed,
+            failed: unitResults.failed,
+            failedTests: unitResults.failedTests
+        },
+        ui: {
+            passed: uiResults.passed,
+            failed: uiResults.failed,
+            pending: uiResults.pending,
+            failedTests: uiResults.failedTests,
+            visualRegressions: uiResults.visualRegressions
+        }
+    };
+
+    fs.writeFileSync(JSON_OUTPUT, JSON.stringify(jsonResults, null, 2));
+    fs.writeFileSync(OUTPUT_FILE, outputLines.join('\n'));
 
     if (totalFailed > 0 || visualFailed > 0) {
         process.exit(1);
@@ -333,6 +398,20 @@ async function runUITests(browser) {
 
         // Screenshot 1: Menu state
         await captureScreenshot('menu_initial');
+
+        // Filter tests if --only flag is used
+        if (ONLY_TESTS.length > 0) {
+            await page.evaluate((testNames) => {
+                if (window.runner && window.runner.tests) {
+                    window.runner.tests = window.runner.tests.filter(t =>
+                        testNames.some(name =>
+                            t.name.toLowerCase().includes(name.toLowerCase()) ||
+                            t.id?.toLowerCase().includes(name.toLowerCase())
+                        )
+                    );
+                }
+            }, ONLY_TESTS);
+        }
 
         const totalTests = await page.evaluate(() => {
             return window.runner?.tests?.length || 0;

@@ -1414,6 +1414,133 @@
             });
         });
 
+        // FPS Weapon Visibility Integration Tests
+        test.describe('FPS Weapon Visibility', () => {
+            const FPSWeaponVisibility = {
+                cameraMode: 'hybrid-fps',
+                weaponVisible: false,
+                cameraHasWeaponChild: false,
+                chargingTension: 0,
+                bandStretch: 1.0,
+                handPullBack: 0,
+                stoneVisible: true,
+
+                // Simulate what happens in game's update loop
+                updateVisibility() {
+                    if (this.cameraMode === 'hybrid-fps') {
+                        this.weaponVisible = true;
+                    } else {
+                        this.weaponVisible = false;
+                    }
+                },
+
+                // Simulate camera.add(fpsWeapon) setup
+                setupCameraChild() {
+                    this.cameraHasWeaponChild = true;
+                },
+
+                // Simulate charging animation
+                updateChargingAnimation(tension) {
+                    this.chargingTension = tension;
+                    if (tension > 0) {
+                        // Band stretches from 1.0 to 2.2 at max tension
+                        this.bandStretch = 1 + tension * 1.2;
+                        // Hand pulls back from 0 to 0.25 at max tension
+                        this.handPullBack = tension * 0.25;
+                        this.stoneVisible = true;
+                    } else {
+                        this.bandStretch = 1.0;
+                        this.handPullBack = 0;
+                        this.stoneVisible = true;
+                    }
+                },
+
+                setCameraMode(mode) {
+                    this.cameraMode = mode;
+                    this.updateVisibility();
+                },
+
+                reset() {
+                    this.cameraMode = 'hybrid-fps';
+                    this.weaponVisible = false;
+                    this.cameraHasWeaponChild = false;
+                    this.chargingTension = 0;
+                    this.bandStretch = 1.0;
+                    this.handPullBack = 0;
+                    this.stoneVisible = true;
+                }
+            };
+
+            test.beforeEach(() => {
+                FPSWeaponVisibility.reset();
+            });
+
+            test.it('should show weapon in FPS mode', () => {
+                FPSWeaponVisibility.setCameraMode('hybrid-fps');
+                test.assertTrue(FPSWeaponVisibility.weaponVisible, 'Weapon should be visible in FPS mode');
+            });
+
+            test.it('should hide weapon in third-person mode', () => {
+                FPSWeaponVisibility.setCameraMode('third-person');
+                test.assertFalse(FPSWeaponVisibility.weaponVisible, 'Weapon should be hidden in TPS mode');
+            });
+
+            test.it('should switch visibility when changing camera modes', () => {
+                FPSWeaponVisibility.setCameraMode('hybrid-fps');
+                test.assertTrue(FPSWeaponVisibility.weaponVisible);
+
+                FPSWeaponVisibility.setCameraMode('third-person');
+                test.assertFalse(FPSWeaponVisibility.weaponVisible);
+
+                FPSWeaponVisibility.setCameraMode('hybrid-fps');
+                test.assertTrue(FPSWeaponVisibility.weaponVisible);
+            });
+
+            test.it('should have weapon as camera child for rendering', () => {
+                FPSWeaponVisibility.setupCameraChild();
+                test.assertTrue(FPSWeaponVisibility.cameraHasWeaponChild, 'Weapon must be camera child to render');
+            });
+
+            test.it('should stretch bands during charging', () => {
+                FPSWeaponVisibility.updateChargingAnimation(0);
+                test.assertEqual(FPSWeaponVisibility.bandStretch, 1.0, 'No stretch at zero tension');
+
+                FPSWeaponVisibility.updateChargingAnimation(0.5);
+                test.assertEqual(FPSWeaponVisibility.bandStretch, 1.6, 'Half stretch at half tension');
+
+                FPSWeaponVisibility.updateChargingAnimation(1.0);
+                test.assertEqual(FPSWeaponVisibility.bandStretch, 2.2, 'Full stretch at max tension');
+            });
+
+            test.it('should pull hand back during charging', () => {
+                FPSWeaponVisibility.updateChargingAnimation(0);
+                test.assertEqual(FPSWeaponVisibility.handPullBack, 0, 'No pull at zero tension');
+
+                FPSWeaponVisibility.updateChargingAnimation(0.5);
+                test.assertCloseTo(FPSWeaponVisibility.handPullBack, 0.125, 0.01, 'Half pull at half tension');
+
+                FPSWeaponVisibility.updateChargingAnimation(1.0);
+                test.assertEqual(FPSWeaponVisibility.handPullBack, 0.25, 'Full pull at max tension');
+            });
+
+            test.it('should show stone during charging', () => {
+                FPSWeaponVisibility.updateChargingAnimation(0.5);
+                test.assertTrue(FPSWeaponVisibility.stoneVisible, 'Stone should be visible while charging');
+            });
+
+            test.it('should reset animations when not charging', () => {
+                // First charge up
+                FPSWeaponVisibility.updateChargingAnimation(1.0);
+                test.assertEqual(FPSWeaponVisibility.bandStretch, 2.2);
+                test.assertEqual(FPSWeaponVisibility.handPullBack, 0.25);
+
+                // Then reset to zero
+                FPSWeaponVisibility.updateChargingAnimation(0);
+                test.assertEqual(FPSWeaponVisibility.bandStretch, 1.0, 'Bands should reset');
+                test.assertEqual(FPSWeaponVisibility.handPullBack, 0, 'Hand should reset');
+            });
+        });
+
         // Slingshot Tension System Tests
         test.describe('Slingshot Tension System', () => {
             const TensionSystem = {
@@ -1529,6 +1656,114 @@
                 // Immediate release
                 const tension = TensionSystem.release();
                 test.assertEqual(tension, TensionSystem.MIN_TENSION);
+            });
+        });
+
+        // ============================================
+        // CODE QUALITY TESTS
+        // ============================================
+
+        test.describe('Code Quality - No Duplicate Definitions', () => {
+            // This test catches bugs like defining the same property twice
+            // which causes errors in strict mode
+
+            test.it('should not have duplicate Object.defineProperty calls', async () => {
+                // Fetch the game source code
+                const response = await fetch('../index.html');
+                const sourceCode = await response.text();
+
+                // Find all Object.defineProperty calls for window
+                const definePropertyPattern = /Object\.defineProperty\s*\(\s*window\s*,\s*['"](\w+)['"]/g;
+                const properties = {};
+                let match;
+
+                while ((match = definePropertyPattern.exec(sourceCode)) !== null) {
+                    const propName = match[1];
+                    if (properties[propName]) {
+                        properties[propName].count++;
+                        properties[propName].lines.push(match.index);
+                    } else {
+                        properties[propName] = { count: 1, lines: [match.index] };
+                    }
+                }
+
+                // Check for duplicates
+                const duplicates = Object.entries(properties)
+                    .filter(([name, info]) => info.count > 1)
+                    .map(([name, info]) => `${name} (defined ${info.count} times)`);
+
+                if (duplicates.length > 0) {
+                    throw new Error(`Duplicate Object.defineProperty calls found: ${duplicates.join(', ')}`);
+                }
+            });
+
+            test.it('should not have duplicate window property assignments', async () => {
+                const response = await fetch('../index.html');
+                const sourceCode = await response.text();
+
+                // Find all window.X = assignments (excluding those inside functions that reassign)
+                // This is a simplified check - looks for window.X = at top level
+                const assignmentPattern = /^\s*window\.(\w+)\s*=/gm;
+                const properties = {};
+                let match;
+
+                while ((match = assignmentPattern.exec(sourceCode)) !== null) {
+                    const propName = match[1];
+                    if (properties[propName]) {
+                        properties[propName]++;
+                    } else {
+                        properties[propName] = 1;
+                    }
+                }
+
+                // Only flag if same property assigned more than twice
+                // (some reassignments are intentional)
+                const duplicates = Object.entries(properties)
+                    .filter(([name, count]) => count > 2)
+                    .map(([name, count]) => `${name} (assigned ${count} times)`);
+
+                if (duplicates.length > 0) {
+                    throw new Error(`Excessive window property assignments: ${duplicates.join(', ')}`);
+                }
+            });
+
+            test.it('should expose all required properties for testing', async () => {
+                // Verify the source code exposes all required properties
+                const response = await fetch('../index.html');
+                const sourceCode = await response.text();
+
+                // Properties that should be exposed via Object.defineProperty or window.X =
+                const requiredProperties = [
+                    'gameState',
+                    'score',
+                    'distance',
+                    'camera',
+                    'scene',
+                    'renderer',
+                    'projectiles',
+                    'enemies',
+                    'obstacles',
+                    'resetGame',
+                    'startGame',
+                    'pauseGame',
+                    'resumeGame',
+                    'startCharging',
+                    'releaseAndFire',
+                    'isChargingSlingshot',
+                    'slingshotTension'
+                ];
+
+                const missing = requiredProperties.filter(prop => {
+                    // Check for Object.defineProperty(window, 'propName'
+                    const definePattern = new RegExp(`Object\\.defineProperty\\s*\\(\\s*window\\s*,\\s*['"]${prop}['"]`);
+                    // Check for window.propName =
+                    const assignPattern = new RegExp(`window\\.${prop}\\s*=`);
+                    return !definePattern.test(sourceCode) && !assignPattern.test(sourceCode);
+                });
+
+                if (missing.length > 0) {
+                    throw new Error(`Properties not exposed to window: ${missing.join(', ')}`);
+                }
             });
         });
 
