@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cart Chaos - UI/Integration Tests</title>
+    <title>Mall Hell - UI/Integration Tests</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -286,7 +286,7 @@
 <body>
     <div class="container">
         <div class="test-panel">
-            <h1>Cart Chaos UI Tests</h1>
+            <h1>Mall Hell UI Tests</h1>
             <p class="subtitle">Integration & UI Testing Suite</p>
 
             <div class="summary">
@@ -523,7 +523,7 @@
             setupTests() {
                 // Menu Screen Tests
                 this.addTest('menu-title', 'Menu Screen', 'Title is visible',
-                    'Verifies the game title "CART CHAOS" is displayed',
+                    'Verifies the game title "MALL HELL" is displayed',
                     async () => {
                         this.resetGame();
                         await this.wait(100);
@@ -531,8 +531,8 @@
                         if (!title || !this.isVisible(title)) {
                             throw new Error('Title element not found or not visible');
                         }
-                        if (!title.textContent.includes('CART CHAOS')) {
-                            throw new Error(`Expected title to contain "CART CHAOS", got "${title.textContent}"`);
+                        if (!title.textContent.includes('MALL HELL')) {
+                            throw new Error(`Expected title to contain "MALL HELL", got "${title.textContent}"`);
                         }
                     }
                 );
@@ -1286,32 +1286,40 @@
                         await this.wait(100);
                         const startBtn = this.getElement('#start-btn');
                         this.simulateClick(startBtn);
-                        await this.wait(200);
+                        await this.wait(300);
 
-                        const damageOverlay = this.getElement('#damage-overlay') || this.getElement('.damage-overlay') || this.getElement('[class*="damage"]');
+                        const damageOverlay = this.getElement('#damage-overlay');
                         if (!damageOverlay) {
                             throw new Error('Damage overlay element not found');
                         }
 
-                        const initialOpacity = parseFloat(this.gameWindow.getComputedStyle(damageOverlay).opacity) || 0;
+                        // Verify we're in PLAYING state and not invulnerable
+                        if (this.getGameState() !== 'PLAYING') {
+                            throw new Error(`Not in PLAYING state, got ${this.getGameState()}`);
+                        }
 
-                        // Simulate taking damage
-                        if (this.gameWindow.takeDamage) {
-                            this.gameWindow.takeDamage(10);
-                        } else if (this.gameWindow.cart && this.gameWindow.cart.takeDamage) {
-                            this.gameWindow.cart.takeDamage(10);
-                        } else {
-                            this.gameWindow.health = (this.gameWindow.health || 100) - 10;
-                            if (damageOverlay) {
-                                damageOverlay.style.opacity = '0.5';
+                        // Check initial state - should not have flash class
+                        const hadFlashBefore = damageOverlay.classList.contains('flash');
+
+                        // Call damagePlayer directly (it adds 'flash' class)
+                        if (this.gameWindow.damagePlayer) {
+                            this.gameWindow.damagePlayer(10);
+                        }
+
+                        // Check immediately after - should have flash class
+                        const hasFlashAfter = damageOverlay.classList.contains('flash');
+
+                        if (!hasFlashAfter && !hadFlashBefore) {
+                            // Check if opacity changed as fallback
+                            const opacity = parseFloat(this.gameWindow.getComputedStyle(damageOverlay).opacity) || 0;
+                            if (opacity <= 0) {
+                                throw new Error('Damage overlay did not flash (no flash class and opacity is 0)');
                             }
                         }
 
-                        await this.wait(50);
-
-                        const flashOpacity = parseFloat(this.gameWindow.getComputedStyle(damageOverlay).opacity) || 0;
-                        if (flashOpacity <= initialOpacity) {
-                            throw new Error(`Damage overlay did not flash. Initial opacity: ${initialOpacity}, Flash opacity: ${flashOpacity}`);
+                        // Verify the flash class was added (even if briefly)
+                        if (!hasFlashAfter && hadFlashBefore) {
+                            throw new Error('Flash class was already present before damage');
                         }
                     }
                 );

@@ -1,8 +1,8 @@
-# Cart Chaos - Build and Release Lifecycle
+# Mall Hell - Build and Release Lifecycle
 
 ## Overview
 
-This document defines the complete build and release lifecycle for Cart Chaos. All contributors must follow these procedures to ensure quality and stability.
+This document defines the complete build and release lifecycle for Mall Hell. All contributors must follow these procedures to ensure quality and stability.
 
 ---
 
@@ -341,7 +341,7 @@ CRITICAL - ALL MUST PASS
 ### Release Notes Template
 
 ```
-Cart Chaos v[X.X]
+Mall Hell v[X.X]
 Release Date: [YYYY-MM-DD]
 
 Changes:

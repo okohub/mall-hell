@@ -7,7 +7,7 @@ async function runTests() {
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security']
     });
 
-    console.log('\n🧪 CART CHAOS TEST RUNNER\n');
+    console.log('\n🧪 MALL HELL TEST RUNNER\n');
     console.log('='.repeat(60));
 
     let totalPassed = 0;

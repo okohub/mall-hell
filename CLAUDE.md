@@ -1,4 +1,4 @@
-# Cart Chaos - Project Definition
+# Mall Hell - Project Definition
 
 ## Development Contract
 
@@ -41,7 +41,7 @@ Before claiming any feature is "done", I must confirm:
 
 ## Overview
 
-**Title:** Cart Chaos
+**Title:** Mall Hell
 **Version:** 1.2
 **Platform:** Desktop Browser
 **Tech Stack:** HTML5, CSS3, JavaScript, Three.js (r128)
