@@ -458,8 +458,8 @@
                 <div class="instructions">
                     <span>ARROWS</span> Steer cart (↑↓ speed)<br>
                     <span>WASD</span> Aim slingshot<br>
-                    <span>MOUSE</span> Aim (alternative)<br>
-                    <span>CLICK</span> Fire projectile
+                    <span>SPACE</span> Fire projectile<br>
+                    <span>MOUSE</span> Aim + Click to fire
                 </div>
                 <button class="btn" id="start-btn">START CHAOS</button>
             </div>
@@ -1751,6 +1751,11 @@
                 if (key === 's' || key === 'S') aimKeys.down = true;
                 if (key === 'a' || key === 'A') aimKeys.left = true;
                 if (key === 'd' || key === 'D') aimKeys.right = true;
+                // Space: Fire
+                if (key === ' ') {
+                    e.preventDefault();
+                    shoot();
+                }
             }
         });
 
