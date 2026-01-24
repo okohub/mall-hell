@@ -366,6 +366,15 @@
     <!-- Three.js for visual tests -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
+    <!-- Engine Domain (load first - no dependencies) -->
+    <script src="../src/engine/engine.js"></script>
+    <script src="../src/engine/collision.js"></script>
+    <script src="../src/engine/input.js"></script>
+    <script src="../src/engine/game-state.js"></script>
+    <script src="../src/engine/game-loop.js"></script>
+    <script src="../src/engine/scene-manager.js"></script>
+    <script src="../src/engine/entity-manager.js"></script>
+
     <!-- Domain Source Files (data → theme → mesh → system) -->
     <script src="../src/weapon/weapon.js"></script>
     <script src="../src/weapon/weapon-theme.js"></script>
@@ -396,6 +405,7 @@
     <script src="../src/room/room-system.js"></script>
 
     <!-- Domain Test Files -->
+    <script src="../src/engine/engine.test.js"></script>
     <script src="../src/weapon/weapon.test.js"></script>
     <script src="../src/projectile/projectile.test.js"></script>
     <script src="../src/enemy/enemy.test.js"></script>

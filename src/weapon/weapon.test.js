@@ -288,11 +288,18 @@
                 test.skip('THREE.js not available');
                 return;
             }
-            const fpsWeapon = WeaponMesh.createFPSWeapon(THREE);
-            test.assertTrue(fpsWeapon instanceof THREE.Group);
-            test.assertTrue(fpsWeapon.userData.leftHand !== undefined);
-            test.assertTrue(fpsWeapon.userData.rightHand !== undefined);
-            test.assertTrue(fpsWeapon.userData.slingshot !== undefined);
+            const result = WeaponMesh.createFPSWeapon(THREE);
+            // Check object structure
+            test.assertTrue(result.weapon instanceof THREE.Group);
+            test.assertTrue(result.hands instanceof THREE.Group);
+            test.assertTrue(result.leftHand instanceof THREE.Group);
+            test.assertTrue(result.rightHand instanceof THREE.Group);
+            test.assertTrue(result.slingshot instanceof THREE.Group);
+            // Check animation components
+            test.assertTrue(result.bandL !== undefined);
+            test.assertTrue(result.bandR !== undefined);
+            test.assertTrue(result.pouch !== undefined);
+            test.assertTrue(result.stone !== undefined);
         });
 
         test.it('should create slingshot mesh with THREE', () => {

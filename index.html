@@ -138,6 +138,21 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
+    <!-- Shared Libraries -->
+    <script src="./src/shared/materials.js"></script>
+
+    <!-- UI Domain -->
+    <script src="./src/ui/ui.js"></script>
+
+    <!-- Engine Domain (core systems - load first) -->
+    <script src="./src/engine/engine.js"></script>
+    <script src="./src/engine/collision.js"></script>
+    <script src="./src/engine/input.js"></script>
+    <script src="./src/engine/game-state.js"></script>
+    <script src="./src/engine/game-loop.js"></script>
+    <script src="./src/engine/scene-manager.js"></script>
+    <script src="./src/engine/entity-manager.js"></script>
+
     <!-- Room Domain -->
     <script src="./src/room/room.js"></script>
     <script src="./src/room/room-theme.js"></script>
@@ -186,42 +201,52 @@
         // - Enemy: Enemy, EnemyTheme, EnemyMesh (as EnemyVisual), EnemySystem
         // - Environment: Obstacle, ObstacleTheme, ObstacleMesh (as ObstacleVisual), Shelf, ShelfTheme, ShelfMesh, EnvironmentSystem
 
-        // Game Constants
-        const ROOM_UNIT = 30;              // Each room is 30x30 units
-        const DOOR_WIDTH = 8;              // Door opening width
+        // ============================================
+        // GAME CONSTANTS - Aliases to Domain Values
+        // ============================================
+        // Most constants now live in domain files. These are aliases for backward compatibility.
+
+        // Room Constants (from Room domain)
+        const ROOM_UNIT = Room.structure.UNIT;
+        const DOOR_WIDTH = Room.structure.DOOR_WIDTH;
+
+        // Game Duration (game-specific, not in domains yet)
         const GAME_DURATION = 180;         // 3 minutes
-        const SHOOT_COOLDOWN = 300;        // Reduced cooldown (tension adds delay)
-        const ENEMY_HEALTH = 3;
 
-        // Slingshot Tension Constants
-        const TENSION_MIN = 0.2;           // Minimum tension (quick tap)
-        const TENSION_MAX = 1.0;           // Maximum tension (fully charged)
-        const TENSION_CHARGE_RATE = 1.2;   // Tension gained per second
-        const PROJECTILE_SPEED_MIN = 60;   // Speed at min tension
-        const PROJECTILE_SPEED_MAX = 180;  // Speed at max tension
+        // Weapon Constants (from Weapon domain)
+        const SLINGSHOT = Weapon.types.SLINGSHOT;
+        const SHOOT_COOLDOWN = SLINGSHOT.cooldown;
+        const TENSION_MIN = SLINGSHOT.minTension;
+        const TENSION_MAX = SLINGSHOT.maxTension;
+        const TENSION_CHARGE_RATE = SLINGSHOT.chargeRate;
+        const PROJECTILE_SPEED_MIN = SLINGSHOT.projectileSpeed.min;
+        const PROJECTILE_SPEED_MAX = SLINGSHOT.projectileSpeed.max;
 
-        // Player Movement Constants - WASD Driving
-        const CART_SPEED = 8;              // Forward speed (was 25)
-        const CART_TURN_SPEED = 2.5;       // Radians per second
-        const CART_REVERSE_SPEED = 4;      // Backward speed
-        const CART_ACCELERATION = 15;      // Speed gain per second
-        const CART_DECELERATION = 20;      // Speed loss per second (braking)
-        const CART_MAX_SPEED = 10;         // Maximum speed
-        const CART_FRICTION = 8;           // Natural slowdown when not pressing W/S
-        const CART_IDLE_DRIFT = 0.5;       // Small forward drift when idle (cart on slope)
+        // Enemy Constants (from Enemy domain)
+        const ENEMY_HEALTH = Enemy.types.SKELETON.health;
 
-        // Cart Visual Constants
-        const CART_LEAN_ANGLE = 0.15;      // Lean when turning
-        const CAMERA_ROLL_FACTOR = 0.1;
+        // Player Movement Constants (from Player domain)
+        const CART_SPEED = Player.movement.SPEED;
+        const CART_TURN_SPEED = Player.movement.TURN_SPEED;
+        const CART_REVERSE_SPEED = Player.movement.REVERSE_SPEED;
+        const CART_ACCELERATION = Player.movement.ACCELERATION;
+        const CART_DECELERATION = Player.movement.DECELERATION;
+        const CART_MAX_SPEED = Player.movement.MAX_SPEED;
+        const CART_FRICTION = Player.movement.FRICTION;
+        const CART_IDLE_DRIFT = Player.movement.IDLE_DRIFT;
 
-        // Crosshair Constants
+        // Cart Visual Constants (from Player domain)
+        const CART_LEAN_ANGLE = Player.visual.LEAN_ANGLE;
+        const CAMERA_ROLL_FACTOR = Player.visual.CAMERA_ROLL_FACTOR;
+
+        // Crosshair Constants (UI-specific, not in domains yet)
         const CROSSHAIR_BOUNDS_MARGIN = 50;
 
-        // Player Health Constants
-        const PLAYER_MAX_HEALTH = 100;
-        const ENEMY_COLLISION_DAMAGE = 20;
-        const OBSTACLE_COLLISION_DAMAGE = 10;
-        const INVULNERABILITY_DURATION = 1000;
+        // Player Health Constants (from Player domain)
+        const PLAYER_MAX_HEALTH = Player.health.MAX;
+        const ENEMY_COLLISION_DAMAGE = Player.health.ENEMY_DAMAGE;
+        const OBSTACLE_COLLISION_DAMAGE = Player.health.OBSTACLE_DAMAGE;
+        const INVULNERABILITY_DURATION = Player.health.INVULNERABILITY_DURATION;
 
         // Mall themes - alias to RoomTheme for backward compatibility
         const MALL_THEMES = RoomTheme.themes;
@@ -309,8 +334,7 @@
             return room ? room.themeData : MALL_THEMES.ENTRANCE;
         }
 
-        // Game State
-        let gameState = 'MENU';
+        // Game State (managed by GameState module)
         let score = 0;
         let gameTimer = GAME_DURATION;    // Countdown timer (replaces distance)
         let lastShootTime = 0;
@@ -371,91 +395,10 @@
         // Locked target for sticky aim (don't switch until target gone)
         let lockedTarget = null;
 
-        // Keyboard input - WASD driving
-        const keys = {
-            forward: false,   // W key - drive forward
-            backward: false,  // S key - reverse
-            turnLeft: false,  // A key - turn left
-            turnRight: false, // D key - turn right
-        };
+        // Keyboard input handled by Input module (initialized later)
 
-        // Clock
-        const clock = new THREE.Clock();
-
-        // === MATERIAL LIBRARY (Shared materials for performance) ===
-        const Materials = {
-            // Chrome for cart frames - MeshPhysicalMaterial for better reflections
-            chrome: null,
-            darkChrome: null,
-            // Skin tones
-            skin: null,
-            skinDark: null,
-            nail: null,
-            // Environment
-            wood: null,
-            rubber: null,
-            // Will be initialized after Three.js loads
-        };
-
-        function initMaterialLibrary() {
-            Materials.chrome = new THREE.MeshPhysicalMaterial({
-                color: 0xc0c0c0,
-                metalness: 1.0,
-                roughness: 0.15,
-                clearcoat: 0.3,
-                clearcoatRoughness: 0.2,
-                reflectivity: 0.9
-            });
-            Materials.darkChrome = new THREE.MeshPhysicalMaterial({
-                color: 0x606060,
-                metalness: 0.9,
-                roughness: 0.25,
-                clearcoat: 0.2
-            });
-            Materials.skin = new THREE.MeshStandardMaterial({
-                color: 0xf5d0c5,
-                roughness: 0.7,
-                metalness: 0.0
-            });
-            Materials.skinDark = new THREE.MeshStandardMaterial({
-                color: 0xe8c4b8,
-                roughness: 0.8,
-                metalness: 0.0
-            });
-            Materials.nail = new THREE.MeshStandardMaterial({
-                color: 0xfce4dc,
-                roughness: 0.3,
-                metalness: 0.1
-            });
-            Materials.wood = new THREE.MeshStandardMaterial({
-                color: 0x8b4513,
-                roughness: 0.7
-            });
-            Materials.rubber = new THREE.MeshStandardMaterial({
-                color: 0xc0392b,
-                roughness: 0.5,
-                metalness: 0.1
-            });
-            Materials.redPlastic = new THREE.MeshStandardMaterial({
-                color: 0xe74c3c,
-                metalness: 0.1,
-                roughness: 0.6
-            });
-            Materials.blackRubber = new THREE.MeshStandardMaterial({
-                color: 0x1a1a1a,
-                metalness: 0.0,
-                roughness: 0.9
-            });
-            // Product colors for instanced rendering
-            Materials.products = [
-                new THREE.MeshStandardMaterial({ color: 0xe74c3c }),
-                new THREE.MeshStandardMaterial({ color: 0x3498db }),
-                new THREE.MeshStandardMaterial({ color: 0x2ecc71 }),
-                new THREE.MeshStandardMaterial({ color: 0xf1c40f }),
-                new THREE.MeshStandardMaterial({ color: 0x9b59b6 }),
-                new THREE.MeshStandardMaterial({ color: 0xe67e22 })
-            ];
-        }
+        // Clock handled by GameLoop module
+        // Materials library loaded from src/shared/materials.js
 
         // === SCENE HIERARCHY GROUPS ===
         const sceneGroups = {
@@ -523,8 +466,11 @@
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             container.insertBefore(renderer.domElement, container.firstChild);
 
-            // Initialize material library
-            initMaterialLibrary();
+            // Initialize shared material library
+            Materials.init(THREE);
+
+            // Initialize UI system
+            UI.init();
 
             // Initialize scene hierarchy groups
             initSceneGroups();
@@ -551,8 +497,25 @@
 
             // Create supermarket environment
             createEnvironment();
-            createPlayerCart();
-            createFPSWeapon();
+
+            // Create player cart using domain mesh
+            const playerCartResult = PlayerMesh.createPlayerCart(THREE);
+            playerCart = playerCartResult.cart;
+            playerChild = playerCartResult.child;
+            slingshotArm = playerCartResult.slingshot;
+            playerCart.position.set(0, 0, -5);
+            scene.add(playerCart);
+
+            // Create FPS weapon using domain mesh
+            const fpsWeaponResult = WeaponMesh.createFPSWeapon(THREE, Materials);
+            fpsWeapon = fpsWeaponResult.weapon;
+            fpsHands = fpsWeaponResult.hands;
+            fpsBandL = fpsWeaponResult.bandL;
+            fpsBandR = fpsWeaponResult.bandR;
+            fpsPouch = fpsWeaponResult.pouch;
+            fpsStone = fpsWeaponResult.stone;
+            camera.add(fpsWeapon);
+            fpsWeapon.visible = false;
 
             window.addEventListener('resize', onWindowResize);
 
@@ -778,315 +741,6 @@
 
             // Store for resize
             window.composer = composer;
-        }
-
-        function createFPSWeapon() {
-            // Create hands holding slingshot for FPS view
-            // RIGHT hand holds slingshot frame, LEFT hand pulls back pouch
-            fpsWeapon = new THREE.Group();
-            fpsHands = new THREE.Group();
-
-            // Materials - Clean stylized look
-            const skinMat = new THREE.MeshStandardMaterial({
-                color: 0xffd4c4,  // Warm peachy skin tone
-                roughness: 0.4,   // Smoother, more stylized
-                metalness: 0.0
-            });
-            const woodMat = new THREE.MeshStandardMaterial({
-                color: 0x8b4513,
-                roughness: 0.7
-            });
-            const rubberMat = new THREE.MeshStandardMaterial({
-                color: 0xc0392b,
-                roughness: 0.5,
-                metalness: 0.1
-            });
-
-            // Helper: Create smooth stylized finger (single capsule shape)
-            function createStylizedFinger(length, radius, isThumb = false) {
-                const finger = new THREE.Group();
-
-                // Single smooth capsule body
-                const cylGeo = new THREE.CylinderGeometry(
-                    radius * 0.85,   // Tip radius (tapered)
-                    radius,          // Base radius
-                    length * 0.85,   // Height
-                    12               // Smooth segments
-                );
-                const cyl = new THREE.Mesh(cylGeo, skinMat);
-                cyl.position.y = length * 0.4;
-                finger.add(cyl);
-
-                // Rounded tip
-                const tipGeo = new THREE.SphereGeometry(radius * 0.85, 12, 8);
-                const tip = new THREE.Mesh(tipGeo, skinMat);
-                tip.position.y = length * 0.85;
-                tip.scale.y = 0.7;
-                finger.add(tip);
-
-                // Rounded base
-                const baseGeo = new THREE.SphereGeometry(radius, 12, 8);
-                const base = new THREE.Mesh(baseGeo, skinMat);
-                base.position.y = 0;
-                base.scale.y = 0.6;
-                finger.add(base);
-
-                finger.castShadow = true;
-                return finger;
-            }
-
-            // Helper: Create clean stylized hand
-            function createHand(isRight) {
-                const hand = new THREE.Group();
-                const mirror = isRight ? 1 : -1;
-
-                // Palm - smooth rounded rectangle shape
-                const palmGeo = new THREE.BoxGeometry(0.065, 0.08, 0.022);
-                const palm = new THREE.Mesh(palmGeo, skinMat);
-                palm.position.set(0, 0, 0);
-                hand.add(palm);
-
-                // Round the palm edges with spheres at corners
-                const cornerRadius = 0.012;
-                const cornerPositions = [
-                    { x: 0.028, y: 0.035 },
-                    { x: -0.028, y: 0.035 },
-                    { x: 0.028, y: -0.035 },
-                    { x: -0.028, y: -0.035 }
-                ];
-                cornerPositions.forEach(pos => {
-                    const corner = new THREE.Mesh(
-                        new THREE.SphereGeometry(cornerRadius, 8, 6),
-                        skinMat
-                    );
-                    corner.position.set(pos.x, pos.y, 0);
-                    corner.scale.z = 0.9;
-                    hand.add(corner);
-                });
-
-                // Simplified wrist
-                const wristGeo = new THREE.CylinderGeometry(0.025, 0.028, 0.04, 12);
-                const wrist = new THREE.Mesh(wristGeo, skinMat);
-                wrist.position.set(0, -0.055, 0);
-                hand.add(wrist);
-
-                // Fingers - cleaner proportions (index, middle, ring, pinky)
-                const fingerLengths = [0.055, 0.065, 0.06, 0.045];
-                const fingerRadii = [0.008, 0.009, 0.008, 0.007];
-                const fingerSpacing = [0.022, 0.008, -0.006, -0.020];
-
-                hand.userData.fingers = [];
-                for (let i = 0; i < 4; i++) {
-                    const finger = createStylizedFinger(fingerLengths[i], fingerRadii[i]);
-                    finger.position.set(mirror * fingerSpacing[i], 0.04, 0.003);
-                    hand.add(finger);
-                    hand.userData.fingers.push(finger);
-                }
-
-                // Thumb - shorter and rounder
-                const thumb = createStylizedFinger(0.04, 0.01, true);
-                thumb.position.set(mirror * 0.035, -0.01, 0.012);
-                thumb.rotation.set(0.3, mirror * 0.7, mirror * 0.4);
-                hand.add(thumb);
-                hand.userData.thumb = thumb;
-
-                return hand;
-            }
-
-            // === RIGHT HAND (holding slingshot frame) ===
-            const rightHand = createHand(true);
-
-            // Curl fingers around slingshot handle (grip pose)
-            rightHand.userData.fingers.forEach((finger, i) => {
-                finger.rotation.x = 1.2 + i * 0.1;  // Curl inward
-                finger.rotation.z = -0.1 * (i - 1.5); // Slight spread
-            });
-            rightHand.userData.thumb.rotation.set(0.2, 0.5, 0.8);  // Thumb wraps around
-
-            rightHand.position.set(0.12, -0.15, -0.35);
-            rightHand.rotation.set(-0.3, -0.4, 0.2);  // Angled to hold handle
-            fpsHands.add(rightHand);
-            fpsHands.userData.rightHand = rightHand;
-
-            // === LEFT HAND (pulling back pouch - pinch grip) ===
-            const leftHand = createHand(false);
-
-            // Pinch pose for holding pouch: index and thumb pinch, others curled
-            leftHand.userData.fingers[0].rotation.x = 0.8;   // Index - extended for pinch
-            leftHand.userData.fingers[0].rotation.z = 0.2;   // Slightly inward
-            leftHand.userData.fingers[1].rotation.x = 1.5;   // Middle - curled
-            leftHand.userData.fingers[2].rotation.x = 1.6;   // Ring - curled
-            leftHand.userData.fingers[3].rotation.x = 1.7;   // Pinky - curled tight
-            leftHand.userData.thumb.rotation.set(0.4, -0.9, -0.3);  // Thumb meets index
-
-            leftHand.position.set(-0.05, -0.08, -0.15);  // Will be animated when pulling
-            leftHand.rotation.set(0.2, 0.5, -0.3);
-            fpsHands.add(leftHand);
-            fpsHands.userData.leftHand = leftHand;  // Store for animation
-
-            // === FOREARMS / SLEEVES (connect hands to body) ===
-            const sleeveMat = new THREE.MeshStandardMaterial({
-                color: 0x2980b9,  // Blue sleeve (kid's shirt)
-                roughness: 0.9,
-                metalness: 0.0
-            });
-
-            // Right forearm - connects right hand to lower right of screen
-            const rightArmGeo = new THREE.CylinderGeometry(0.035, 0.045, 0.35, 8);
-            const rightArm = new THREE.Mesh(rightArmGeo, sleeveMat);
-            rightArm.position.set(0.18, -0.35, -0.2);
-            rightArm.rotation.set(-0.8, 0.3, 0.4);
-            fpsHands.add(rightArm);
-
-            // Right wrist (skin connection between sleeve and hand)
-            const rightWrist = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.028, 0.032, 0.06, 8),
-                skinMat
-            );
-            rightWrist.position.set(0.13, -0.22, -0.3);
-            rightWrist.rotation.set(-0.4, 0, 0.2);
-            fpsHands.add(rightWrist);
-
-            // Left forearm - connects left hand to lower left of screen
-            const leftArmGeo = new THREE.CylinderGeometry(0.035, 0.045, 0.35, 8);
-            const leftArm = new THREE.Mesh(leftArmGeo, sleeveMat);
-            leftArm.position.set(-0.12, -0.32, -0.05);
-            leftArm.rotation.set(-0.5, -0.4, -0.3);
-            fpsHands.add(leftArm);
-            fpsHands.userData.leftArm = leftArm; // Store for animation
-
-            // Left wrist
-            const leftWrist = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.028, 0.032, 0.06, 8),
-                skinMat
-            );
-            leftWrist.position.set(-0.06, -0.15, -0.12);
-            leftWrist.rotation.set(0.1, 0, -0.2);
-            fpsHands.add(leftWrist);
-            fpsHands.userData.leftWrist = leftWrist; // Store for animation
-
-            // === SLINGSHOT (held by right hand) ===
-            const slingshot = new THREE.Group();
-
-            // Y-frame handle (held in right hand)
-            const handleGeo = new THREE.CylinderGeometry(0.018, 0.022, 0.2, 12);
-            const handle = new THREE.Mesh(handleGeo, woodMat);
-            handle.position.set(0, -0.06, 0);
-            handle.castShadow = true;
-            slingshot.add(handle);
-
-            // Handle grip texture (wrapped cord)
-            for (let i = 0; i < 6; i++) {
-                const wrapGeo = new THREE.TorusGeometry(0.022, 0.003, 4, 12);
-                const wrap = new THREE.Mesh(wrapGeo, new THREE.MeshStandardMaterial({
-                    color: 0x4a3520, roughness: 0.9
-                }));
-                wrap.position.set(0, -0.12 + i * 0.015, 0);
-                wrap.rotation.x = Math.PI / 2;
-                slingshot.add(wrap);
-            }
-
-            // Fork prongs (Y-shape)
-            const forkGeo = new THREE.CylinderGeometry(0.012, 0.016, 0.12, 8);
-            const forkL = new THREE.Mesh(forkGeo, woodMat);
-            forkL.rotation.z = Math.PI / 5;
-            forkL.position.set(-0.04, 0.04, 0);
-            forkL.castShadow = true;
-            slingshot.add(forkL);
-
-            const forkR = new THREE.Mesh(forkGeo, woodMat);
-            forkR.rotation.z = -Math.PI / 5;
-            forkR.position.set(0.04, 0.04, 0);
-            forkR.castShadow = true;
-            slingshot.add(forkR);
-
-            // Fork tips (where rubber bands attach)
-            const tipGeo = new THREE.SphereGeometry(0.018, 12, 12);
-            const tipL = new THREE.Mesh(tipGeo, woodMat);
-            tipL.position.set(-0.065, 0.09, 0);
-            slingshot.add(tipL);
-            slingshot.userData.tipL = tipL;
-
-            const tipR = new THREE.Mesh(tipGeo, woodMat);
-            tipR.position.set(0.065, 0.09, 0);
-            slingshot.add(tipR);
-            slingshot.userData.tipR = tipR;
-
-            // === RUBBER BANDS (dynamic - will stretch to pouch) ===
-            // Create band geometry that can be updated
-            const bandMat = rubberMat.clone();
-
-            // Left rubber band
-            fpsBandL = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.005, 0.005, 0.1, 8),
-                bandMat
-            );
-            fpsBandL.position.set(-0.04, 0.05, 0.05);
-            slingshot.add(fpsBandL);
-
-            // Right rubber band
-            fpsBandR = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.005, 0.005, 0.1, 8),
-                bandMat
-            );
-            fpsBandR.position.set(0.04, 0.05, 0.05);
-            slingshot.add(fpsBandR);
-
-            // === POUCH (leather pocket that holds stone) ===
-            const pouchMat = new THREE.MeshStandardMaterial({
-                color: 0x5c4033,
-                roughness: 0.95,
-                metalness: 0.0
-            });
-            const pouchGeo = new THREE.SphereGeometry(0.022, 12, 8);
-            fpsPouch = new THREE.Mesh(pouchGeo, pouchMat);
-            fpsPouch.scale.set(1.4, 0.5, 1.2);
-            fpsPouch.position.set(0, 0.02, 0.08);
-            slingshot.add(fpsPouch);
-
-            // Pouch edges (makes it look like leather strap)
-            const pouchEdge1 = new THREE.Mesh(
-                new THREE.BoxGeometry(0.008, 0.003, 0.04),
-                pouchMat
-            );
-            pouchEdge1.position.set(-0.025, 0.02, 0.08);
-            slingshot.add(pouchEdge1);
-
-            const pouchEdge2 = new THREE.Mesh(
-                new THREE.BoxGeometry(0.008, 0.003, 0.04),
-                pouchMat
-            );
-            pouchEdge2.position.set(0.025, 0.02, 0.08);
-            slingshot.add(pouchEdge2);
-
-            // === STONE (ammo in pouch) ===
-            const stoneMat = new THREE.MeshStandardMaterial({
-                color: 0x707070,
-                roughness: 0.8,
-                metalness: 0.1
-            });
-            const stoneGeo = new THREE.SphereGeometry(0.016, 10, 10);
-            fpsStone = new THREE.Mesh(stoneGeo, stoneMat);
-            fpsStone.position.set(0, 0.025, 0.08);
-            // Slightly irregular shape
-            fpsStone.scale.set(1.1, 0.9, 1.0);
-            slingshot.add(fpsStone);
-
-            // Position slingshot in right hand grip
-            slingshot.position.set(0.12, -0.02, -0.32);
-            slingshot.rotation.set(0.1, -0.2, 0.1);  // Angled towards screen
-            fpsHands.add(slingshot);
-            fpsHands.userData.slingshot = slingshot;
-
-            fpsWeapon.add(fpsHands);
-
-            // Position whole weapon view - center-right, clearly visible
-            fpsWeapon.position.set(0.15, -0.12, -0.45);
-            fpsWeapon.rotation.set(0.05, -0.15, 0);
-
-            // Add to camera so it moves with view
-            camera.add(fpsWeapon);
-            fpsWeapon.visible = false;
         }
 
         function createEnvironment() {
@@ -1536,402 +1190,6 @@
             return group;
         }
 
-        function createPlayerCart() {
-            playerCart = new THREE.Group();
-
-            // Materials
-            const chromeMat = new THREE.MeshStandardMaterial({
-                color: 0xc0c0c0,
-                metalness: 0.9,
-                roughness: 0.2
-            });
-            const darkChromeMat = new THREE.MeshStandardMaterial({
-                color: 0x606060,
-                metalness: 0.8,
-                roughness: 0.3
-            });
-            const redPlasticMat = new THREE.MeshStandardMaterial({
-                color: 0xe74c3c,
-                metalness: 0.1,
-                roughness: 0.6
-            });
-            const blackRubberMat = new THREE.MeshStandardMaterial({
-                color: 0x1a1a1a,
-                metalness: 0.0,
-                roughness: 0.9
-            });
-
-            // === CART FRAME ===
-            const cartGroup = new THREE.Group();
-
-            // Main basket frame - bottom
-            const bottomFrameGeo = new THREE.BoxGeometry(1.8, 0.08, 2.6);
-            const bottomFrame = new THREE.Mesh(bottomFrameGeo, chromeMat);
-            bottomFrame.position.set(0, 0.5, 0);
-            bottomFrame.castShadow = true;
-            cartGroup.add(bottomFrame);
-
-            // Wire mesh bottom (grid pattern)
-            for (let x = -0.8; x <= 0.8; x += 0.2) {
-                const wireGeo = new THREE.CylinderGeometry(0.015, 0.015, 2.5, 6);
-                const wire = new THREE.Mesh(wireGeo, chromeMat);
-                wire.rotation.x = Math.PI / 2;
-                wire.position.set(x, 0.52, 0);
-                cartGroup.add(wire);
-            }
-            for (let z = -1.2; z <= 1.2; z += 0.2) {
-                const wireGeo = new THREE.CylinderGeometry(0.015, 0.015, 1.7, 6);
-                const wire = new THREE.Mesh(wireGeo, chromeMat);
-                wire.rotation.z = Math.PI / 2;
-                wire.position.set(0, 0.52, z);
-                cartGroup.add(wire);
-            }
-
-            // Cart sides - wire mesh walls
-            const createWireSide = (width, height, posX, posZ, rotY) => {
-                const sideGroup = new THREE.Group();
-                // Vertical wires
-                const wireCount = Math.floor(width / 0.15);
-                for (let i = 0; i <= wireCount; i++) {
-                    const wireGeo = new THREE.CylinderGeometry(0.02, 0.02, height, 6);
-                    const wire = new THREE.Mesh(wireGeo, chromeMat);
-                    wire.position.set(-width/2 + i * (width/wireCount), height/2, 0);
-                    sideGroup.add(wire);
-                }
-                // Horizontal wires
-                for (let y = 0.15; y < height; y += 0.2) {
-                    const hWireGeo = new THREE.CylinderGeometry(0.015, 0.015, width, 6);
-                    const hWire = new THREE.Mesh(hWireGeo, chromeMat);
-                    hWire.rotation.z = Math.PI / 2;
-                    hWire.position.set(0, y, 0);
-                    sideGroup.add(hWire);
-                }
-                // Top rail
-                const topRailGeo = new THREE.CylinderGeometry(0.03, 0.03, width + 0.1, 8);
-                const topRail = new THREE.Mesh(topRailGeo, chromeMat);
-                topRail.rotation.z = Math.PI / 2;
-                topRail.position.set(0, height, 0);
-                sideGroup.add(topRail);
-
-                sideGroup.position.set(posX, 0.55, posZ);
-                sideGroup.rotation.y = rotY;
-                return sideGroup;
-            };
-
-            // Left side wall
-            cartGroup.add(createWireSide(2.5, 1.0, -0.9, 0, Math.PI / 2));
-            // Right side wall
-            cartGroup.add(createWireSide(2.5, 1.0, 0.9, 0, Math.PI / 2));
-            // Front wall
-            cartGroup.add(createWireSide(1.7, 1.0, 0, -1.25, 0));
-            // Back wall (shorter for child to sit)
-            cartGroup.add(createWireSide(1.7, 0.6, 0, 1.25, 0));
-
-            // Corner posts
-            const cornerPositions = [[-0.85, -1.2], [0.85, -1.2], [-0.85, 1.2], [0.85, 1.2]];
-            cornerPositions.forEach(([x, z]) => {
-                const postGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.1, 8);
-                const post = new THREE.Mesh(postGeo, chromeMat);
-                post.position.set(x, 1.05, z);
-                cartGroup.add(post);
-            });
-
-            // === RED PLASTIC CHILD SEAT ===
-            const seatGroup = new THREE.Group();
-            // Seat back
-            const seatBackGeo = new THREE.BoxGeometry(1.2, 0.6, 0.1);
-            const seatBack = new THREE.Mesh(seatBackGeo, redPlasticMat);
-            seatBack.position.set(0, 1.1, 0.9);
-            seatGroup.add(seatBack);
-            // Seat bottom
-            const seatBottomGeo = new THREE.BoxGeometry(1.2, 0.08, 0.5);
-            const seatBottom = new THREE.Mesh(seatBottomGeo, redPlasticMat);
-            seatBottom.position.set(0, 0.75, 1.05);
-            seatGroup.add(seatBottom);
-            // Leg holes
-            const legHoleGeo = new THREE.BoxGeometry(0.25, 0.08, 0.3);
-            const legHole1 = new THREE.Mesh(legHoleGeo, darkChromeMat);
-            legHole1.position.set(-0.3, 0.72, 1.2);
-            seatGroup.add(legHole1);
-            const legHole2 = new THREE.Mesh(legHoleGeo, darkChromeMat);
-            legHole2.position.set(0.3, 0.72, 1.2);
-            seatGroup.add(legHole2);
-            cartGroup.add(seatGroup);
-
-            // === HANDLE ===
-            // Handle bar (curved would be ideal, using segments)
-            const handleBarGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.9, 8);
-            const handleBar = new THREE.Mesh(handleBarGeo, darkChromeMat);
-            handleBar.rotation.z = Math.PI / 2;
-            handleBar.position.set(0, 2.0, 1.6);
-            cartGroup.add(handleBar);
-            // Handle grips (rubber)
-            const gripGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.4, 8);
-            const gripL = new THREE.Mesh(gripGeo, blackRubberMat);
-            gripL.rotation.z = Math.PI / 2;
-            gripL.position.set(-0.75, 2.0, 1.6);
-            cartGroup.add(gripL);
-            const gripR = new THREE.Mesh(gripGeo, blackRubberMat);
-            gripR.rotation.z = Math.PI / 2;
-            gripR.position.set(0.75, 2.0, 1.6);
-            cartGroup.add(gripR);
-            // Handle supports
-            const supportGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.5, 8);
-            const supportL = new THREE.Mesh(supportGeo, chromeMat);
-            supportL.position.set(-0.85, 1.75, 1.45);
-            supportL.rotation.x = -0.3;
-            cartGroup.add(supportL);
-            const supportR = new THREE.Mesh(supportGeo, chromeMat);
-            supportR.position.set(0.85, 1.75, 1.45);
-            supportR.rotation.x = -0.3;
-            cartGroup.add(supportR);
-
-            // === WHEELS WITH CASTERS ===
-            const createWheel = (x, z, isFront) => {
-                const wheelGroup = new THREE.Group();
-                // Caster housing
-                const casterGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.15, 8);
-                const caster = new THREE.Mesh(casterGeo, darkChromeMat);
-                caster.position.y = 0.35;
-                wheelGroup.add(caster);
-                // Caster fork
-                const forkGeo = new THREE.BoxGeometry(0.04, 0.2, 0.12);
-                const fork = new THREE.Mesh(forkGeo, chromeMat);
-                fork.position.set(0, 0.2, 0);
-                wheelGroup.add(fork);
-                // Wheel
-                const wheelGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.08, 16);
-                const wheel = new THREE.Mesh(wheelGeo, blackRubberMat);
-                wheel.rotation.z = Math.PI / 2;
-                wheel.position.y = 0.15;
-                wheelGroup.add(wheel);
-                // Wheel hub
-                const hubGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.1, 12);
-                const hub = new THREE.Mesh(hubGeo, chromeMat);
-                hub.rotation.z = Math.PI / 2;
-                hub.position.y = 0.15;
-                wheelGroup.add(hub);
-
-                wheelGroup.position.set(x, 0, z);
-                return wheelGroup;
-            };
-            cartGroup.add(createWheel(-0.75, -1.0, true));
-            cartGroup.add(createWheel(0.75, -1.0, true));
-            cartGroup.add(createWheel(-0.75, 1.0, false));
-            cartGroup.add(createWheel(0.75, 1.0, false));
-
-            // === FRAME LEGS ===
-            const legGeo = new THREE.CylinderGeometry(0.03, 0.035, 0.5, 8);
-            const legPositions = [[-0.8, -1.0], [0.8, -1.0], [-0.8, 1.0], [0.8, 1.0]];
-            legPositions.forEach(([x, z]) => {
-                const leg = new THREE.Mesh(legGeo, chromeMat);
-                leg.position.set(x, 0.4, z);
-                cartGroup.add(leg);
-            });
-
-            playerCart.add(cartGroup);
-
-            // === CHILD CHARACTER ===
-            const childGroup = new THREE.Group();
-            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.8 });
-            const shirtMat = new THREE.MeshStandardMaterial({ color: 0x3498db, roughness: 0.7 });
-            const pantsMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.7 });
-            const hairMat = new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.9 });
-
-            // Torso
-            const torsoGeo = new THREE.CylinderGeometry(0.28, 0.32, 0.7, 12);
-            const torso = new THREE.Mesh(torsoGeo, shirtMat);
-            torso.position.y = 1.2;
-            torso.castShadow = true;
-            childGroup.add(torso);
-
-            // Head
-            const headGeo = new THREE.SphereGeometry(0.28, 16, 16);
-            const head = new THREE.Mesh(headGeo, skinMat);
-            head.position.y = 1.85;
-            head.castShadow = true;
-            childGroup.add(head);
-
-            // Hair (spiky/messy)
-            const hairBaseGeo = new THREE.SphereGeometry(0.3, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2);
-            const hairBase = new THREE.Mesh(hairBaseGeo, hairMat);
-            hairBase.position.y = 1.9;
-            childGroup.add(hairBase);
-            // Hair spikes
-            for (let i = 0; i < 8; i++) {
-                const angle = (i / 8) * Math.PI * 2;
-                const spikeGeo = new THREE.ConeGeometry(0.06, 0.15, 6);
-                const spike = new THREE.Mesh(spikeGeo, hairMat);
-                spike.position.set(
-                    Math.cos(angle) * 0.2,
-                    2.1,
-                    Math.sin(angle) * 0.2
-                );
-                spike.rotation.x = Math.sin(angle) * 0.3;
-                spike.rotation.z = -Math.cos(angle) * 0.3;
-                childGroup.add(spike);
-            }
-
-            // Eyes
-            const eyeWhiteGeo = new THREE.SphereGeometry(0.06, 8, 8);
-            const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-            const eyePupilGeo = new THREE.SphereGeometry(0.035, 8, 8);
-            const eyePupilMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50 });
-            // Left eye
-            const eyeWhiteL = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
-            eyeWhiteL.position.set(-0.1, 1.88, -0.24);
-            childGroup.add(eyeWhiteL);
-            const eyePupilL = new THREE.Mesh(eyePupilGeo, eyePupilMat);
-            eyePupilL.position.set(-0.1, 1.88, -0.28);
-            childGroup.add(eyePupilL);
-            // Right eye
-            const eyeWhiteR = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
-            eyeWhiteR.position.set(0.1, 1.88, -0.24);
-            childGroup.add(eyeWhiteR);
-            const eyePupilR = new THREE.Mesh(eyePupilGeo, eyePupilMat);
-            eyePupilR.position.set(0.1, 1.88, -0.28);
-            childGroup.add(eyePupilR);
-
-            // Eyebrows (mischievous angle)
-            const browGeo = new THREE.BoxGeometry(0.1, 0.02, 0.02);
-            const browMat = new THREE.MeshStandardMaterial({ color: 0x3d2817 });
-            const browL = new THREE.Mesh(browGeo, browMat);
-            browL.position.set(-0.1, 1.96, -0.26);
-            browL.rotation.z = 0.2;
-            childGroup.add(browL);
-            const browR = new THREE.Mesh(browGeo, browMat);
-            browR.position.set(0.1, 1.96, -0.26);
-            browR.rotation.z = -0.2;
-            childGroup.add(browR);
-
-            // Mouth (grin)
-            const mouthGeo = new THREE.TorusGeometry(0.06, 0.015, 8, 12, Math.PI);
-            const mouthMat = new THREE.MeshStandardMaterial({ color: 0xc0392b });
-            const mouth = new THREE.Mesh(mouthGeo, mouthMat);
-            mouth.position.set(0, 1.78, -0.25);
-            mouth.rotation.x = Math.PI;
-            childGroup.add(mouth);
-
-            // Nose
-            const noseGeo = new THREE.SphereGeometry(0.04, 8, 8);
-            const nose = new THREE.Mesh(noseGeo, skinMat);
-            nose.position.set(0, 1.84, -0.28);
-            childGroup.add(nose);
-
-            // Arms
-            const armGeo = new THREE.CylinderGeometry(0.08, 0.07, 0.45, 8);
-            // Left arm (extended forward for slingshot)
-            const leftArm = new THREE.Mesh(armGeo, shirtMat);
-            leftArm.rotation.x = -Math.PI / 3;
-            leftArm.rotation.z = Math.PI / 6;
-            leftArm.position.set(-0.35, 1.35, -0.25);
-            childGroup.add(leftArm);
-            // Right arm (pulling back slingshot)
-            const rightArm = new THREE.Mesh(armGeo, shirtMat);
-            rightArm.rotation.x = -Math.PI / 4;
-            rightArm.rotation.z = -Math.PI / 6;
-            rightArm.position.set(0.35, 1.35, -0.15);
-            childGroup.add(rightArm);
-
-            // Hands
-            const handGeo = new THREE.SphereGeometry(0.07, 8, 8);
-            const handL = new THREE.Mesh(handGeo, skinMat);
-            handL.position.set(-0.45, 1.15, -0.5);
-            childGroup.add(handL);
-            const handR = new THREE.Mesh(handGeo, skinMat);
-            handR.position.set(0.4, 1.2, -0.35);
-            childGroup.add(handR);
-
-            // Legs (in seat holes)
-            const legGeoChild = new THREE.CylinderGeometry(0.1, 0.08, 0.4, 8);
-            const legL = new THREE.Mesh(legGeoChild, pantsMat);
-            legL.position.set(-0.2, 0.65, 1.15);
-            childGroup.add(legL);
-            const legR = new THREE.Mesh(legGeoChild, pantsMat);
-            legR.position.set(0.2, 0.65, 1.15);
-            childGroup.add(legR);
-
-            // Feet
-            const footGeo = new THREE.BoxGeometry(0.12, 0.08, 0.18);
-            const footMat = new THREE.MeshStandardMaterial({ color: 0x2ecc71 }); // Green sneakers
-            const footL = new THREE.Mesh(footGeo, footMat);
-            footL.position.set(-0.2, 0.45, 1.2);
-            childGroup.add(footL);
-            const footR = new THREE.Mesh(footGeo, footMat);
-            footR.position.set(0.2, 0.45, 1.2);
-            childGroup.add(footR);
-
-            childGroup.position.z = 0.3;
-            playerCart.add(childGroup);
-            playerChild = childGroup; // Store reference for FPS mode visibility
-
-            // === SLINGSHOT ===
-            slingshotArm = new THREE.Group();
-            const woodMat = new THREE.MeshStandardMaterial({
-                color: 0x8b4513,
-                roughness: 0.8
-            });
-            const rubberMat = new THREE.MeshStandardMaterial({
-                color: 0xc0392b,
-                roughness: 0.6
-            });
-
-            // Y-frame handle
-            const handleGeo = new THREE.CylinderGeometry(0.04, 0.05, 0.5, 8);
-            const slHandle = new THREE.Mesh(handleGeo, woodMat);
-            slHandle.rotation.x = Math.PI / 2;
-            slHandle.position.z = -0.25;
-            slingshotArm.add(slHandle);
-
-            // Fork prongs
-            const forkGeo = new THREE.CylinderGeometry(0.03, 0.035, 0.25, 8);
-            const forkL = new THREE.Mesh(forkGeo, woodMat);
-            forkL.rotation.z = Math.PI / 5;
-            forkL.position.set(-0.1, 0.1, -0.5);
-            slingshotArm.add(forkL);
-            const forkR = new THREE.Mesh(forkGeo, woodMat);
-            forkR.rotation.z = -Math.PI / 5;
-            forkR.position.set(0.1, 0.1, -0.5);
-            slingshotArm.add(forkR);
-
-            // Fork tips (rounded)
-            const tipGeo = new THREE.SphereGeometry(0.04, 8, 8);
-            const tipL = new THREE.Mesh(tipGeo, woodMat);
-            tipL.position.set(-0.15, 0.2, -0.5);
-            slingshotArm.add(tipL);
-            const tipR = new THREE.Mesh(tipGeo, woodMat);
-            tipR.position.set(0.15, 0.2, -0.5);
-            slingshotArm.add(tipR);
-
-            // Rubber bands
-            const bandGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.25, 6);
-            const bandL = new THREE.Mesh(bandGeo, rubberMat);
-            bandL.rotation.x = Math.PI / 3;
-            bandL.rotation.z = Math.PI / 8;
-            bandL.position.set(-0.1, 0.1, -0.38);
-            slingshotArm.add(bandL);
-            const bandR = new THREE.Mesh(bandGeo, rubberMat);
-            bandR.rotation.x = Math.PI / 3;
-            bandR.rotation.z = -Math.PI / 8;
-            bandR.position.set(0.1, 0.1, -0.38);
-            slingshotArm.add(bandR);
-
-            // Pouch
-            const pouchGeo = new THREE.SphereGeometry(0.06, 8, 8);
-            pouchGeo.scale(1, 0.5, 1);
-            const pouchMat = new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.9 });
-            const pouch = new THREE.Mesh(pouchGeo, pouchMat);
-            pouch.position.set(0, 0.02, -0.25);
-            slingshotArm.add(pouch);
-
-            slingshotArm.position.set(-0.45, 1.15, -0.2);
-            slingshotArm.rotation.x = -0.3;
-            playerCart.add(slingshotArm);
-
-            playerCart.position.set(0, 0, -5);
-            scene.add(playerCart);
-        }
-
         function createEnemyCart(x, z, enemyType = 'SKELETON') {
             // Get config from ENEMY_TYPES registry
             const config = ENEMY_TYPES[enemyType] || ENEMY_TYPES.CART;
@@ -2130,53 +1388,18 @@
             }
         }
 
-        function showScorePopup(points, screenX, screenY) {
-            const popup = document.createElement('div');
-            popup.className = 'score-popup';
-            popup.textContent = '+' + points;
-            popup.style.left = screenX + 'px';
-            popup.style.top = screenY + 'px';
-            document.getElementById('ui-layer').appendChild(popup);
-            setTimeout(() => popup.remove(), 1000);
-        }
-
-        function showHitMarker() {
-            hitMarker.classList.add('show');
-            setTimeout(() => hitMarker.classList.remove('show'), 150);
-        }
-
         function addScore(points, position) {
             score += points;
-            scoreElement.textContent = score;
+            UI.updateScore(score, true);
 
-            // Trigger score bump animation
-            const scoreContainer = document.getElementById('score-container');
-            scoreElement.classList.add('bump');
-            scoreContainer.classList.add('bump');
-            setTimeout(() => {
-                scoreElement.classList.remove('bump');
-                scoreContainer.classList.remove('bump');
-            }, 150);
-
-            // Convert 3D position to screen position
-            const screenPos = position.clone().project(camera);
-            const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
-            const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
-            showScorePopup(points, x, y);
-        }
-
-        // Convert world position to screen coordinates for crosshair
-        function worldToScreen(worldPos) {
-            const vector = worldPos.clone().project(camera);
-            return {
-                x: (vector.x * 0.5 + 0.5) * window.innerWidth,
-                y: (-vector.y * 0.5 + 0.5) * window.innerHeight
-            };
+            // Convert 3D position to screen position and show popup
+            const screenPos = UI.worldToScreen(position, camera);
+            UI.showScorePopup(points, screenPos.x, screenPos.y);
         }
 
         // Slingshot Charging Functions (delegating to WeaponSystem)
         function startCharging() {
-            if (!isChargingSlingshot && gameState === 'PLAYING') {
+            if (!isChargingSlingshot && GameState.is('PLAYING')) {
                 const now = Date.now();
                 if (!WeaponSystem.canFire(now)) return; // Still on cooldown
 
@@ -2277,11 +1500,8 @@
             lastDamageTime = 0;
             isInvulnerable = false;
 
-            // Reset WASD keys
-            keys.forward = false;
-            keys.backward = false;
-            keys.turnLeft = false;
-            keys.turnRight = false;
+            // Reset input state
+            Input.reset();
 
             // Reset cart visual state
             currentLeanAngle = 0;
@@ -2303,9 +1523,7 @@
             lockedTarget = null;
 
             // Reset health UI
-            healthFill.style.width = '100%';
-            healthValue.textContent = '100';
-            damageOverlay.classList.remove('flash');
+            UI.resetHealthBar(PLAYER_MAX_HEALTH);
 
             // Clear all game objects
             projectiles.forEach(p => scene.remove(p));
@@ -2328,24 +1546,13 @@
         }
 
         function updateCursor() {
-            // Hide cursor during gameplay (we have a crosshair overlay)
-            const canvas = renderer.domElement;
-            if (gameState === 'PLAYING') {
-                canvas.style.cursor = 'none';
-                document.body.style.cursor = 'none';
-            } else {
-                canvas.style.cursor = 'default';
-                document.body.style.cursor = 'default';
-            }
+            UI.updateCursor(GameState.is('PLAYING'), renderer.domElement);
         }
 
         function startGame() {
             resetGame();
-            gameState = 'PLAYING';
-            menuScreen.style.display = 'none';
-            gameoverScreen.style.display = 'none';
-            hud.style.display = 'block';
-            healthContainer.style.display = 'block';
+            GameState.forceTransition('PLAYING');
+            UI.showGameplay();
             // Center crosshair on start
             crosshairX = window.innerWidth / 2;
             crosshairY = window.innerHeight / 2;
@@ -2355,49 +1562,23 @@
         }
 
         function endGame(died = false) {
-            gameState = 'GAME_OVER';
-            hud.style.display = 'none';
-            healthContainer.style.display = 'none';
-            gameoverScreen.style.display = 'flex';
-            finalScoreElement.textContent = score;
-
-            // Set title based on how game ended
-            gameoverTitle.textContent = died ? 'WRECKED!' : "TIME'S UP!";
-
-            let rating = 'Mild Mischief';
-            if (score > 10000) rating = 'LEGENDARY CHAOS!';
-            else if (score > 7000) rating = 'Total Mayhem!';
-            else if (score > 4000) rating = 'Chaos Master';
-            else if (score > 2000) rating = 'Troublemaker';
-            else if (score > 800) rating = 'Rowdy Kid';
-            ratingElement.textContent = rating;
+            GameState.forceTransition('GAME_OVER');
+            const rating = UI.getScoreRating(score);
+            UI.showGameOver(score, rating, died);
             updateCursor();
         }
 
         function damagePlayer(amount) {
-            if (isInvulnerable || gameState !== 'PLAYING') return;
+            if (isInvulnerable || !GameState.is('PLAYING')) return;
 
             playerHealth = Math.max(0, playerHealth - amount);
-            const healthPercent = playerHealth / PLAYER_MAX_HEALTH * 100;
-            healthFill.style.width = healthPercent + '%';
-            healthValue.textContent = playerHealth;
-
-            // Update health bar gradient position (shows color based on health)
-            healthFill.style.backgroundPosition = (100 - healthPercent) + '% 0';
-
-            // Low health pulsing indicator
-            if (playerHealth <= 30) {
-                healthContainer.classList.add('low-health');
-            } else {
-                healthContainer.classList.remove('low-health');
-            }
+            UI.updateHealthBar(playerHealth, PLAYER_MAX_HEALTH);
 
             // Trigger GPU-based damage vignette (scales with damage)
             damageVignetteStrength = Math.min(1.0, damageVignetteStrength + amount / 50);
 
-            // Also flash CSS overlay for immediate feedback
-            damageOverlay.classList.add('flash');
-            setTimeout(() => damageOverlay.classList.remove('flash'), 200);
+            // Flash CSS overlay for immediate feedback
+            UI.showDamageOverlay();
 
             // Start invulnerability
             isInvulnerable = true;
@@ -2416,39 +1597,32 @@
         }
 
         function pauseGame() {
-            if (gameState !== 'PLAYING') return;
-            gameState = 'PAUSED';
+            if (!GameState.is('PLAYING')) return;
+            GameState.forceTransition('PAUSED');
             cancelCharging(); // Cancel any charging in progress
-            pauseScoreValue.textContent = score;
-            pauseScreen.style.display = 'flex';
-            hud.style.display = 'none';
-            healthContainer.style.display = 'none';
+            UI.showPause(score);
             updateCursor();
         }
 
         function resumeGame() {
-            if (gameState !== 'PAUSED') return;
-            gameState = 'PLAYING';
-            pauseScreen.style.display = 'none';
-            hud.style.display = 'block';
-            healthContainer.style.display = 'block';
-            clock.getDelta(); // Reset delta to avoid jump
+            if (!GameState.is('PAUSED')) return;
+            GameState.forceTransition('PLAYING');
+            UI.hidePause();
+            GameLoop.resetDelta(); // Reset delta to avoid jump
             updateCursor();
         }
 
         function quitToMenu() {
-            gameState = 'MENU';
-            pauseScreen.style.display = 'none';
-            healthContainer.style.display = 'none';
-            menuScreen.style.display = 'flex';
+            GameState.forceTransition('MENU');
+            UI.showMenu();
             resetGame();
             updateCursor();
         }
 
         function togglePause() {
-            if (gameState === 'PLAYING') {
+            if (GameState.is('PLAYING')) {
                 pauseGame();
-            } else if (gameState === 'PAUSED') {
+            } else if (GameState.is('PAUSED')) {
                 resumeGame();
             }
         }
@@ -2531,17 +1705,7 @@
 
         // Timer display update
         function updateTimerDisplay() {
-            const minutes = Math.floor(gameTimer / 60);
-            const seconds = Math.floor(gameTimer % 60);
-            const timerText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-            if (timerDisplay) {
-                timerDisplay.textContent = timerText;
-            }
-            // Update timer bar fill
-            const progress = gameTimer / GAME_DURATION;
-            if (timerFill) {
-                timerFill.style.width = `${progress * 100}%`;
-            }
+            UI.updateTimerDisplay(gameTimer, GAME_DURATION);
         }
 
         // Room tracking and spawning
@@ -2718,14 +1882,11 @@
 
         function updateCooldownIndicator() {
             const elapsed = Date.now() - lastShootTime;
-            const progress = Math.min(elapsed / SHOOT_COOLDOWN, 1);
-            const degrees = progress * 360;
-            cooldownFill.style.transform = `rotate(${degrees}deg)`;
-            cooldownFill.style.borderTopColor = progress >= 1 ? '#2ecc71' : '#e94560';
+            UI.updateCooldownIndicator(elapsed, SHOOT_COOLDOWN);
         }
 
         function update(dt) {
-            if (gameState !== 'PLAYING') return;
+            if (!GameState.is('PLAYING')) return;
 
             // Update invulnerability
             updateInvulnerability();
@@ -2748,14 +1909,14 @@
 
             // === WASD DRIVING MOVEMENT ===
             // Handle turning (A/D)
-            const targetTurnRate = (keys.turnLeft ? 1 : 0) - (keys.turnRight ? 1 : 0);
+            const targetTurnRate = (Input.keys.turnLeft ? 1 : 0) - (Input.keys.turnRight ? 1 : 0);
             currentTurnRate += (targetTurnRate * CART_TURN_SPEED - currentTurnRate) * 8 * dt;
             playerRotation += currentTurnRate * dt;
 
             // Handle acceleration/deceleration (W/S)
-            if (keys.forward) {
+            if (Input.keys.forward) {
                 playerSpeed += CART_ACCELERATION * dt;
-            } else if (keys.backward) {
+            } else if (Input.keys.backward) {
                 playerSpeed -= CART_ACCELERATION * dt;
             } else {
                 // Apply friction when no input, but maintain small idle drift
@@ -3294,7 +2455,7 @@
                             // Use EnemySystem for damage handling
                             const result = EnemySystem.damage(enemy, damage);
                             if (result) {
-                                showHitMarker();
+                                UI.showHitMarker();
 
                                 // Update health bar using EnemySystem helper
                                 const healthPercent = EnemySystem.getHealthPercent(enemy);
@@ -3351,7 +2512,7 @@
                         if (dist < hitRadius) {
                             proj.userData.active = false;
                             obs.userData.hit = true;
-                            showHitMarker();
+                            UI.showHitMarker();
                             addScore(150, obs.position);
                             spawnParticles(obs.position, 0xf1c40f, 10);  // Fewer particles
                         }
@@ -3405,22 +2566,7 @@
             if (composer) composer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        function animate() {
-            requestAnimationFrame(animate);
-
-            const dt = Math.min(clock.getDelta(), 0.1);
-            update(dt);
-
-            // Decay damage vignette (for CSS overlay)
-            damageVignetteStrength *= 0.95;
-
-            // Render with post-processing
-            if (composer) {
-                composer.render(dt);
-            } else {
-                renderer.render(scene, camera);
-            }
-        }
+        // Game loop handled by GameLoop module (configured in initialization)
 
         // Event Listeners
         document.getElementById('start-btn').addEventListener('click', startGame);
@@ -3465,55 +2611,13 @@
             }
         }, true);
 
-        // Keyboard controls - WASD driving
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                togglePause();
-                return;
-            }
-
-            // Controls only during gameplay
-            if (gameState === 'PLAYING') {
-                const key = e.key.toLowerCase();
-                const code = e.code || '';
-
-                // WASD driving controls (support both e.key and e.code for test compatibility)
-                // Tests may pass 'KeyW' as e.key, so check for that too
-                if (key === 'w' || code === 'KeyW' || e.key === 'KeyW' || e.key === 'ArrowUp') keys.forward = true;
-                if (key === 's' || code === 'KeyS' || e.key === 'KeyS' || e.key === 'ArrowDown') keys.backward = true;
-                if (key === 'a' || code === 'KeyA' || e.key === 'KeyA' || e.key === 'ArrowLeft') keys.turnLeft = true;
-                if (key === 'd' || code === 'KeyD' || e.key === 'KeyD' || e.key === 'ArrowRight') keys.turnRight = true;
-
-                // Space: Start charging
-                if (key === ' ' || e.key === ' ' || code === 'Space') {
-                    e.preventDefault();
-                    startCharging();
-                }
-            }
-        });
-
-        document.addEventListener('keyup', (e) => {
-            const key = e.key.toLowerCase();
-            const code = e.code || '';
-
-            // WASD driving controls (support both e.key and e.code for test compatibility)
-            // Tests may pass 'KeyW' as e.key, so check for that too
-            if (key === 'w' || code === 'KeyW' || e.key === 'KeyW' || e.key === 'ArrowUp') keys.forward = false;
-            if (key === 's' || code === 'KeyS' || e.key === 'KeyS' || e.key === 'ArrowDown') keys.backward = false;
-            if (key === 'a' || code === 'KeyA' || e.key === 'KeyA' || e.key === 'ArrowLeft') keys.turnLeft = false;
-            if (key === 'd' || code === 'KeyD' || e.key === 'KeyD' || e.key === 'ArrowRight') keys.turnRight = false;
-
-            // Space: Release and fire
-            if ((key === ' ' || e.key === ' ' || code === 'Space') && gameState === 'PLAYING') {
-                releaseAndFire();
-            }
-        });
+        // Keyboard controls handled by Input module (initialized above)
+        // WASD movement, Space (fire), and ESC (pause) are all handled via Input callbacks
 
         // Expose game state and functions for testing
         Object.defineProperty(window, 'gameState', {
-            get: () => gameState,
-            set: (v) => { gameState = v; }
+            get: () => GameState.get(),
+            set: (v) => { GameState.forceTransition(v); }
         });
         Object.defineProperty(window, 'score', {
             get: () => score,
@@ -3557,7 +2661,7 @@
         window.endGame = endGame;
         window.damagePlayer = damagePlayer;
         window.takeDamage = damagePlayer;
-        window.keys = keys;
+        window.keys = Input.keys;
         window.enemies = enemies;
         window.obstacles = obstacles;
 
@@ -3619,6 +2723,15 @@
         });
 
         // Expose domain objects for testing
+        // Engine domain
+        window.Engine = Engine;
+        window.Collision = Collision;
+        window.Input = Input;
+        window.GameState = GameState;
+        window.GameLoop = GameLoop;
+        window.SceneManager = SceneManager;
+        window.EntityManager = EntityManager;
+
         // Weapon domain
         window.Weapon = Weapon;
         window.WeaponMesh = WeaponMesh;
@@ -3663,6 +2776,42 @@
         // Initialize and start
         initThree();
 
+        // Initialize engine systems
+        GameState.init('MENU');
+        GameLoop.init(THREE);
+
+        // Configure game loop callbacks
+        GameLoop.setUpdateCallback(update);
+        GameLoop.setRenderCallback((dt) => {
+            // Decay damage vignette (for CSS overlay)
+            damageVignetteStrength *= 0.95;
+
+            // Render with post-processing
+            if (composer) {
+                composer.render(dt);
+            } else {
+                renderer.render(scene, camera);
+            }
+        });
+
+        Input.init();
+        EntityManager.init(scene);
+
+        // Register Input action callbacks
+        Input.onActionStart('fire', () => {
+            if (GameState.is('PLAYING')) startCharging();
+        });
+        Input.onActionRelease('fire', () => {
+            if (GameState.is('PLAYING')) releaseAndFire();
+        });
+        Input.onActionStart('pause', togglePause);
+
+        // Register entity types with EntityManager
+        EntityManager.registerType('enemy', { maxCount: 10, despawnDistance: 20 });
+        EntityManager.registerType('obstacle', { maxCount: 15, despawnDistance: 30 });
+        EntityManager.registerType('projectile', { maxCount: 50, despawnDistance: 20 });
+        EntityManager.registerType('particle', { maxCount: 100, despawnDistance: 50 });
+
         // Initialize domain systems
         WeaponSystem.init(Weapon);
         EnemySystem.init(Enemy, scene);
@@ -3673,7 +2822,8 @@
         healthContainer.style.display = 'none';
         hud.style.display = 'none';
 
-        animate();
+        // Start the game loop
+        GameLoop.start();
     </script>
 </body>
 </html>
