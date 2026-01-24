@@ -291,6 +291,24 @@ const WeaponManager = {
     },
 
     /**
+     * Get cooldown for current weapon
+     * @returns {number} Cooldown in ms
+     */
+    getCooldown() {
+        if (!this.currentWeapon?.config) return 300;
+        return this.currentWeapon.config.cooldown || 300;
+    },
+
+    /**
+     * Get projectile speed range for current weapon
+     * @returns {Object} { min, max }
+     */
+    getProjectileSpeed() {
+        const cfg = this.getProjectileConfig();
+        return cfg?.speed || { min: 60, max: 180 };
+    },
+
+    /**
      * Check if currently charging
      * @returns {boolean}
      */

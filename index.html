@@ -216,12 +216,7 @@
 
         const CROSSHAIR_BOUNDS_MARGIN = 50;
 
-        // Frequently-used aliases for cleaner code
-        const SLINGSHOT = Weapon.types.SLINGSHOT;
-        const SHOOT_COOLDOWN = SLINGSHOT.cooldown;
-        const TENSION_MAX = SLINGSHOT.maxTension;
-        const PROJECTILE_SPEED_MIN = SLINGSHOT.projectileSpeed.min;
-        const PROJECTILE_SPEED_MAX = SLINGSHOT.projectileSpeed.max;
+        // Domain constant aliases
         const PLAYER_MAX_HEALTH = Player.health.MAX;
         const CART_SPEED = Player.movement.SPEED;
         const MALL_THEMES = RoomTheme.themes;
@@ -337,8 +332,9 @@
             return g;
         }
 
-        function createProjectile(direction, spawnPos, speed = PROJECTILE_SPEED_MAX) {
-            const g = ProjectileSystem.createMesh(THREE, direction, spawnPos, speed, { speedMin: PROJECTILE_SPEED_MIN, speedMax: PROJECTILE_SPEED_MAX, fallbackCamera: camera });
+        function createProjectile(direction, spawnPos, speed) {
+            const ps = WeaponManager.getProjectileSpeed();
+            const g = ProjectileSystem.createMesh(THREE, direction, spawnPos, speed ?? ps.max, { speedMin: ps.min, speedMax: ps.max, fallbackCamera: camera });
             scene.add(g); projectiles.push(g);
             return g;
         }
@@ -351,7 +347,7 @@
         const cancelCharging = () => WeaponManager.cancelAction();
         const releaseAndFire = () => { const r = WeaponManager.onFireRelease(Date.now()); if (r) shoot(r.speed, r); };
 
-        function shoot(speed = PROJECTILE_SPEED_MAX, fireResult = null) {
+        function shoot(speed, fireResult = null) {
             lastShootTime = Date.now();
             if (cameraMode === 'hybrid-fps') WeaponManager.triggerFireAnim();
 
@@ -445,7 +441,7 @@
 
         function updateCooldownIndicator() {
             const elapsed = Date.now() - lastShootTime;
-            UISystem.updateCooldownIndicator(elapsed, SHOOT_COOLDOWN);
+            UISystem.updateCooldownIndicator(elapsed, WeaponManager.getCooldown());
         }
 
         function update(dt) {
@@ -484,7 +480,7 @@
 
             // UI updates
             UISystem.updateCrosshairUI(crosshairX, crosshairY, aim.aimAssistActive);
-            UISystem.updateTensionUI(crosshairX, crosshairY, WeaponManager.isCharging(), WeaponManager.getTension(), TENSION_MAX);
+            UISystem.updateTensionUI(crosshairX, crosshairY, WeaponManager.isCharging(), WeaponManager.getTension(), WeaponManager.getMaxTension());
 
             // Entity updates
             ProjectileSystem.updateMeshArray(projectiles, { dt, cameraPosition: camera.position });
