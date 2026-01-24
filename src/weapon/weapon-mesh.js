@@ -1,19 +1,27 @@
 // ============================================
-// WEAPON VISUAL - Mesh Creation
+// WEAPON MESH - Mesh Creation
 // ============================================
-// Self-contained, zero external dependencies
-// Creates weapon meshes - receives THREE as parameter
+// Creates weapon THREE.js meshes
+// Uses WeaponTheme for colors
 
-const WeaponVisual = {
-    // Color palette for weapon visuals
-    colors: {
-        wood: 0x8B4513,
-        woodDark: 0x5D3A1A,
-        leather: 0x4a3728,
-        leatherDark: 0x3d2d22,
-        band: 0x654321,
-        metal: 0x888888,
-        stone: 0x888888
+const WeaponMesh = {
+    /**
+     * Get colors from theme or fallback
+     */
+    _getColors() {
+        if (typeof WeaponTheme !== 'undefined') {
+            return WeaponTheme.slingshot;
+        }
+        // Fallback colors
+        return {
+            wood: 0x8B4513,
+            woodDark: 0x5D3A1A,
+            leather: 0x4a3728,
+            leatherDark: 0x3d2d22,
+            band: 0x654321,
+            metal: 0x888888,
+            stone: 0x888888
+        };
     },
 
     /**
@@ -145,15 +153,16 @@ const WeaponVisual = {
      */
     createSlingshotMesh(THREE, isFPS = false) {
         const slingshot = new THREE.Group();
+        const colors = this._getColors();
 
         const woodMat = new THREE.MeshStandardMaterial({
-            color: this.colors.wood,
+            color: colors.wood,
             roughness: 0.8,
             metalness: 0.1
         });
 
         const leatherMat = new THREE.MeshStandardMaterial({
-            color: this.colors.leather,
+            color: colors.leather,
             roughness: 0.9,
             metalness: 0
         });
@@ -167,7 +176,7 @@ const WeaponVisual = {
 
         // Handle wrapping
         const wrapMat = new THREE.MeshStandardMaterial({
-            color: this.colors.leatherDark,
+            color: colors.leatherDark,
             roughness: 1.0
         });
         for (let i = 0; i < 4; i++) {
@@ -216,7 +225,7 @@ const WeaponVisual = {
 
         // Elastic bands
         const bandMat = new THREE.MeshStandardMaterial({
-            color: this.colors.band,
+            color: colors.band,
             roughness: 0.6
         });
 
@@ -252,7 +261,7 @@ const WeaponVisual = {
         if (isFPS) {
             // Pouch edges for FPS detail
             const edgeMat = new THREE.MeshStandardMaterial({
-                color: this.colors.leatherDark,
+                color: colors.leatherDark,
                 roughness: 1.0
             });
 
@@ -272,7 +281,7 @@ const WeaponVisual = {
 
             // Stone in pouch
             const stoneMat = new THREE.MeshStandardMaterial({
-                color: this.colors.stone,
+                color: colors.stone,
                 roughness: 0.9,
                 metalness: 0.1
             });
@@ -295,19 +304,20 @@ const WeaponVisual = {
      */
     createThirdPersonWeapon(THREE) {
         const slingshotArm = new THREE.Group();
+        const colors = this._getColors();
 
         const woodMat = new THREE.MeshStandardMaterial({
-            color: this.colors.wood,
+            color: colors.wood,
             roughness: 0.7
         });
 
         const bandMat = new THREE.MeshStandardMaterial({
-            color: this.colors.band,
+            color: colors.band,
             roughness: 0.6
         });
 
         const leatherMat = new THREE.MeshStandardMaterial({
-            color: this.colors.leather,
+            color: colors.leather,
             roughness: 0.8
         });
 

@@ -240,39 +240,55 @@
     });
 
     // ==========================================
-    // WEAPON VISUAL TESTS
+    // WEAPON THEME TESTS
     // ==========================================
 
-    test.describe('Weapon Visual', () => {
-        test.it('should have color palette defined', () => {
-            test.assertTrue(WeaponVisual.colors !== undefined);
-            test.assertTrue(WeaponVisual.colors.wood !== undefined);
-            test.assertTrue(WeaponVisual.colors.leather !== undefined);
+    test.describe('Weapon Theme', () => {
+        test.it('should have slingshot colors defined', () => {
+            test.assertTrue(WeaponTheme.slingshot !== undefined);
+            test.assertTrue(WeaponTheme.slingshot.wood !== undefined);
+            test.assertTrue(WeaponTheme.slingshot.leather !== undefined);
         });
 
+        test.it('should have hands colors defined', () => {
+            test.assertTrue(WeaponTheme.hands !== undefined);
+            test.assertTrue(WeaponTheme.hands.skin !== undefined);
+        });
+
+        test.it('should get colors for weapon type', () => {
+            const colors = WeaponTheme.getColors('slingshot');
+            test.assertTrue(colors.wood !== undefined);
+        });
+    });
+
+    // ==========================================
+    // WEAPON MESH TESTS
+    // ==========================================
+
+    test.describe('Weapon Mesh', () => {
         test.it('should have createFPSWeapon method', () => {
-            test.assertTrue(typeof WeaponVisual.createFPSWeapon === 'function');
+            test.assertTrue(typeof WeaponMesh.createFPSWeapon === 'function');
         });
 
         test.it('should have createSlingshotMesh method', () => {
-            test.assertTrue(typeof WeaponVisual.createSlingshotMesh === 'function');
+            test.assertTrue(typeof WeaponMesh.createSlingshotMesh === 'function');
         });
 
         test.it('should have createThirdPersonWeapon method', () => {
-            test.assertTrue(typeof WeaponVisual.createThirdPersonWeapon === 'function');
+            test.assertTrue(typeof WeaponMesh.createThirdPersonWeapon === 'function');
         });
 
         test.it('should have animateFPSWeapon method', () => {
-            test.assertTrue(typeof WeaponVisual.animateFPSWeapon === 'function');
+            test.assertTrue(typeof WeaponMesh.animateFPSWeapon === 'function');
         });
 
-        // Visual creation tests require THREE.js - run in browser context
+        // Mesh creation tests require THREE.js - run in browser context
         test.it('should create FPS weapon with THREE', () => {
             if (typeof THREE === 'undefined') {
                 test.skip('THREE.js not available');
                 return;
             }
-            const fpsWeapon = WeaponVisual.createFPSWeapon(THREE);
+            const fpsWeapon = WeaponMesh.createFPSWeapon(THREE);
             test.assertTrue(fpsWeapon instanceof THREE.Group);
             test.assertTrue(fpsWeapon.userData.leftHand !== undefined);
             test.assertTrue(fpsWeapon.userData.rightHand !== undefined);
@@ -284,7 +300,7 @@
                 test.skip('THREE.js not available');
                 return;
             }
-            const slingshot = WeaponVisual.createSlingshotMesh(THREE, false);
+            const slingshot = WeaponMesh.createSlingshotMesh(THREE, false);
             test.assertTrue(slingshot instanceof THREE.Group);
         });
     });

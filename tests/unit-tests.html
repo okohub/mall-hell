@@ -366,27 +366,42 @@
     <!-- Three.js for visual tests -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-    <!-- Domain Source Files -->
+    <!-- Domain Source Files (data → theme → mesh → system) -->
     <script src="../src/weapon/weapon.js"></script>
-    <script src="../src/weapon/weapon-visual.js"></script>
+    <script src="../src/weapon/weapon-theme.js"></script>
+    <script src="../src/weapon/weapon-mesh.js"></script>
     <script src="../src/weapon/weapon-system.js"></script>
     <script src="../src/projectile/projectile.js"></script>
-    <script src="../src/projectile/projectile-visual.js"></script>
+    <script src="../src/projectile/projectile-theme.js"></script>
+    <script src="../src/projectile/projectile-mesh.js"></script>
     <script src="../src/projectile/projectile-system.js"></script>
     <script src="../src/enemy/enemy.js"></script>
-    <script src="../src/enemy/enemy-visual.js"></script>
+    <script src="../src/enemy/enemy-theme.js"></script>
+    <script src="../src/enemy/enemy-mesh.js"></script>
     <script src="../src/enemy/enemy-system.js"></script>
     <script src="../src/environment/obstacle.js"></script>
-    <script src="../src/environment/obstacle-visual.js"></script>
+    <script src="../src/environment/obstacle-theme.js"></script>
+    <script src="../src/environment/obstacle-mesh.js"></script>
     <script src="../src/environment/shelf.js"></script>
-    <script src="../src/environment/shelf-visual.js"></script>
+    <script src="../src/environment/shelf-theme.js"></script>
+    <script src="../src/environment/shelf-mesh.js"></script>
     <script src="../src/environment/environment-system.js"></script>
+    <script src="../src/player/player.js"></script>
+    <script src="../src/player/player-theme.js"></script>
+    <script src="../src/player/player-mesh.js"></script>
+    <script src="../src/player/player-system.js"></script>
+    <script src="../src/room/room.js"></script>
+    <script src="../src/room/room-theme.js"></script>
+    <script src="../src/room/room-mesh.js"></script>
+    <script src="../src/room/room-system.js"></script>
 
     <!-- Domain Test Files -->
     <script src="../src/weapon/weapon.test.js"></script>
     <script src="../src/projectile/projectile.test.js"></script>
     <script src="../src/enemy/enemy.test.js"></script>
     <script src="../src/environment/environment.test.js"></script>
+    <script src="../src/player/player.test.js"></script>
+    <script src="../src/room/room.test.js"></script>
 
     <script>
         // ============================================
@@ -2981,7 +2996,7 @@
         });
 
         // ============================================
-        // NOTE: Domain-specific tests (Weapon, Projectile, Enemy, Environment)
+        // NOTE: Domain-specific tests (Weapon, Projectile, Enemy, Environment, Player)
         // are now loaded from separate files in src/<domain>/<domain>.test.js
         // ============================================
 
