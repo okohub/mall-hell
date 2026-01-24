@@ -342,6 +342,41 @@ async function runUITests(browser) {
             }, TEST_GROUPS);
         }
 
+        // Domain filtering for UI tests (filters by test file/id prefix)
+        if (UNIT_DOMAINS.length > 0) {
+            await page.evaluate((domains) => {
+                if (window.runner && window.runner.tests) {
+                    // Map domains to their typical UI test groups/prefixes
+                    const domainGroupMap = {
+                        'enemy': ['enemy', 'skeleton', 'collision', 'spawning'],
+                        'weapon': ['fps', 'weapon', 'charging', 'projectile', 'slingshot'],
+                        'player': ['player', 'movement', 'health', 'keyboard'],
+                        'environment': ['visual', 'shelf', 'obstacle', 'room'],
+                        'ui': ['menu', 'hud', 'button', 'crosshair', 'state'],
+                        'engine': ['game start', 'game over', 'pause', 'state transition']
+                    };
+
+                    const relevantGroups = domains.flatMap(d => domainGroupMap[d] || [d]);
+
+                    window.runner.tests = window.runner.tests.filter(t => {
+                        const testGroup = (t.group || '').toLowerCase();
+                        const testId = (t.id || '').toLowerCase();
+                        const testName = (t.name || '').toLowerCase();
+
+                        return relevantGroups.some(g =>
+                            testGroup.includes(g) ||
+                            testId.includes(g) ||
+                            testName.includes(g)
+                        );
+                    });
+                }
+            }, UNIT_DOMAINS);
+
+            if (VERBOSE) {
+                logProgress(`  [UI] Filtering by domains: ${UNIT_DOMAINS.join(', ')}`);
+            }
+        }
+
         const totalTests = await page.evaluate(() => window.runner?.tests?.length || 0);
         progress.ui.total = totalTests;
 
@@ -639,15 +674,14 @@ function saveResults(data) {
 // ENTRY POINT
 // ============================================
 
-// Domain filter implies unit-only (domains are for unit tests)
-const implicitUnitOnly = UNIT_DOMAINS.length > 0;
-// Group filter implies UI-only (groups are for UI tests)
+// Group filter implies UI-only (groups are fine-grained UI test filtering)
 const implicitUIOnly = TEST_GROUPS.length > 0;
 
-if (UNIT_ONLY || implicitUnitOnly) {
+if (UNIT_ONLY) {
     runUnitTestsOnly().catch(console.error);
 } else if (UI_ONLY || implicitUIOnly) {
     runUITestsOnly().catch(console.error);
 } else {
+    // Domain filter runs both unit (filtered) and UI (filtered by domain file)
     runAllTests().catch(console.error);
 }
