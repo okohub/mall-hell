@@ -1,10 +1,10 @@
 // ============================================
-// GAME LOOP - Animation Frame Management
+// LOOP SYSTEM - Animation Frame Management
 // ============================================
 // Manages the game loop with requestAnimationFrame,
 // delta time calculation, and update/render callbacks.
 
-const GameLoop = {
+const LoopSystem = {
     // THREE.js reference (for Clock)
     _THREE: null,
     _clock: null,
@@ -211,7 +211,7 @@ const GameLoop = {
             try {
                 cb(dt, this._totalTime);
             } catch (err) {
-                console.error('GameLoop pre-update error:', err);
+                console.error('LoopSystem pre-update error:', err);
             }
         }
 
@@ -220,7 +220,7 @@ const GameLoop = {
             try {
                 this._updateCallback(dt, this._totalTime);
             } catch (err) {
-                console.error('GameLoop update error:', err);
+                console.error('LoopSystem update error:', err);
             }
         }
 
@@ -229,7 +229,7 @@ const GameLoop = {
             try {
                 cb(dt, this._totalTime);
             } catch (err) {
-                console.error('GameLoop post-update error:', err);
+                console.error('LoopSystem post-update error:', err);
             }
         }
 
@@ -238,7 +238,7 @@ const GameLoop = {
             try {
                 this._renderCallback(dt);
             } catch (err) {
-                console.error('GameLoop render error:', err);
+                console.error('LoopSystem render error:', err);
             }
         }
     },

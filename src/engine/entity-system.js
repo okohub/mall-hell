@@ -1,10 +1,10 @@
 // ============================================
-// ENTITY MANAGER - Entity Lifecycle Management
+// ENTITY SYSTEM - Entity Lifecycle Management
 // ============================================
 // Manages entity spawning, despawning, and cleanup.
 // Works with any scene/group system.
 
-const EntityManager = {
+const EntitySystem = {
     // Scene reference
     _scene: null,
 
@@ -86,7 +86,7 @@ const EntityManager = {
     spawn(typeName, mesh, data = {}) {
         const typeConfig = this._types[typeName];
         if (!typeConfig) {
-            console.warn(`EntityManager: Unknown type "${typeName}"`);
+            console.warn(`EntitySystem: Unknown type "${typeName}"`);
             return null;
         }
 

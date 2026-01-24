@@ -68,24 +68,24 @@
             const pos1 = { x: 0, z: 0 };
             const pos2 = { x: 3, z: 4 }; // Distance = 5
 
-            test.assertEqual(Collision.checkDistance2D(pos1, pos2, 6), true, 'Within radius');
-            test.assertEqual(Collision.checkDistance2D(pos1, pos2, 5), true, 'At radius');
-            test.assertEqual(Collision.checkDistance2D(pos1, pos2, 4), false, 'Outside radius');
+            test.assertEqual(CollisionSystem.checkDistance2D(pos1, pos2, 6), true, 'Within radius');
+            test.assertEqual(CollisionSystem.checkDistance2D(pos1, pos2, 5), true, 'At radius');
+            test.assertEqual(CollisionSystem.checkDistance2D(pos1, pos2, 4), false, 'Outside radius');
         });
 
         test.it('should calculate 2D distance correctly', () => {
             const pos1 = { x: 0, z: 0 };
             const pos2 = { x: 3, z: 4 };
 
-            test.assertCloseTo(Collision.distance2D(pos1, pos2), 5, 0.001);
+            test.assertCloseTo(CollisionSystem.distance2D(pos1, pos2), 5, 0.001);
         });
 
         test.it('should detect 3D distance collision', () => {
             const pos1 = { x: 0, y: 0, z: 0 };
             const pos2 = { x: 0, y: 3, z: 4 }; // Distance = 5
 
-            test.assertEqual(Collision.checkDistance3D(pos1, pos2, 6), true);
-            test.assertEqual(Collision.checkDistance3D(pos1, pos2, 4), false);
+            test.assertEqual(CollisionSystem.checkDistance3D(pos1, pos2, 6), true);
+            test.assertEqual(CollisionSystem.checkDistance3D(pos1, pos2, 4), false);
         });
 
         test.it('should detect AABB collision', () => {
@@ -102,12 +102,12 @@
                 max: { x: 6, y: 6, z: 6 }
             };
 
-            test.assertEqual(Collision.checkAABB(box1, box2), true, 'Overlapping');
-            test.assertEqual(Collision.checkAABB(box1, box3), false, 'Not overlapping');
+            test.assertEqual(CollisionSystem.checkAABB(box1, box2), true, 'Overlapping');
+            test.assertEqual(CollisionSystem.checkAABB(box1, box3), false, 'Not overlapping');
         });
 
         test.it('should create AABB from center and half-extents', () => {
-            const aabb = Collision.createAABB(
+            const aabb = CollisionSystem.createAABB(
                 { x: 5, y: 5, z: 5 },
                 { x: 1, y: 1, z: 1 }
             );
@@ -126,9 +126,9 @@
                 max: { x: 10, y: 10, z: 10 }
             };
 
-            test.assertEqual(Collision.pointInAABB({ x: 5, y: 5, z: 5 }, box), true, 'Inside');
-            test.assertEqual(Collision.pointInAABB({ x: 0, y: 0, z: 0 }, box), true, 'On edge');
-            test.assertEqual(Collision.pointInAABB({ x: 15, y: 5, z: 5 }, box), false, 'Outside');
+            test.assertEqual(CollisionSystem.pointInAABB({ x: 5, y: 5, z: 5 }, box), true, 'Inside');
+            test.assertEqual(CollisionSystem.pointInAABB({ x: 0, y: 0, z: 0 }, box), true, 'On edge');
+            test.assertEqual(CollisionSystem.pointInAABB({ x: 15, y: 5, z: 5 }, box), false, 'Outside');
         });
 
         test.it('should perform sweep sphere test', () => {
@@ -136,7 +136,7 @@
             const curr = { x: 10, y: 0, z: 0 };
             const target = { x: 5, y: 0, z: 0 };
 
-            const hit = Collision.sweepSphere(prev, curr, target, 1);
+            const hit = CollisionSystem.sweepSphere(prev, curr, target, 1);
             test.assertEqual(hit !== null, true, 'Should hit');
             test.assertCloseTo(hit.t, 0.4, 0.1, 'Hit at ~40% along path');
         });
@@ -148,49 +148,49 @@
 
     test.describe('Engine: Input System', () => {
         test.beforeEach(() => {
-            Input.init();
+            InputSystem.init();
         });
 
         test.afterEach(() => {
-            Input.destroy();
-            Input.clearAllCallbacks();
+            InputSystem.destroy();
+            InputSystem.clearAllCallbacks();
         });
 
         test.it('should initialize with default bindings', () => {
-            test.assertEqual(Input.getBinding('KeyW'), 'forward');
-            test.assertEqual(Input.getBinding('Space'), 'fire');
+            test.assertEqual(InputSystem.getBinding('KeyW'), 'forward');
+            test.assertEqual(InputSystem.getBinding('Space'), 'fire');
         });
 
         test.it('should track key states', () => {
-            test.assertEqual(Input.keys.forward, false);
-            test.assertEqual(Input.keys.backward, false);
-            test.assertEqual(Input.keys.turnLeft, false);
-            test.assertEqual(Input.keys.turnRight, false);
+            test.assertEqual(InputSystem.keys.forward, false);
+            test.assertEqual(InputSystem.keys.backward, false);
+            test.assertEqual(InputSystem.keys.turnLeft, false);
+            test.assertEqual(InputSystem.keys.turnRight, false);
         });
 
         test.it('should return movement input', () => {
-            const movement = Input.getMovement();
+            const movement = InputSystem.getMovement();
             test.assertEqual(movement.forward, 0);
             test.assertEqual(movement.turn, 0);
         });
 
         test.it('should reset key states', () => {
-            Input.keys.forward = true;
-            Input.keys.turnLeft = true;
-            Input.reset();
-            test.assertEqual(Input.keys.forward, false);
-            test.assertEqual(Input.keys.turnLeft, false);
+            InputSystem.keys.forward = true;
+            InputSystem.keys.turnLeft = true;
+            InputSystem.reset();
+            test.assertEqual(InputSystem.keys.forward, false);
+            test.assertEqual(InputSystem.keys.turnLeft, false);
         });
 
         test.it('should allow custom bindings', () => {
-            Input.setBinding('KeyX', 'customAction');
-            test.assertEqual(Input.getBinding('KeyX'), 'customAction');
+            InputSystem.setBinding('KeyX', 'customAction');
+            test.assertEqual(InputSystem.getBinding('KeyX'), 'customAction');
         });
 
         test.it('should report initialization state', () => {
-            test.assertEqual(Input.isInitialized(), true);
-            Input.destroy();
-            test.assertEqual(Input.isInitialized(), false);
+            test.assertEqual(InputSystem.isInitialized(), true);
+            InputSystem.destroy();
+            test.assertEqual(InputSystem.isInitialized(), false);
         });
     });
 
@@ -198,83 +198,83 @@
     // GAME STATE TESTS
     // ==========================================
 
-    test.describe('Engine: Game State Machine', () => {
+    test.describe('Engine: State System', () => {
         test.beforeEach(() => {
-            GameState.clearAllCallbacks();
-            GameState.init('MENU');
+            StateSystem.clearAllCallbacks();
+            StateSystem.init('MENU');
         });
 
         test.it('should initialize to specified state', () => {
-            test.assertEqual(GameState.get(), 'MENU');
+            test.assertEqual(StateSystem.get(), 'MENU');
         });
 
         test.it('should check current state', () => {
-            test.assertEqual(GameState.is('MENU'), true);
-            test.assertEqual(GameState.is('PLAYING'), false);
+            test.assertEqual(StateSystem.is('MENU'), true);
+            test.assertEqual(StateSystem.is('PLAYING'), false);
         });
 
         test.it('should check multiple states with isAny', () => {
-            test.assertEqual(GameState.isAny('MENU', 'PLAYING'), true);
-            test.assertEqual(GameState.isAny('PAUSED', 'GAME_OVER'), false);
+            test.assertEqual(StateSystem.isAny('MENU', 'PLAYING'), true);
+            test.assertEqual(StateSystem.isAny('PAUSED', 'GAME_OVER'), false);
         });
 
         test.it('should transition to valid state', () => {
-            const result = GameState.transition('PLAYING');
+            const result = StateSystem.transition('PLAYING');
             test.assertEqual(result, true);
-            test.assertEqual(GameState.get(), 'PLAYING');
+            test.assertEqual(StateSystem.get(), 'PLAYING');
         });
 
         test.it('should reject invalid transition', () => {
-            const result = GameState.transition('PAUSED');
+            const result = StateSystem.transition('PAUSED');
             test.assertEqual(result, false);
-            test.assertEqual(GameState.get(), 'MENU');
+            test.assertEqual(StateSystem.get(), 'MENU');
         });
 
         test.it('should report valid transitions', () => {
-            const valid = GameState.getValidTransitions();
+            const valid = StateSystem.getValidTransitions();
             test.assertEqual(valid.includes('PLAYING'), true);
             test.assertEqual(valid.includes('PAUSED'), false);
         });
 
         test.it('should fire enter callback on transition', () => {
             let entered = false;
-            GameState.onStateEnter('PLAYING', () => { entered = true; });
-            GameState.transition('PLAYING');
+            StateSystem.onStateEnter('PLAYING', () => { entered = true; });
+            StateSystem.transition('PLAYING');
             test.assertEqual(entered, true);
         });
 
         test.it('should fire exit callback on transition', () => {
             let exited = false;
-            GameState.onStateExit('MENU', () => { exited = true; });
-            GameState.transition('PLAYING');
+            StateSystem.onStateExit('MENU', () => { exited = true; });
+            StateSystem.transition('PLAYING');
             test.assertEqual(exited, true);
         });
 
         test.it('should fire global change callback', () => {
             let prevState = null;
             let newState = null;
-            GameState.onChange((prev, next) => {
+            StateSystem.onChange((prev, next) => {
                 prevState = prev;
                 newState = next;
             });
-            GameState.transition('PLAYING');
+            StateSystem.transition('PLAYING');
             test.assertEqual(prevState, 'MENU');
             test.assertEqual(newState, 'PLAYING');
         });
 
         test.it('should have convenience methods', () => {
-            test.assertEqual(GameState.isMenu(), true);
-            test.assertEqual(GameState.isPlaying(), false);
+            test.assertEqual(StateSystem.isMenu(), true);
+            test.assertEqual(StateSystem.isPlaying(), false);
 
-            GameState.transition('PLAYING');
-            test.assertEqual(GameState.isPlaying(), true);
+            StateSystem.transition('PLAYING');
+            test.assertEqual(StateSystem.isPlaying(), true);
 
-            GameState.transition('PAUSED');
-            test.assertEqual(GameState.isPaused(), true);
+            StateSystem.transition('PAUSED');
+            test.assertEqual(StateSystem.isPaused(), true);
 
-            GameState.transition('MENU');
-            GameState.forceTransition('GAME_OVER');
-            test.assertEqual(GameState.isGameOver(), true);
+            StateSystem.transition('MENU');
+            StateSystem.forceTransition('GAME_OVER');
+            test.assertEqual(StateSystem.isGameOver(), true);
         });
     });
 
@@ -282,52 +282,52 @@
     // GAME LOOP TESTS
     // ==========================================
 
-    test.describe('Engine: Game Loop', () => {
+    test.describe('Engine: Loop System', () => {
         test.beforeEach(() => {
             // Initialize with mock THREE
-            GameLoop.init({ Clock: function() {
+            LoopSystem.init({ Clock: function() {
                 this.start = () => {};
                 this.getDelta = () => 0.016;
             }});
         });
 
         test.it('should not be running initially', () => {
-            test.assertEqual(GameLoop.isRunning(), false);
+            test.assertEqual(LoopSystem.isRunning(), false);
         });
 
         test.it('should track frame count', () => {
-            test.assertEqual(GameLoop.getFrameCount(), 0);
+            test.assertEqual(LoopSystem.getFrameCount(), 0);
         });
 
         test.it('should have configurable max delta time', () => {
-            GameLoop.setMaxDeltaTime(0.05);
-            test.assertEqual(GameLoop.getMaxDeltaTime(), 0.05);
+            LoopSystem.setMaxDeltaTime(0.05);
+            test.assertEqual(LoopSystem.getMaxDeltaTime(), 0.05);
         });
 
         test.it('should accept update callback', () => {
             let called = false;
-            GameLoop.setUpdateCallback(() => { called = true; });
+            LoopSystem.setUpdateCallback(() => { called = true; });
             // Note: callback won't fire until loop starts
             test.assertEqual(called, false);
         });
 
         test.it('should accept render callback', () => {
             let called = false;
-            GameLoop.setRenderCallback(() => { called = true; });
+            LoopSystem.setRenderCallback(() => { called = true; });
             test.assertEqual(called, false);
         });
 
         test.it('should manage pre-update callbacks', () => {
             const cb = () => {};
-            GameLoop.addPreUpdate(cb);
-            GameLoop.removePreUpdate(cb);
+            LoopSystem.addPreUpdate(cb);
+            LoopSystem.removePreUpdate(cb);
             // No error means success
         });
 
         test.it('should manage post-update callbacks', () => {
             const cb = () => {};
-            GameLoop.addPostUpdate(cb);
-            GameLoop.removePostUpdate(cb);
+            LoopSystem.addPostUpdate(cb);
+            LoopSystem.removePostUpdate(cb);
         });
     });
 
@@ -335,7 +335,7 @@
     // SCENE MANAGER TESTS
     // ==========================================
 
-    test.describe('Engine: Scene Manager', () => {
+    test.describe('Engine: Scene System', () => {
         // Note: These tests require THREE.js to be loaded
         test.it('should initialize with THREE reference', () => {
             if (typeof THREE === 'undefined') {
@@ -344,44 +344,44 @@
             }
 
             const container = document.createElement('div');
-            SceneManager.init(THREE, container);
+            SceneSystem.init(THREE, container);
 
-            test.assertEqual(SceneManager.scene !== null, true, 'Scene created');
-            test.assertEqual(SceneManager.camera !== null, true, 'Camera created');
-            test.assertEqual(SceneManager.renderer !== null, true, 'Renderer created');
+            test.assertEqual(SceneSystem.scene !== null, true, 'Scene created');
+            test.assertEqual(SceneSystem.camera !== null, true, 'Camera created');
+            test.assertEqual(SceneSystem.renderer !== null, true, 'Renderer created');
 
-            SceneManager.dispose();
+            SceneSystem.dispose();
         });
 
         test.it('should create and manage groups', () => {
             if (typeof THREE === 'undefined') return;
 
             const container = document.createElement('div');
-            SceneManager.init(THREE, container);
+            SceneSystem.init(THREE, container);
 
-            const group = SceneManager.createGroup('testGroup');
+            const group = SceneSystem.createGroup('testGroup');
             test.assertEqual(group !== null, true, 'Group created');
-            test.assertEqual(SceneManager.getGroup('testGroup'), group, 'Group retrieved');
+            test.assertEqual(SceneSystem.getGroup('testGroup'), group, 'Group retrieved');
 
-            SceneManager.dispose();
+            SceneSystem.dispose();
         });
 
         test.it('should add objects to groups', () => {
             if (typeof THREE === 'undefined') return;
 
             const container = document.createElement('div');
-            SceneManager.init(THREE, container);
+            SceneSystem.init(THREE, container);
 
             const mesh = new THREE.Mesh(
                 new THREE.BoxGeometry(1, 1, 1),
                 new THREE.MeshBasicMaterial()
             );
 
-            SceneManager.createGroup('test');
-            const result = SceneManager.addToGroup('test', mesh);
+            SceneSystem.createGroup('test');
+            const result = SceneSystem.addToGroup('test', mesh);
             test.assertEqual(result, true);
 
-            SceneManager.dispose();
+            SceneSystem.dispose();
         });
     });
 
@@ -389,25 +389,25 @@
     // ENTITY MANAGER TESTS
     // ==========================================
 
-    test.describe('Engine: Entity Manager', () => {
+    test.describe('Engine: Entity System', () => {
         test.beforeEach(() => {
             // Mock scene
             const mockScene = {
                 add: () => {},
                 remove: () => {}
             };
-            EntityManager.init(mockScene);
+            EntitySystem.init(mockScene);
         });
 
         test.it('should register entity types', () => {
-            EntityManager.registerType('enemy', { maxCount: 5 });
-            test.assertEqual(EntityManager.hasType('enemy'), true);
+            EntitySystem.registerType('enemy', { maxCount: 5 });
+            test.assertEqual(EntitySystem.hasType('enemy'), true);
         });
 
         test.it('should spawn entities', () => {
-            EntityManager.registerType('enemy', { maxCount: 5 });
+            EntitySystem.registerType('enemy', { maxCount: 5 });
             const mockMesh = { position: { x: 0, y: 0, z: 0 }, userData: {} };
-            const entity = EntityManager.spawn('enemy', mockMesh, { health: 3 });
+            const entity = EntitySystem.spawn('enemy', mockMesh, { health: 3 });
 
             test.assertEqual(entity !== null, true, 'Entity spawned');
             test.assertEqual(entity.type, 'enemy');
@@ -416,82 +416,82 @@
         });
 
         test.it('should respect max count', () => {
-            EntityManager.registerType('enemy', { maxCount: 2 });
+            EntitySystem.registerType('enemy', { maxCount: 2 });
 
             const mesh1 = { position: { x: 0, y: 0, z: 0 }, userData: {} };
             const mesh2 = { position: { x: 1, y: 0, z: 0 }, userData: {} };
             const mesh3 = { position: { x: 2, y: 0, z: 0 }, userData: {} };
 
-            EntityManager.spawn('enemy', mesh1);
-            EntityManager.spawn('enemy', mesh2);
-            const result = EntityManager.spawn('enemy', mesh3);
+            EntitySystem.spawn('enemy', mesh1);
+            EntitySystem.spawn('enemy', mesh2);
+            const result = EntitySystem.spawn('enemy', mesh3);
 
             test.assertEqual(result, null, 'Third spawn rejected');
-            test.assertEqual(EntityManager.getCount('enemy'), 2);
+            test.assertEqual(EntitySystem.getCount('enemy'), 2);
         });
 
         test.it('should despawn entities', () => {
-            EntityManager.registerType('enemy', { maxCount: 5 });
+            EntitySystem.registerType('enemy', { maxCount: 5 });
             const mockMesh = { position: { x: 0, y: 0, z: 0 }, userData: {} };
-            const entity = EntityManager.spawn('enemy', mockMesh);
+            const entity = EntitySystem.spawn('enemy', mockMesh);
 
-            EntityManager.despawn('enemy', entity);
-            test.assertEqual(EntityManager.getCount('enemy'), 0);
+            EntitySystem.despawn('enemy', entity);
+            test.assertEqual(EntitySystem.getCount('enemy'), 0);
         });
 
         test.it('should get active entities', () => {
-            EntityManager.registerType('enemy', { maxCount: 5 });
+            EntitySystem.registerType('enemy', { maxCount: 5 });
             const mesh1 = { position: { x: 0, y: 0, z: 0 }, userData: {} };
             const mesh2 = { position: { x: 1, y: 0, z: 0 }, userData: {} };
 
-            EntityManager.spawn('enemy', mesh1);
-            EntityManager.spawn('enemy', mesh2);
+            EntitySystem.spawn('enemy', mesh1);
+            EntitySystem.spawn('enemy', mesh2);
 
-            const active = EntityManager.getActive('enemy');
+            const active = EntitySystem.getActive('enemy');
             test.assertEqual(active.length, 2);
         });
 
         test.it('should check capacity', () => {
-            EntityManager.registerType('enemy', { maxCount: 1 });
-            test.assertEqual(EntityManager.isAtCapacity('enemy'), false);
+            EntitySystem.registerType('enemy', { maxCount: 1 });
+            test.assertEqual(EntitySystem.isAtCapacity('enemy'), false);
 
             const mockMesh = { position: { x: 0, y: 0, z: 0 }, userData: {} };
-            EntityManager.spawn('enemy', mockMesh);
-            test.assertEqual(EntityManager.isAtCapacity('enemy'), true);
+            EntitySystem.spawn('enemy', mockMesh);
+            test.assertEqual(EntitySystem.isAtCapacity('enemy'), true);
         });
 
         test.it('should iterate with forEach', () => {
-            EntityManager.registerType('enemy', { maxCount: 5 });
+            EntitySystem.registerType('enemy', { maxCount: 5 });
             const mesh1 = { position: { x: 0, y: 0, z: 0 }, userData: {} };
             const mesh2 = { position: { x: 1, y: 0, z: 0 }, userData: {} };
 
-            EntityManager.spawn('enemy', mesh1);
-            EntityManager.spawn('enemy', mesh2);
+            EntitySystem.spawn('enemy', mesh1);
+            EntitySystem.spawn('enemy', mesh2);
 
             let count = 0;
-            EntityManager.forEach('enemy', () => { count++; });
+            EntitySystem.forEach('enemy', () => { count++; });
             test.assertEqual(count, 2);
         });
 
         test.it('should filter entities', () => {
-            EntityManager.registerType('enemy', { maxCount: 5 });
+            EntitySystem.registerType('enemy', { maxCount: 5 });
             const mesh1 = { position: { x: 0, y: 0, z: 0 }, userData: {} };
             const mesh2 = { position: { x: 5, y: 0, z: 0 }, userData: {} };
 
-            EntityManager.spawn('enemy', mesh1, { damage: 10 });
-            EntityManager.spawn('enemy', mesh2, { damage: 20 });
+            EntitySystem.spawn('enemy', mesh1, { damage: 10 });
+            EntitySystem.spawn('enemy', mesh2, { damage: 20 });
 
-            const highDamage = EntityManager.filter('enemy', e => e.data.damage > 15);
+            const highDamage = EntitySystem.filter('enemy', e => e.data.damage > 15);
             test.assertEqual(highDamage.length, 1);
         });
 
         test.it('should reset all entities', () => {
-            EntityManager.registerType('enemy', { maxCount: 5 });
+            EntitySystem.registerType('enemy', { maxCount: 5 });
             const mesh1 = { position: { x: 0, y: 0, z: 0 }, userData: {} };
-            EntityManager.spawn('enemy', mesh1);
+            EntitySystem.spawn('enemy', mesh1);
 
-            EntityManager.reset();
-            test.assertEqual(EntityManager.getCount('enemy'), 0);
+            EntitySystem.reset();
+            test.assertEqual(EntitySystem.getCount('enemy'), 0);
         });
     });
 

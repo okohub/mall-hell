@@ -1,10 +1,10 @@
 // ============================================
-// MATERIALS LIBRARY - Shared Material Definitions
+// MATERIALS THEME - Shared Material Definitions
 // ============================================
 // Centralized material definitions for consistent appearance.
 // Must be initialized with THREE.js before use.
 
-const Materials = {
+const MaterialsTheme = {
     // Chrome for cart frames
     chrome: null,
     darkChrome: null,

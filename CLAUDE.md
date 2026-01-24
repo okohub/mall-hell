@@ -128,19 +128,20 @@ mall-hell/
 ├── src/
 │   ├── engine/             # Core engine systems
 │   │   ├── engine.js           # Engine constants
-│   │   ├── game-state.js       # State machine (MENU, PLAYING, PAUSED, GAME_OVER)
-│   │   ├── game-loop.js        # RAF loop, delta time
-│   │   ├── input.js            # Keyboard/mouse input handling
-│   │   ├── collision.js        # Collision detection utilities
-│   │   ├── scene-manager.js    # Three.js scene management
-│   │   ├── entity-manager.js   # Entity lifecycle management
+│   │   ├── state-system.js     # State machine (MENU, PLAYING, PAUSED, GAME_OVER)
+│   │   ├── loop-system.js      # RAF loop, delta time
+│   │   ├── input-system.js     # Keyboard/mouse input handling
+│   │   ├── collision-system.js # Collision detection utilities
+│   │   ├── scene-system.js     # Three.js scene management
+│   │   ├── entity-system.js    # Entity lifecycle management
 │   │   └── engine.test.js      # Engine tests
 │   │
 │   ├── shared/             # Cross-domain utilities
-│   │   └── materials.js        # Shared Three.js materials library
+│   │   └── materials-theme.js  # Shared Three.js materials library
 │   │
 │   ├── ui/                 # User interface
-│   │   └── ui.js               # HUD, menus, popups, health bar
+│   │   ├── ui.js               # UI constants (ratings, durations)
+│   │   └── ui-system.js        # HUD, menus, popups, health bar
 │   │
 │   ├── room/               # Room/level domain
 │   │   ├── room.js             # Room data, grid constants
@@ -210,9 +211,10 @@ Each domain follows this file naming pattern:
 
 1. **Zero cross-file dependencies** - Each file is self-contained
 2. **No imports/exports** - Files use global scope (browser-compatible)
-3. **Dependency injection** - THREE.js and Materials passed as parameters
+3. **Dependency injection** - THREE.js and MaterialsTheme passed as parameters
 4. **Separation of concerns** - Data, theme, mesh, and logic are separate
 5. **Testable in isolation** - Each component can be tested independently
+6. **Consistent naming** - System files use `-system.js` suffix, theme files use `-theme.js` suffix
 
 ### Adding New Features
 
@@ -234,10 +236,11 @@ Each domain follows this file naming pattern:
 
 In `index.html`, scripts must be loaded in this order:
 1. Three.js (CDN)
-2. `src/shared/materials.js` - shared materials
-3. `src/ui/ui.js` - UI utilities
-4. `src/engine/*` - core systems
-5. Domain files (for each domain: data → theme → mesh → system)
+2. `src/shared/materials-theme.js` - shared materials
+3. `src/ui/ui.js` - UI constants
+4. `src/ui/ui-system.js` - UI system
+5. `src/engine/*` - core systems (engine.js first, then *-system.js files)
+6. Domain files (for each domain: data → theme → mesh → system)
 
 ### Using Domain Modules
 
@@ -247,18 +250,25 @@ const speed = Player.movement.SPEED;
 const roomSize = Room.structure.UNIT;
 
 // Create meshes using domain mesh files
-const playerCart = PlayerMesh.createPlayerCart(THREE, Materials);
-const fpsWeapon = WeaponMesh.createFPSWeapon(THREE, Materials);
+const playerCart = PlayerMesh.createPlayerCart(THREE, MaterialsTheme);
+const fpsWeapon = WeaponMesh.createFPSWeapon(THREE, MaterialsTheme);
 
 // Use domain systems for state management
 WeaponSystem.init(Weapon);
 WeaponSystem.startCharge();
 const result = WeaponSystem.fire(Date.now());
 
+// Use engine systems
+StateSystem.init('MENU');
+StateSystem.transition('PLAYING');
+InputSystem.init();
+LoopSystem.init(THREE);
+LoopSystem.start();
+
 // Use UI module for all UI operations
-UI.init();
-UI.updateScore(score, true);
-UI.showGameOver(score, rating, died);
+UISystem.init();
+UISystem.updateScore(score, true);
+UISystem.showGameOver(score, UI.getScoreRating(score), died);
 ```
 
 ---

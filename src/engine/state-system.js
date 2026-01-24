@@ -1,10 +1,10 @@
 // ============================================
-// GAME STATE - State Machine
+// STATE SYSTEM - State Machine
 // ============================================
 // Manages game state with transitions and callbacks.
 // Optional dependency on Engine for state definitions.
 
-const GameState = {
+const StateSystem = {
     // Current state
     _currentState: null,
 
@@ -44,7 +44,7 @@ const GameState = {
 
         // Validate initial state
         if (!this._isValidState(initialState)) {
-            console.warn(`GameState: Invalid initial state "${initialState}", defaulting to MENU`);
+            console.warn(`StateSystem: Invalid initial state "${initialState}", defaulting to MENU`);
             initialState = this._states.MENU || 'MENU';
         }
 
@@ -136,7 +136,7 @@ const GameState = {
     transition(newState) {
         // Check if transition is valid
         if (!this.canTransition(newState)) {
-            console.warn(`GameState: Invalid transition from "${this._currentState}" to "${newState}"`);
+            console.warn(`StateSystem: Invalid transition from "${this._currentState}" to "${newState}"`);
             return false;
         }
 
@@ -157,7 +157,7 @@ const GameState = {
      */
     forceTransition(newState) {
         if (!this._isValidState(newState)) {
-            console.warn(`GameState: Invalid state "${newState}"`);
+            console.warn(`StateSystem: Invalid state "${newState}"`);
             return false;
         }
 
@@ -236,7 +236,7 @@ const GameState = {
                 try {
                     cb(otherState);
                 } catch (err) {
-                    console.error(`GameState callback error:`, err);
+                    console.error(`StateSystem callback error:`, err);
                 }
             }
         }
@@ -251,7 +251,7 @@ const GameState = {
             try {
                 cb(prevState, newState);
             } catch (err) {
-                console.error(`GameState onChange callback error:`, err);
+                console.error(`StateSystem onChange callback error:`, err);
             }
         }
     },

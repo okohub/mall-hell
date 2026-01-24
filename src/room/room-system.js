@@ -286,8 +286,238 @@ const RoomSystem = {
     },
 
     // ==========================================
+    // MESH CREATION
+    // ==========================================
+
+    /**
+     * Create all meshes for a single room
+     * @param {THREE} THREE - Three.js library
+     * @param {Object} room - Room data
+     * @param {Object} options - Options {scene, shelfArray, shelfSystem}
+     * @returns {Object} Created meshes {floor, ceiling, walls, shelves, sign, light}
+     */
+    createRoomMeshes(THREE, room, options = {}) {
+        const { scene, shelfArray, shelfSystem } = options;
+        const theme = room.themeData || this.getRoomTheme(room);
+        if (!theme) return null;
+
+        const structure = this.roomData ? this.roomData.structure : Room.structure;
+        const ROOM_UNIT = structure.UNIT;
+        const worldX = room.gridX * ROOM_UNIT + ROOM_UNIT / 2;
+        const worldZ = room.gridZ * ROOM_UNIT + ROOM_UNIT / 2;
+
+        const result = { meshes: [] };
+
+        // Floor
+        const floorGeo = new THREE.PlaneGeometry(ROOM_UNIT, ROOM_UNIT);
+        const floorMat = new THREE.MeshStandardMaterial({
+            color: new THREE.Color(theme.floorColor),
+            roughness: 0.8
+        });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.set(worldX, 0, worldZ);
+        floor.receiveShadow = true;
+        result.meshes.push(floor);
+        if (scene) scene.add(floor);
+
+        // Floor tiles pattern
+        const tileCanvas = document.createElement('canvas');
+        tileCanvas.width = 512;
+        tileCanvas.height = 512;
+        const ctx = tileCanvas.getContext('2d');
+        ctx.fillStyle = theme.floorColor;
+        ctx.fillRect(0, 0, 512, 512);
+        ctx.strokeStyle = theme.floorLineColor;
+        ctx.lineWidth = 4;
+        for (let y = 0; y < 512; y += 64) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(512, y);
+            ctx.stroke();
+        }
+        for (let x = 0; x < 512; x += 64) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, 512);
+            ctx.stroke();
+        }
+        const tileTex = new THREE.CanvasTexture(tileCanvas);
+        tileTex.wrapS = THREE.RepeatWrapping;
+        tileTex.wrapT = THREE.RepeatWrapping;
+        tileTex.repeat.set(4, 4);
+        const tileMat = new THREE.MeshStandardMaterial({ map: tileTex, roughness: 0.7 });
+        const tiles = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_UNIT - 1, ROOM_UNIT - 1), tileMat);
+        tiles.rotation.x = -Math.PI / 2;
+        tiles.position.set(worldX, 0.01, worldZ);
+        tiles.receiveShadow = true;
+        result.meshes.push(tiles);
+        if (scene) scene.add(tiles);
+
+        // Ceiling
+        const ceilingGeo = new THREE.PlaneGeometry(ROOM_UNIT, ROOM_UNIT);
+        const ceilingMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.9 });
+        const ceiling = new THREE.Mesh(ceilingGeo, ceilingMat);
+        ceiling.rotation.x = Math.PI / 2;
+        ceiling.position.set(worldX, 12, worldZ);
+        result.meshes.push(ceiling);
+        if (scene) scene.add(ceiling);
+
+        // Ceiling light
+        if (typeof RoomMesh !== 'undefined') {
+            const light = RoomMesh.createCeilingLightFixture(THREE, worldX, worldZ, 11.5);
+            result.meshes.push(light);
+            if (scene) scene.add(light);
+        }
+
+        // Walls
+        this._createRoomWalls(THREE, room, scene, result.meshes);
+
+        // Section sign
+        if (theme.signText && typeof RoomMesh !== 'undefined') {
+            const sign = RoomMesh.createAisleSign(THREE, theme.signText, theme.signColor, worldX, worldZ, 9);
+            result.meshes.push(sign);
+            if (scene) scene.add(sign);
+        }
+
+        // Shelves (if theme has products)
+        if (!theme.noShelves && theme.productColors && theme.productColors.length > 0) {
+            const doors = room.doors || [];
+            const roomMinX = room.gridX * ROOM_UNIT;
+            const roomMaxX = roomMinX + ROOM_UNIT;
+            const roomMinZ = room.gridZ * ROOM_UNIT;
+            const roomMaxZ = roomMinZ + ROOM_UNIT;
+
+            // West wall shelves
+            if (!doors.includes('west') && typeof RoomMesh !== 'undefined') {
+                [-6, 0, 6].forEach(offset => {
+                    const shelf = RoomMesh.createShelfUnit(THREE, theme, roomMinX + 2.5, worldZ + offset, false, shelfSystem);
+                    result.meshes.push(shelf);
+                    if (scene) scene.add(shelf);
+                    if (shelfArray) shelfArray.push(shelf);
+                });
+            }
+
+            // East wall shelves
+            if (!doors.includes('east') && typeof RoomMesh !== 'undefined') {
+                [-6, 0, 6].forEach(offset => {
+                    const shelf = RoomMesh.createShelfUnit(THREE, theme, roomMaxX - 2.5, worldZ + offset, true, shelfSystem);
+                    result.meshes.push(shelf);
+                    if (scene) scene.add(shelf);
+                    if (shelfArray) shelfArray.push(shelf);
+                });
+            }
+
+            // North wall shelves
+            if (!doors.includes('north') && typeof RoomMesh !== 'undefined') {
+                [-6, 6].forEach(offset => {
+                    const shelf = RoomMesh.createWallShelf(THREE, theme, worldX + offset, roomMinZ + 2.5, 0, shelfSystem);
+                    result.meshes.push(shelf);
+                    if (scene) scene.add(shelf);
+                    if (shelfArray) shelfArray.push(shelf);
+                });
+            }
+
+            // South wall shelves
+            if (!doors.includes('south') && typeof RoomMesh !== 'undefined') {
+                [-6, 6].forEach(offset => {
+                    const shelf = RoomMesh.createWallShelf(THREE, theme, worldX + offset, roomMaxZ - 2.5, Math.PI, shelfSystem);
+                    result.meshes.push(shelf);
+                    if (scene) scene.add(shelf);
+                    if (shelfArray) shelfArray.push(shelf);
+                });
+            }
+
+            // Center display (not in JUNCTION rooms)
+            if (room.theme !== 'JUNCTION' && typeof RoomMesh !== 'undefined') {
+                const display = RoomMesh.createCenterDisplay(THREE, theme, worldX, worldZ, shelfSystem);
+                result.meshes.push(display);
+                if (scene) scene.add(display);
+            }
+        }
+
+        return result;
+    },
+
+    /**
+     * Create all environment meshes for all rooms
+     * @param {THREE} THREE - Three.js library
+     * @param {Object} options - Options {scene, shelfArray, shelfSystem}
+     */
+    createAllRoomMeshes(THREE, options = {}) {
+        const rooms = this.getAllRooms();
+        rooms.forEach(room => {
+            this.createRoomMeshes(THREE, room, options);
+        });
+    },
+
+    // ==========================================
     // PRIVATE HELPERS
     // ==========================================
+
+    /**
+     * Create walls for a room
+     * @private
+     */
+    _createRoomWalls(THREE, room, scene, meshArray) {
+        const structure = this.roomData ? this.roomData.structure : Room.structure;
+        const ROOM_UNIT = structure.UNIT;
+        const DOOR_WIDTH = structure.DOOR_WIDTH;
+
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x34495e });
+        const wallHeight = 12;
+        const doors = room.doors || [];
+
+        const roomMinX = room.gridX * ROOM_UNIT;
+        const roomMaxX = roomMinX + ROOM_UNIT;
+        const roomMinZ = room.gridZ * ROOM_UNIT;
+        const roomMaxZ = roomMinZ + ROOM_UNIT;
+        const centerX = roomMinX + ROOM_UNIT / 2;
+        const centerZ = roomMinZ + ROOM_UNIT / 2;
+
+        const wallSegment = (ROOM_UNIT - DOOR_WIDTH) / 2;
+
+        const createSegment = (x, y, z, w, h, d) => {
+            const geo = new THREE.BoxGeometry(w, h, d);
+            const wall = new THREE.Mesh(geo, wallMat);
+            wall.position.set(x, y, z);
+            wall.receiveShadow = true;
+            if (meshArray) meshArray.push(wall);
+            if (scene) scene.add(wall);
+        };
+
+        // North wall
+        if (doors.includes('north')) {
+            createSegment(roomMinX + wallSegment / 2, wallHeight / 2, roomMinZ, wallSegment, wallHeight, 1);
+            createSegment(roomMaxX - wallSegment / 2, wallHeight / 2, roomMinZ, wallSegment, wallHeight, 1);
+        } else {
+            createSegment(centerX, wallHeight / 2, roomMinZ, ROOM_UNIT, wallHeight, 1);
+        }
+
+        // South wall
+        if (doors.includes('south')) {
+            createSegment(roomMinX + wallSegment / 2, wallHeight / 2, roomMaxZ, wallSegment, wallHeight, 1);
+            createSegment(roomMaxX - wallSegment / 2, wallHeight / 2, roomMaxZ, wallSegment, wallHeight, 1);
+        } else {
+            createSegment(centerX, wallHeight / 2, roomMaxZ, ROOM_UNIT, wallHeight, 1);
+        }
+
+        // West wall
+        if (doors.includes('west')) {
+            createSegment(roomMinX, wallHeight / 2, roomMinZ + wallSegment / 2, 1, wallHeight, wallSegment);
+            createSegment(roomMinX, wallHeight / 2, roomMaxZ - wallSegment / 2, 1, wallHeight, wallSegment);
+        } else {
+            createSegment(roomMinX, wallHeight / 2, centerZ, 1, wallHeight, ROOM_UNIT);
+        }
+
+        // East wall
+        if (doors.includes('east')) {
+            createSegment(roomMaxX, wallHeight / 2, roomMinZ + wallSegment / 2, 1, wallHeight, wallSegment);
+            createSegment(roomMaxX, wallHeight / 2, roomMaxZ - wallSegment / 2, 1, wallHeight, wallSegment);
+        } else {
+            createSegment(roomMaxX, wallHeight / 2, centerZ, 1, wallHeight, ROOM_UNIT);
+        }
+    },
 
     /**
      * Generate key for room storage

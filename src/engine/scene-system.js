@@ -1,10 +1,10 @@
 // ============================================
-// SCENE MANAGER - THREE.js Scene Management
+// SCENE SYSTEM - THREE.js Scene Management
 // ============================================
 // Handles scene, camera, renderer setup and scene groups.
 // THREE.js is passed as a parameter (no global dependency).
 
-const SceneManager = {
+const SceneSystem = {
     // THREE.js reference
     _THREE: null,
 
@@ -224,7 +224,7 @@ const SceneManager = {
     addToGroup(groupName, object) {
         const group = this._groups[groupName];
         if (!group) {
-            console.warn(`SceneManager: Group "${groupName}" not found`);
+            console.warn(`SceneSystem: Group "${groupName}" not found`);
             return false;
         }
         group.add(object);

@@ -1,10 +1,10 @@
 // ============================================
-// COLLISION - Collision Detection Utilities
+// COLLISION SYSTEM - Collision Detection Utilities
 // ============================================
 // Pure utility functions for collision detection.
 // No dependencies - works with plain position objects.
 
-const Collision = {
+const CollisionSystem = {
     // ==========================================
     // DISTANCE-BASED COLLISION
     // ==========================================
@@ -305,5 +305,183 @@ const Collision = {
      */
     pointInSphere(point, center, radius) {
         return this.checkDistance3D(point, center, radius);
+    },
+
+    // ==========================================
+    // GRID-AWARE COLLISION (Maze/Room System)
+    // ==========================================
+
+    /**
+     * Check wall collision for grid-based maze
+     * @param {number} newX - New X position
+     * @param {number} newZ - New Z position
+     * @param {number} oldX - Previous X position (unused but kept for API consistency)
+     * @param {number} oldZ - Previous Z position (unused but kept for API consistency)
+     * @param {Object} gridSystem - Grid system with getRoomAtWorld method
+     * @param {Object} roomConfig - Room config {UNIT, DOOR_WIDTH}
+     * @param {number} [margin=1.2] - Player collision radius
+     * @returns {Object} Result {blocked, blockedX, blockedZ}
+     */
+    checkWallCollision(newX, newZ, oldX, oldZ, gridSystem, roomConfig, margin = 1.2) {
+        const result = { blocked: false, blockedX: false, blockedZ: false };
+        const ROOM_UNIT = roomConfig.UNIT;
+        const DOOR_WIDTH = roomConfig.DOOR_WIDTH;
+
+        // Get current room
+        const room = gridSystem.getRoomAtWorld(newX, newZ);
+        if (!room) {
+            // Outside grid - block movement
+            return { blocked: true, blockedX: true, blockedZ: true };
+        }
+
+        // Calculate room boundaries
+        const roomMinX = room.gridX * ROOM_UNIT;
+        const roomMaxX = roomMinX + ROOM_UNIT;
+        const roomMinZ = room.gridZ * ROOM_UNIT;
+        const roomMaxZ = roomMinZ + ROOM_UNIT;
+
+        // Door center positions
+        const doorCenterX = roomMinX + ROOM_UNIT / 2;
+        const doorCenterZ = roomMinZ + ROOM_UNIT / 2;
+        const doorHalf = DOOR_WIDTH / 2;
+
+        // Check each wall
+        const doors = room.doors || [];
+
+        // West wall (x min)
+        if (newX < roomMinX + margin) {
+            if (doors.includes('west') && newZ > doorCenterZ - doorHalf && newZ < doorCenterZ + doorHalf) {
+                // In doorway - allow
+            } else {
+                result.blockedX = true;
+            }
+        }
+
+        // East wall (x max)
+        if (newX > roomMaxX - margin) {
+            if (doors.includes('east') && newZ > doorCenterZ - doorHalf && newZ < doorCenterZ + doorHalf) {
+                // In doorway - allow
+            } else {
+                result.blockedX = true;
+            }
+        }
+
+        // North wall (z min)
+        if (newZ < roomMinZ + margin) {
+            if (doors.includes('north') && newX > doorCenterX - doorHalf && newX < doorCenterX + doorHalf) {
+                // In doorway - allow
+            } else {
+                result.blockedZ = true;
+            }
+        }
+
+        // South wall (z max)
+        if (newZ > roomMaxZ - margin) {
+            if (doors.includes('south') && newX > doorCenterX - doorHalf && newX < doorCenterX + doorHalf) {
+                // In doorway - allow
+            } else {
+                result.blockedZ = true;
+            }
+        }
+
+        result.blocked = result.blockedX || result.blockedZ;
+        return result;
+    },
+
+    /**
+     * Get wall direction between two adjacent rooms
+     * @param {Object} fromRoom - Source room {gridX, gridZ}
+     * @param {Object} toRoom - Target room {gridX, gridZ}
+     * @returns {string|null} Direction ('north', 'south', 'east', 'west') or null if not adjacent
+     */
+    getWallDirection(fromRoom, toRoom) {
+        const dx = toRoom.gridX - fromRoom.gridX;
+        const dz = toRoom.gridZ - fromRoom.gridZ;
+
+        if (dx === 1 && dz === 0) return 'east';
+        if (dx === -1 && dz === 0) return 'west';
+        if (dx === 0 && dz === 1) return 'south';
+        if (dx === 0 && dz === -1) return 'north';
+
+        return null; // Not adjacent
+    },
+
+    /**
+     * Check line of sight between two points (respects room walls and doors)
+     * @param {number} fromX - Source X position
+     * @param {number} fromZ - Source Z position
+     * @param {number} toX - Target X position
+     * @param {number} toZ - Target Z position
+     * @param {Object} gridSystem - Grid system with getRoomAtWorld method
+     * @param {Object} roomConfig - Room config {UNIT, DOOR_WIDTH}
+     * @returns {boolean} True if line of sight exists
+     */
+    hasLineOfSight(fromX, fromZ, toX, toZ, gridSystem, roomConfig) {
+        const ROOM_UNIT = roomConfig.UNIT;
+        const DOOR_WIDTH = roomConfig.DOOR_WIDTH;
+
+        // Get rooms for both positions
+        const fromRoom = gridSystem.getRoomAtWorld(fromX, fromZ);
+        const toRoom = gridSystem.getRoomAtWorld(toX, toZ);
+
+        // If either position is outside the grid, no line of sight
+        if (!fromRoom || !toRoom) return false;
+
+        // Same room - always has line of sight
+        if (fromRoom.gridX === toRoom.gridX && fromRoom.gridZ === toRoom.gridZ) {
+            return true;
+        }
+
+        // Different rooms - ray march to check for wall intersections
+        const dx = toX - fromX;
+        const dz = toZ - fromZ;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+
+        // Step size - check every 2 units
+        const stepSize = 2;
+        const steps = Math.ceil(dist / stepSize);
+
+        let prevRoom = fromRoom;
+
+        for (let i = 1; i <= steps; i++) {
+            const t = i / steps;
+            const checkX = fromX + dx * t;
+            const checkZ = fromZ + dz * t;
+
+            const checkRoom = gridSystem.getRoomAtWorld(checkX, checkZ);
+            if (!checkRoom) return false; // Outside grid
+
+            // Check if we crossed into a different room
+            if (checkRoom.gridX !== prevRoom.gridX || checkRoom.gridZ !== prevRoom.gridZ) {
+                // Determine which wall we crossed
+                const wallDir = this.getWallDirection(prevRoom, checkRoom);
+
+                // Check if there's a door connecting these rooms
+                if (!wallDir || !prevRoom.doors.includes(wallDir)) {
+                    return false; // No door - wall blocks line of sight
+                }
+
+                // Check if we're actually going through the door opening
+                const doorCenterX = prevRoom.gridX * ROOM_UNIT + ROOM_UNIT / 2;
+                const doorCenterZ = prevRoom.gridZ * ROOM_UNIT + ROOM_UNIT / 2;
+                const doorHalf = DOOR_WIDTH / 2 + 1; // Slightly wider for tolerance
+
+                if (wallDir === 'east' || wallDir === 'west') {
+                    // Horizontal door - check Z alignment
+                    if (checkZ < doorCenterZ - doorHalf || checkZ > doorCenterZ + doorHalf) {
+                        return false; // Not going through door
+                    }
+                } else {
+                    // Vertical door - check X alignment
+                    if (checkX < doorCenterX - doorHalf || checkX > doorCenterX + doorHalf) {
+                        return false; // Not going through door
+                    }
+                }
+
+                prevRoom = checkRoom;
+            }
+        }
+
+        return true;
     }
 };

@@ -139,19 +139,20 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <!-- Shared Libraries -->
-    <script src="./src/shared/materials.js"></script>
+    <script src="./src/shared/materials-theme.js"></script>
 
     <!-- UI Domain -->
     <script src="./src/ui/ui.js"></script>
+    <script src="./src/ui/ui-system.js"></script>
 
     <!-- Engine Domain (core systems - load first) -->
     <script src="./src/engine/engine.js"></script>
-    <script src="./src/engine/collision.js"></script>
-    <script src="./src/engine/input.js"></script>
-    <script src="./src/engine/game-state.js"></script>
-    <script src="./src/engine/game-loop.js"></script>
-    <script src="./src/engine/scene-manager.js"></script>
-    <script src="./src/engine/entity-manager.js"></script>
+    <script src="./src/engine/collision-system.js"></script>
+    <script src="./src/engine/input-system.js"></script>
+    <script src="./src/engine/state-system.js"></script>
+    <script src="./src/engine/loop-system.js"></script>
+    <script src="./src/engine/scene-system.js"></script>
+    <script src="./src/engine/entity-system.js"></script>
 
     <!-- Room Domain -->
     <script src="./src/room/room.js"></script>
@@ -191,6 +192,7 @@
     <script src="./src/environment/shelf-theme.js"></script>
     <script src="./src/environment/shelf-mesh.js"></script>
     <script src="./src/environment/environment-system.js"></script>
+    <script src="./src/environment/spawn-system.js"></script>
 
     <script>
         // Domain modules loaded:
@@ -398,7 +400,7 @@
         // Keyboard input handled by Input module (initialized later)
 
         // Clock handled by GameLoop module
-        // Materials library loaded from src/shared/materials.js
+        // Materials library loaded from src/shared/materials-theme.js
 
         // === SCENE HIERARCHY GROUPS ===
         const sceneGroups = {
@@ -467,10 +469,10 @@
             container.insertBefore(renderer.domElement, container.firstChild);
 
             // Initialize shared material library
-            Materials.init(THREE);
+            MaterialsTheme.init(THREE);
 
             // Initialize UI system
-            UI.init();
+            UISystem.init();
 
             // Initialize scene hierarchy groups
             initSceneGroups();
@@ -507,7 +509,7 @@
             scene.add(playerCart);
 
             // Create FPS weapon using domain mesh
-            const fpsWeaponResult = WeaponMesh.createFPSWeapon(THREE, Materials);
+            const fpsWeaponResult = WeaponMesh.createFPSWeapon(THREE, MaterialsTheme);
             fpsWeapon = fpsWeaponResult.weapon;
             fpsHands = fpsWeaponResult.hands;
             fpsBandL = fpsWeaponResult.bandL;
@@ -744,450 +746,18 @@
         }
 
         function createEnvironment() {
-            // Create all rooms in the grid
+            // Create all rooms in the grid using RoomSystem
             Object.keys(MALL_GRID).forEach(key => {
                 const [gridX, gridZ] = key.split('_').map(Number);
                 const room = mallGrid.getRoom(gridX, gridZ);
                 if (room) {
-                    createRoom(room);
+                    RoomSystem.createRoomMeshes(THREE, room, {
+                        scene: scene,
+                        shelfArray: shelves,
+                        shelfSystem: ShelfSystem
+                    });
                 }
             });
-        }
-
-        // Create a single room
-        function createRoom(room) {
-            const theme = room.themeData;
-            const worldX = room.gridX * ROOM_UNIT + ROOM_UNIT / 2;
-            const worldZ = room.gridZ * ROOM_UNIT + ROOM_UNIT / 2;
-
-            // Floor
-            const floorGeo = new THREE.PlaneGeometry(ROOM_UNIT, ROOM_UNIT);
-            const floorMat = new THREE.MeshStandardMaterial({
-                color: new THREE.Color(theme.floorColor),
-                roughness: 0.8
-            });
-            const floor = new THREE.Mesh(floorGeo, floorMat);
-            floor.rotation.x = -Math.PI / 2;
-            floor.position.set(worldX, 0, worldZ);
-            floor.receiveShadow = true;
-            scene.add(floor);
-
-            // Floor tiles pattern
-            const tileCanvas = document.createElement('canvas');
-            tileCanvas.width = 512;
-            tileCanvas.height = 512;
-            const ctx = tileCanvas.getContext('2d');
-            ctx.fillStyle = theme.floorColor;
-            ctx.fillRect(0, 0, 512, 512);
-            ctx.strokeStyle = theme.floorLineColor;
-            ctx.lineWidth = 4;
-            for (let y = 0; y < 512; y += 64) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(512, y);
-                ctx.stroke();
-            }
-            for (let x = 0; x < 512; x += 64) {
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, 512);
-                ctx.stroke();
-            }
-            const tileTex = new THREE.CanvasTexture(tileCanvas);
-            tileTex.wrapS = THREE.RepeatWrapping;
-            tileTex.wrapT = THREE.RepeatWrapping;
-            tileTex.repeat.set(4, 4);
-            const tileMat = new THREE.MeshStandardMaterial({ map: tileTex, roughness: 0.7 });
-            const tiles = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_UNIT - 1, ROOM_UNIT - 1), tileMat);
-            tiles.rotation.x = -Math.PI / 2;
-            tiles.position.set(worldX, 0.01, worldZ);
-            tiles.receiveShadow = true;
-            scene.add(tiles);
-
-            // Ceiling
-            const ceilingGeo = new THREE.PlaneGeometry(ROOM_UNIT, ROOM_UNIT);
-            const ceilingMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.9 });
-            const ceiling = new THREE.Mesh(ceilingGeo, ceilingMat);
-            ceiling.rotation.x = Math.PI / 2;
-            ceiling.position.set(worldX, 12, worldZ);
-            scene.add(ceiling);
-
-            // Ceiling light
-            const light = createCeilingLight();
-            light.position.set(worldX, 11.5, worldZ);
-            scene.add(light);
-
-            // Walls
-            createRoomWalls(room);
-
-            // Section sign
-            if (theme.signText) {
-                const sign = createAisleSign(theme.signText, theme.signColor, worldZ);
-                sign.position.x = worldX;
-                sign.position.y = 9;
-                scene.add(sign);
-            }
-
-            // Shelves (if theme has them)
-            if (!theme.noShelves && theme.productColors.length > 0) {
-                const doors = room.doors || [];
-                const roomMinX = room.gridX * ROOM_UNIT;
-                const roomMaxX = roomMinX + ROOM_UNIT;
-                const roomMinZ = room.gridZ * ROOM_UNIT;
-                const roomMaxZ = roomMinZ + ROOM_UNIT;
-
-                // Shelves along all walls (avoiding doors)
-                // West wall shelves
-                if (!doors.includes('west')) {
-                    createShelfUnitAt(roomMinX + 2.5, worldZ - 6, theme, false);
-                    createShelfUnitAt(roomMinX + 2.5, worldZ, theme, false);
-                    createShelfUnitAt(roomMinX + 2.5, worldZ + 6, theme, false);
-                }
-                // East wall shelves
-                if (!doors.includes('east')) {
-                    createShelfUnitAt(roomMaxX - 2.5, worldZ - 6, theme, true);
-                    createShelfUnitAt(roomMaxX - 2.5, worldZ, theme, true);
-                    createShelfUnitAt(roomMaxX - 2.5, worldZ + 6, theme, true);
-                }
-                // North wall shelves
-                if (!doors.includes('north')) {
-                    createWallShelfAt(worldX - 6, roomMinZ + 2.5, theme, 0);
-                    createWallShelfAt(worldX + 6, roomMinZ + 2.5, theme, 0);
-                }
-                // South wall shelves
-                if (!doors.includes('south')) {
-                    createWallShelfAt(worldX - 6, roomMaxZ - 2.5, theme, Math.PI);
-                    createWallShelfAt(worldX + 6, roomMaxZ - 2.5, theme, Math.PI);
-                }
-
-                // Center displays/islands (not in JUNCTION rooms)
-                if (room.theme !== 'JUNCTION') {
-                    createCenterDisplay(worldX, worldZ, theme);
-                }
-            }
-        }
-
-        // Create wall-mounted shelf (for north/south walls)
-        function createWallShelfAt(x, z, theme, rotation) {
-            const group = new THREE.Group();
-            group.position.set(x, 0, z);
-            group.rotation.y = rotation;
-
-            // Frame
-            const frameGeo = new THREE.BoxGeometry(4, 6, 0.8);
-            const frameMat = new THREE.MeshStandardMaterial({ color: theme.shelfColor });
-            const frame = new THREE.Mesh(frameGeo, frameMat);
-            frame.position.y = 3;
-            frame.castShadow = true;
-            group.add(frame);
-
-            // Shelves and products - using ShelfSystem
-            const template = ShelfSystem.getShelfTemplate('WALL_STANDARD');
-            for (let i = 0; i < template.shelfCount; i++) {
-                const boardGeo = new THREE.BoxGeometry(3.8, 0.1, 0.9);
-                const boardMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(theme.shelfColor).multiplyScalar(0.7) });
-                const board = new THREE.Mesh(boardGeo, boardMat);
-                board.position.set(0, 0.5 + i * 2, 0);
-                group.add(board);
-
-                // Products - using ShelfSystem helpers
-                if (theme.productColors && theme.productColors.length > 0) {
-                    for (let j = 0; j < template.productsPerShelf; j++) {
-                        const color = ShelfSystem.pickProductColor(theme);
-                        const productType = ShelfSystem.getProductGeometry('BOX');
-                        const heightVar = productType.heightVariation || 0.4;
-                        const productGeo = new THREE.BoxGeometry(
-                            productType.baseSize.w,
-                            productType.baseSize.h + Math.random() * heightVar,
-                            productType.baseSize.d
-                        );
-                        const productMat = new THREE.MeshStandardMaterial({ color });
-                        const product = new THREE.Mesh(productGeo, productMat);
-                        product.position.set(-1.2 + j * 0.8, 1 + i * 2, 0);
-                        product.castShadow = true;
-                        group.add(product);
-                    }
-                }
-            }
-
-            scene.add(group);
-            shelves.push(group);
-        }
-
-        // Create center display island
-        function createCenterDisplay(x, z, theme) {
-            const group = new THREE.Group();
-            group.position.set(x, 0, z);
-
-            // Base platform
-            const baseGeo = new THREE.BoxGeometry(5, 0.4, 5);
-            const baseMat = new THREE.MeshStandardMaterial({
-                color: new THREE.Color(theme.shelfColor).multiplyScalar(0.8)
-            });
-            const base = new THREE.Mesh(baseGeo, baseMat);
-            base.position.y = 0.2;
-            base.receiveShadow = true;
-            base.castShadow = true;
-            group.add(base);
-
-            // Display shelving (lower than wall shelves)
-            const shelfGeo = new THREE.BoxGeometry(4.5, 0.1, 4.5);
-            const shelfMat = new THREE.MeshStandardMaterial({
-                color: new THREE.Color(theme.shelfColor).multiplyScalar(0.6)
-            });
-
-            // Using ShelfSystem for floor island config
-            const floorTemplate = ShelfSystem.getShelfTemplate('FLOOR_ISLAND');
-            for (let level = 0; level < floorTemplate.shelfCount; level++) {
-                const shelf = new THREE.Mesh(shelfGeo, shelfMat);
-                shelf.position.y = 0.5 + level * 1.2;
-                group.add(shelf);
-
-                // Products on each level - using ShelfSystem helpers
-                if (theme.productColors && theme.productColors.length > 0) {
-                    for (let i = 0; i < floorTemplate.productsPerLevel; i++) {
-                        const row = Math.floor(i / 3);
-                        const col = i % 3;
-                        const color = ShelfSystem.pickProductColor(theme);
-
-                        // Varied product shapes using product types
-                        let productGeo;
-                        const shapeType = Math.floor(Math.random() * 3);
-                        if (shapeType === 0) {
-                            const boxType = ShelfSystem.getProductGeometry('BOX');
-                            productGeo = new THREE.BoxGeometry(0.6, boxType.baseSize.h + Math.random() * 0.5, 0.6);
-                        } else if (shapeType === 1) {
-                            const bottleType = ShelfSystem.getProductGeometry('BOTTLE');
-                            productGeo = new THREE.CylinderGeometry(bottleType.baseSize.r + 0.1, bottleType.baseSize.r + 0.1, bottleType.baseSize.h + Math.random() * 0.4, 8);
-                        } else {
-                            const tallType = ShelfSystem.getProductGeometry('TALL_BOX');
-                            productGeo = new THREE.BoxGeometry(tallType.baseSize.w, tallType.baseSize.h + Math.random() * 0.3, tallType.baseSize.d);
-                        }
-
-                        const productMat = new THREE.MeshStandardMaterial({ color });
-                        const product = new THREE.Mesh(productGeo, productMat);
-                        product.position.set(
-                            -1.2 + col * 1.2,
-                            0.9 + level * 1.2 + (shapeType === 1 ? 0.45 : 0.4),
-                            -1.2 + row * 1.2
-                        );
-                        product.castShadow = true;
-                        group.add(product);
-                    }
-                }
-            }
-
-            // Promotional sign on top (for some rooms)
-            if (Math.random() > 0.5) {
-                const signGeo = new THREE.PlaneGeometry(2.5, 1);
-                const signCanvas = document.createElement('canvas');
-                signCanvas.width = 256;
-                signCanvas.height = 128;
-                const ctx = signCanvas.getContext('2d');
-
-                // Sign background
-                ctx.fillStyle = '#e74c3c';
-                ctx.fillRect(0, 0, 256, 128);
-
-                // Sign border
-                ctx.strokeStyle = '#c0392b';
-                ctx.lineWidth = 8;
-                ctx.strokeRect(4, 4, 248, 120);
-
-                // Sign text
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 36px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('SALE!', 128, 55);
-                ctx.font = '24px Arial';
-                ctx.fillText('50% OFF', 128, 95);
-
-                const signTex = new THREE.CanvasTexture(signCanvas);
-                const signMat = new THREE.MeshBasicMaterial({ map: signTex, side: THREE.DoubleSide });
-                const sign = new THREE.Mesh(signGeo, signMat);
-                sign.position.y = 3.5;
-                sign.rotation.y = Math.random() * Math.PI * 2;
-                group.add(sign);
-            }
-
-            scene.add(group);
-        }
-
-        // Create walls for a room with door openings
-        function createRoomWalls(room) {
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0x34495e });
-            const wallHeight = 12;
-            const doors = room.doors || [];
-
-            const roomMinX = room.gridX * ROOM_UNIT;
-            const roomMaxX = roomMinX + ROOM_UNIT;
-            const roomMinZ = room.gridZ * ROOM_UNIT;
-            const roomMaxZ = roomMinZ + ROOM_UNIT;
-            const centerX = roomMinX + ROOM_UNIT / 2;
-            const centerZ = roomMinZ + ROOM_UNIT / 2;
-
-            const wallSegment = (ROOM_UNIT - DOOR_WIDTH) / 2;
-
-            // North wall (z = roomMinZ)
-            if (doors.includes('north')) {
-                // Two wall segments with door in middle
-                createWallSegment(roomMinX + wallSegment/2, wallHeight/2, roomMinZ, wallSegment, wallHeight, 1, wallMat);
-                createWallSegment(roomMaxX - wallSegment/2, wallHeight/2, roomMinZ, wallSegment, wallHeight, 1, wallMat);
-            } else {
-                createWallSegment(centerX, wallHeight/2, roomMinZ, ROOM_UNIT, wallHeight, 1, wallMat);
-            }
-
-            // South wall (z = roomMaxZ)
-            if (doors.includes('south')) {
-                createWallSegment(roomMinX + wallSegment/2, wallHeight/2, roomMaxZ, wallSegment, wallHeight, 1, wallMat);
-                createWallSegment(roomMaxX - wallSegment/2, wallHeight/2, roomMaxZ, wallSegment, wallHeight, 1, wallMat);
-            } else {
-                createWallSegment(centerX, wallHeight/2, roomMaxZ, ROOM_UNIT, wallHeight, 1, wallMat);
-            }
-
-            // West wall (x = roomMinX)
-            if (doors.includes('west')) {
-                createWallSegment(roomMinX, wallHeight/2, roomMinZ + wallSegment/2, 1, wallHeight, wallSegment, wallMat);
-                createWallSegment(roomMinX, wallHeight/2, roomMaxZ - wallSegment/2, 1, wallHeight, wallSegment, wallMat);
-            } else {
-                createWallSegment(roomMinX, wallHeight/2, centerZ, 1, wallHeight, ROOM_UNIT, wallMat);
-            }
-
-            // East wall (x = roomMaxX)
-            if (doors.includes('east')) {
-                createWallSegment(roomMaxX, wallHeight/2, roomMinZ + wallSegment/2, 1, wallHeight, wallSegment, wallMat);
-                createWallSegment(roomMaxX, wallHeight/2, roomMaxZ - wallSegment/2, 1, wallHeight, wallSegment, wallMat);
-            } else {
-                createWallSegment(roomMaxX, wallHeight/2, centerZ, 1, wallHeight, ROOM_UNIT, wallMat);
-            }
-        }
-
-        function createWallSegment(x, y, z, width, height, depth, material) {
-            const geo = new THREE.BoxGeometry(width, height, depth);
-            const wall = new THREE.Mesh(geo, material);
-            wall.position.set(x, y, z);
-            wall.receiveShadow = true;
-            scene.add(wall);
-        }
-
-        // Create shelf unit at specific position with theme - using ShelfSystem
-        function createShelfUnitAt(x, z, theme, facingLeft) {
-            const group = new THREE.Group();
-            group.position.set(x, 0, z);
-            if (facingLeft) group.rotation.y = Math.PI;
-
-            // Use WALL_TALL template for these taller shelf units
-            const template = ShelfSystem.getShelfTemplate('WALL_TALL');
-            const frameGeo = new THREE.BoxGeometry(template.frameSize.w, template.frameSize.h, template.frameSize.d);
-            const frameMat = new THREE.MeshStandardMaterial({ color: theme.shelfColor });
-            const frame = new THREE.Mesh(frameGeo, frameMat);
-            frame.position.y = 4;
-            frame.castShadow = true;
-            group.add(frame);
-
-            const boardGeo = new THREE.BoxGeometry(3.8, 0.15, 1.4);
-            const boardMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(theme.shelfColor).multiplyScalar(0.7) });
-            const boxType = ShelfSystem.getProductGeometry('BOX');
-            const productGeo = new THREE.BoxGeometry(0.6, 1.2, 0.5);
-
-            for (let i = 0; i < template.shelfCount; i++) {
-                const board = new THREE.Mesh(boardGeo, boardMat);
-                board.position.set(0, 0.6 + i * 2.5, 0.2);
-                group.add(board);
-
-                if (theme.productColors && theme.productColors.length > 0) {
-                    for (let j = 0; j < template.productsPerShelf; j++) {
-                        const color = ShelfSystem.pickProductColor(theme);
-                        const prodMat = new THREE.MeshLambertMaterial({ color });
-                        const product = new THREE.Mesh(productGeo, prodMat);
-                        product.position.set(-1.2 + j * 0.8, 1.3 + i * 2.5, 0.2);
-                        group.add(product);
-                    }
-                }
-            }
-
-            scene.add(group);
-            shelves.push(group);
-        }
-
-        function createAisleSign(text, color, z) {
-            const group = new THREE.Group();
-
-            // Sign board with canvas texture
-            const signCanvas = document.createElement('canvas');
-            signCanvas.width = 512;
-            signCanvas.height = 128;
-            const ctx = signCanvas.getContext('2d');
-
-            // Background
-            const colorHex = '#' + color.toString(16).padStart(6, '0');
-            ctx.fillStyle = colorHex;
-            ctx.fillRect(0, 0, 512, 128);
-
-            // Border
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 6;
-            ctx.strokeRect(3, 3, 506, 122);
-
-            // Text
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 42px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(text, 256, 64);
-
-            const signTexture = new THREE.CanvasTexture(signCanvas);
-            const signGeo = new THREE.BoxGeometry(10, 2, 0.3);
-            const signMat = new THREE.MeshStandardMaterial({
-                map: signTexture,
-                emissive: new THREE.Color(color),
-                emissiveIntensity: 0.2
-            });
-            const sign = new THREE.Mesh(signGeo, signMat);
-            group.add(sign);
-
-            // Back of sign (same texture)
-            const signBack = new THREE.Mesh(signGeo, signMat);
-            signBack.rotation.y = Math.PI;
-            group.add(signBack);
-
-            // Hanging chains/poles
-            const poleGeo = new THREE.CylinderGeometry(0.05, 0.05, 2, 8);
-            const poleMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.8 });
-
-            const poleL = new THREE.Mesh(poleGeo, poleMat);
-            poleL.position.set(-4, 2, 0);
-            group.add(poleL);
-
-            const poleR = new THREE.Mesh(poleGeo, poleMat);
-            poleR.position.set(4, 2, 0);
-            group.add(poleR);
-
-            // Position at ceiling height
-            group.position.set(0, 13, z);
-
-            return group;
-        }
-
-        function createCeilingLight() {
-            const group = new THREE.Group();
-
-            const fixtureGeo = new THREE.BoxGeometry(4, 0.3, 1);
-            const fixtureMat = new THREE.MeshStandardMaterial({ color: 0x444444 });
-            const fixture = new THREE.Mesh(fixtureGeo, fixtureMat);
-            group.add(fixture);
-
-            const lightGeo = new THREE.BoxGeometry(3.5, 0.1, 0.8);
-            const lightMat = new THREE.MeshStandardMaterial({
-                color: 0xffffee,
-                emissive: 0xffffee,
-                emissiveIntensity: 0.5
-            });
-            const light = new THREE.Mesh(lightGeo, lightMat);
-            light.position.y = -0.2;
-            group.add(light);
-
-            return group;
         }
 
         function createEnemyCart(x, z, enemyType = 'SKELETON') {
@@ -1390,16 +960,16 @@
 
         function addScore(points, position) {
             score += points;
-            UI.updateScore(score, true);
+            UISystem.updateScore(score, true);
 
             // Convert 3D position to screen position and show popup
-            const screenPos = UI.worldToScreen(position, camera);
-            UI.showScorePopup(points, screenPos.x, screenPos.y);
+            const screenPos = UISystem.worldToScreen(position, camera);
+            UISystem.showScorePopup(points, screenPos.x, screenPos.y);
         }
 
         // Slingshot Charging Functions (delegating to WeaponSystem)
         function startCharging() {
-            if (!isChargingSlingshot && GameState.is('PLAYING')) {
+            if (!isChargingSlingshot && StateSystem.is('PLAYING')) {
                 const now = Date.now();
                 if (!WeaponSystem.canFire(now)) return; // Still on cooldown
 
@@ -1501,7 +1071,7 @@
             isInvulnerable = false;
 
             // Reset input state
-            Input.reset();
+            InputSystem.reset();
 
             // Reset cart visual state
             currentLeanAngle = 0;
@@ -1523,7 +1093,7 @@
             lockedTarget = null;
 
             // Reset health UI
-            UI.resetHealthBar(PLAYER_MAX_HEALTH);
+            UISystem.resetHealthBar(PLAYER_MAX_HEALTH);
 
             // Clear all game objects
             projectiles.forEach(p => scene.remove(p));
@@ -1546,13 +1116,13 @@
         }
 
         function updateCursor() {
-            UI.updateCursor(GameState.is('PLAYING'), renderer.domElement);
+            UISystem.updateCursor(StateSystem.is('PLAYING'), renderer.domElement);
         }
 
         function startGame() {
             resetGame();
-            GameState.forceTransition('PLAYING');
-            UI.showGameplay();
+            StateSystem.forceTransition('PLAYING');
+            UISystem.showGameplay();
             // Center crosshair on start
             crosshairX = window.innerWidth / 2;
             crosshairY = window.innerHeight / 2;
@@ -1562,23 +1132,23 @@
         }
 
         function endGame(died = false) {
-            GameState.forceTransition('GAME_OVER');
+            StateSystem.forceTransition('GAME_OVER');
             const rating = UI.getScoreRating(score);
-            UI.showGameOver(score, rating, died);
+            UISystem.showGameOver(score, rating, died);
             updateCursor();
         }
 
         function damagePlayer(amount) {
-            if (isInvulnerable || !GameState.is('PLAYING')) return;
+            if (isInvulnerable || !StateSystem.is('PLAYING')) return;
 
             playerHealth = Math.max(0, playerHealth - amount);
-            UI.updateHealthBar(playerHealth, PLAYER_MAX_HEALTH);
+            UISystem.updateHealthBar(playerHealth, PLAYER_MAX_HEALTH);
 
             // Trigger GPU-based damage vignette (scales with damage)
             damageVignetteStrength = Math.min(1.0, damageVignetteStrength + amount / 50);
 
             // Flash CSS overlay for immediate feedback
-            UI.showDamageOverlay();
+            UISystem.showDamageOverlay();
 
             // Start invulnerability
             isInvulnerable = true;
@@ -1597,32 +1167,32 @@
         }
 
         function pauseGame() {
-            if (!GameState.is('PLAYING')) return;
-            GameState.forceTransition('PAUSED');
+            if (!StateSystem.is('PLAYING')) return;
+            StateSystem.forceTransition('PAUSED');
             cancelCharging(); // Cancel any charging in progress
-            UI.showPause(score);
+            UISystem.showPause(score);
             updateCursor();
         }
 
         function resumeGame() {
-            if (!GameState.is('PAUSED')) return;
-            GameState.forceTransition('PLAYING');
-            UI.hidePause();
-            GameLoop.resetDelta(); // Reset delta to avoid jump
+            if (!StateSystem.is('PAUSED')) return;
+            StateSystem.forceTransition('PLAYING');
+            UISystem.hidePause();
+            LoopSystem.resetDelta(); // Reset delta to avoid jump
             updateCursor();
         }
 
         function quitToMenu() {
-            GameState.forceTransition('MENU');
-            UI.showMenu();
+            StateSystem.forceTransition('MENU');
+            UISystem.showMenu();
             resetGame();
             updateCursor();
         }
 
         function togglePause() {
-            if (GameState.is('PLAYING')) {
+            if (StateSystem.is('PLAYING')) {
                 pauseGame();
-            } else if (GameState.is('PAUSED')) {
+            } else if (StateSystem.is('PAUSED')) {
                 resumeGame();
             }
         }
@@ -1637,75 +1207,9 @@
             // Objects spawn when entering new rooms via updateCurrentRoom()
         }
 
-        // Wall collision detection for grid-based maze
-        function checkWallCollision(newX, newZ, oldX, oldZ) {
-            const result = { blocked: false, blockedX: false, blockedZ: false };
-            const margin = 1.2; // Player collision radius
-
-            // Get current room
-            const room = mallGrid.getRoomAtWorld(newX, newZ);
-            if (!room) {
-                // Outside grid - block movement
-                return { blocked: true, blockedX: true, blockedZ: true };
-            }
-
-            // Calculate local position within room
-            const roomMinX = room.gridX * ROOM_UNIT;
-            const roomMaxX = roomMinX + ROOM_UNIT;
-            const roomMinZ = room.gridZ * ROOM_UNIT;
-            const roomMaxZ = roomMinZ + ROOM_UNIT;
-
-            // Door center positions
-            const doorCenterX = roomMinX + ROOM_UNIT / 2;
-            const doorCenterZ = roomMinZ + ROOM_UNIT / 2;
-            const doorHalf = DOOR_WIDTH / 2;
-
-            // Check each wall
-            const doors = room.doors || [];
-
-            // West wall (x min)
-            if (newX < roomMinX + margin) {
-                if (doors.includes('west') && newZ > doorCenterZ - doorHalf && newZ < doorCenterZ + doorHalf) {
-                    // In doorway - allow
-                } else {
-                    result.blockedX = true;
-                }
-            }
-
-            // East wall (x max)
-            if (newX > roomMaxX - margin) {
-                if (doors.includes('east') && newZ > doorCenterZ - doorHalf && newZ < doorCenterZ + doorHalf) {
-                    // In doorway - allow
-                } else {
-                    result.blockedX = true;
-                }
-            }
-
-            // North wall (z min)
-            if (newZ < roomMinZ + margin) {
-                if (doors.includes('north') && newX > doorCenterX - doorHalf && newX < doorCenterX + doorHalf) {
-                    // In doorway - allow
-                } else {
-                    result.blockedZ = true;
-                }
-            }
-
-            // South wall (z max)
-            if (newZ > roomMaxZ - margin) {
-                if (doors.includes('south') && newX > doorCenterX - doorHalf && newX < doorCenterX + doorHalf) {
-                    // In doorway - allow
-                } else {
-                    result.blockedZ = true;
-                }
-            }
-
-            result.blocked = result.blockedX || result.blockedZ;
-            return result;
-        }
-
         // Timer display update
         function updateTimerDisplay() {
-            UI.updateTimerDisplay(gameTimer, GAME_DURATION);
+            UISystem.updateTimerDisplay(gameTimer, GAME_DURATION);
         }
 
         // Room tracking and spawning
@@ -1723,170 +1227,21 @@
             }
         }
 
-        // Line-of-sight check for aim-assist (respects room walls)
-        function hasLineOfSight(fromX, fromZ, toX, toZ) {
-            // Get rooms for both positions
-            const fromRoom = mallGrid.getRoomAtWorld(fromX, fromZ);
-            const toRoom = mallGrid.getRoomAtWorld(toX, toZ);
-
-            // If either position is outside the grid, no line of sight
-            if (!fromRoom || !toRoom) return false;
-
-            // Same room - always has line of sight
-            if (fromRoom.gridX === toRoom.gridX && fromRoom.gridZ === toRoom.gridZ) {
-                return true;
-            }
-
-            // Different rooms - ray march to check for wall intersections
-            const dx = toX - fromX;
-            const dz = toZ - fromZ;
-            const dist = Math.sqrt(dx * dx + dz * dz);
-
-            // Step size - check every 2 units
-            const stepSize = 2;
-            const steps = Math.ceil(dist / stepSize);
-
-            let prevRoom = fromRoom;
-
-            for (let i = 1; i <= steps; i++) {
-                const t = i / steps;
-                const checkX = fromX + dx * t;
-                const checkZ = fromZ + dz * t;
-
-                const checkRoom = mallGrid.getRoomAtWorld(checkX, checkZ);
-                if (!checkRoom) return false; // Outside grid
-
-                // Check if we crossed into a different room
-                if (checkRoom.gridX !== prevRoom.gridX || checkRoom.gridZ !== prevRoom.gridZ) {
-                    // Determine which wall we crossed
-                    const wallDir = getWallDirection(prevRoom, checkRoom);
-
-                    // Check if there's a door connecting these rooms
-                    if (!wallDir || !prevRoom.doors.includes(wallDir)) {
-                        return false; // No door - wall blocks line of sight
-                    }
-
-                    // Check if we're actually going through the door opening
-                    const doorCenterX = prevRoom.gridX * ROOM_UNIT + ROOM_UNIT / 2;
-                    const doorCenterZ = prevRoom.gridZ * ROOM_UNIT + ROOM_UNIT / 2;
-                    const doorHalf = DOOR_WIDTH / 2 + 1; // Slightly wider for tolerance
-
-                    if (wallDir === 'east' || wallDir === 'west') {
-                        // Horizontal door - check Z alignment
-                        if (checkZ < doorCenterZ - doorHalf || checkZ > doorCenterZ + doorHalf) {
-                            return false; // Not going through door
-                        }
-                    } else {
-                        // Vertical door - check X alignment
-                        if (checkX < doorCenterX - doorHalf || checkX > doorCenterX + doorHalf) {
-                            return false; // Not going through door
-                        }
-                    }
-
-                    prevRoom = checkRoom;
-                }
-            }
-
-            return true;
-        }
-
-        // Helper to determine wall direction between adjacent rooms
-        function getWallDirection(fromRoom, toRoom) {
-            const dx = toRoom.gridX - fromRoom.gridX;
-            const dz = toRoom.gridZ - fromRoom.gridZ;
-
-            if (dx === 1 && dz === 0) return 'east';
-            if (dx === -1 && dz === 0) return 'west';
-            if (dx === 0 && dz === 1) return 'south';
-            if (dx === 0 && dz === -1) return 'north';
-
-            return null; // Not adjacent
-        }
-
         // Spawn enemies and obstacles for a room
         function spawnRoomContents(room) {
-            // Don't spawn in entrance room
-            if (room.theme === 'ENTRANCE') return;
-
-            const roomCenterX = room.worldX;
-            const roomCenterZ = room.worldZ;
-            const spawnedPositions = []; // Track spawned positions to avoid overlap
-
-            // Check if position is valid (not too close to walls, doors, or other spawns)
-            function isValidSpawnPosition(x, z, minDist = 3) {
-                // Check distance from room center (leave space for player navigation)
-                const centerDist = Math.sqrt(Math.pow(x - roomCenterX, 2) + Math.pow(z - roomCenterZ, 2));
-                if (centerDist < 4) return false; // Too close to center path
-
-                // Check distance from walls (room boundary)
-                const roomMinX = room.gridX * ROOM_UNIT;
-                const roomMaxX = roomMinX + ROOM_UNIT;
-                const roomMinZ = room.gridZ * ROOM_UNIT;
-                const roomMaxZ = roomMinZ + ROOM_UNIT;
-                const wallMargin = 4; // Distance from walls
-
-                if (x < roomMinX + wallMargin || x > roomMaxX - wallMargin) return false;
-                if (z < roomMinZ + wallMargin || z > roomMaxZ - wallMargin) return false;
-
-                // Check distance from doors (leave doorways clear)
-                const doors = room.doors || [];
-                const doorHalf = DOOR_WIDTH / 2 + 2;
-                if (doors.includes('north') && z < roomMinZ + 5 && Math.abs(x - roomCenterX) < doorHalf) return false;
-                if (doors.includes('south') && z > roomMaxZ - 5 && Math.abs(x - roomCenterX) < doorHalf) return false;
-                if (doors.includes('west') && x < roomMinX + 5 && Math.abs(z - roomCenterZ) < doorHalf) return false;
-                if (doors.includes('east') && x > roomMaxX - 5 && Math.abs(z - roomCenterZ) < doorHalf) return false;
-
-                // Check distance from other spawned objects
-                for (const pos of spawnedPositions) {
-                    const dist = Math.sqrt(Math.pow(x - pos.x, 2) + Math.pow(z - pos.z, 2));
-                    if (dist < minDist) return false;
-                }
-
-                return true;
-            }
-
-            // Try to find a valid spawn position
-            function findValidPosition(minDist = 3, maxAttempts = 20) {
-                for (let attempt = 0; attempt < maxAttempts; attempt++) {
-                    const x = roomCenterX + (Math.random() - 0.5) * 20;
-                    const z = roomCenterZ + (Math.random() - 0.5) * 20;
-                    if (isValidSpawnPosition(x, z, minDist)) {
-                        return { x, z };
-                    }
-                }
-                return null; // No valid position found
-            }
-
-            // Spawn 2-3 skeleton enemies with collision checking
-            const numEnemies = 2 + Math.floor(Math.random() * 2);
-            for (let i = 0; i < numEnemies; i++) {
-                const pos = findValidPosition(4); // Enemies need more space
-                if (pos) {
-                    createEnemyCart(pos.x, pos.z, 'SKELETON');
-                    spawnedPositions.push(pos);
-                }
-            }
-
-            // Spawn 3-5 obstacles with collision checking
-            const numObstacles = 3 + Math.floor(Math.random() * 3);
-            const types = ['stack', 'barrel', 'display'];
-            for (let i = 0; i < numObstacles; i++) {
-                const pos = findValidPosition(3); // Obstacles can be closer
-                if (pos) {
-                    const type = types[Math.floor(Math.random() * types.length)];
-                    createObstacle(pos.x, pos.z, type);
-                    spawnedPositions.push(pos);
-                }
-            }
+            SpawnSystem.spawnRoomContents(room, Room.structure, {
+                createEnemy: (x, z) => createEnemyCart(x, z, 'SKELETON'),
+                createObstacle: (x, z, type) => createObstacle(x, z, type)
+            });
         }
 
         function updateCooldownIndicator() {
             const elapsed = Date.now() - lastShootTime;
-            UI.updateCooldownIndicator(elapsed, SHOOT_COOLDOWN);
+            UISystem.updateCooldownIndicator(elapsed, SHOOT_COOLDOWN);
         }
 
         function update(dt) {
-            if (!GameState.is('PLAYING')) return;
+            if (!StateSystem.is('PLAYING')) return;
 
             // Update invulnerability
             updateInvulnerability();
@@ -1909,14 +1264,14 @@
 
             // === WASD DRIVING MOVEMENT ===
             // Handle turning (A/D)
-            const targetTurnRate = (Input.keys.turnLeft ? 1 : 0) - (Input.keys.turnRight ? 1 : 0);
+            const targetTurnRate = (InputSystem.keys.turnLeft ? 1 : 0) - (InputSystem.keys.turnRight ? 1 : 0);
             currentTurnRate += (targetTurnRate * CART_TURN_SPEED - currentTurnRate) * 8 * dt;
             playerRotation += currentTurnRate * dt;
 
             // Handle acceleration/deceleration (W/S)
-            if (Input.keys.forward) {
+            if (InputSystem.keys.forward) {
                 playerSpeed += CART_ACCELERATION * dt;
-            } else if (Input.keys.backward) {
+            } else if (InputSystem.keys.backward) {
                 playerSpeed -= CART_ACCELERATION * dt;
             } else {
                 // Apply friction when no input, but maintain small idle drift
@@ -1940,7 +1295,7 @@
             let newZ = playerPosition.z + velocityZ * dt;
 
             // Wall collision detection
-            const collision = checkWallCollision(newX, newZ, playerPosition.x, playerPosition.z);
+            const collision = CollisionSystem.checkWallCollision(newX, newZ, playerPosition.x, playerPosition.z, mallGrid, Room.structure);
 
             // Trigger wall bump effect on collision
             if (collision.blocked && playerSpeed > 1) {
@@ -2157,7 +1512,7 @@
                 if (zDist < -10) return false; // Too far behind
 
                 // Check line-of-sight (no walls blocking)
-                if (!hasLineOfSight(playerPosition.x, playerPosition.z, obj.position.x, obj.position.z)) {
+                if (!CollisionSystem.hasLineOfSight(playerPosition.x, playerPosition.z, obj.position.x, obj.position.z, mallGrid, Room.structure)) {
                     return false; // Wall blocks view
                 }
 
@@ -2455,7 +1810,7 @@
                             // Use EnemySystem for damage handling
                             const result = EnemySystem.damage(enemy, damage);
                             if (result) {
-                                UI.showHitMarker();
+                                UISystem.showHitMarker();
 
                                 // Update health bar using EnemySystem helper
                                 const healthPercent = EnemySystem.getHealthPercent(enemy);
@@ -2512,7 +1867,7 @@
                         if (dist < hitRadius) {
                             proj.userData.active = false;
                             obs.userData.hit = true;
-                            UI.showHitMarker();
+                            UISystem.showHitMarker();
                             addScore(150, obs.position);
                             spawnParticles(obs.position, 0xf1c40f, 10);  // Fewer particles
                         }
@@ -2616,8 +1971,8 @@
 
         // Expose game state and functions for testing
         Object.defineProperty(window, 'gameState', {
-            get: () => GameState.get(),
-            set: (v) => { GameState.forceTransition(v); }
+            get: () => StateSystem.get(),
+            set: (v) => { StateSystem.forceTransition(v); }
         });
         Object.defineProperty(window, 'score', {
             get: () => score,
@@ -2661,7 +2016,7 @@
         window.endGame = endGame;
         window.damagePlayer = damagePlayer;
         window.takeDamage = damagePlayer;
-        window.keys = Input.keys;
+        window.keys = InputSystem.keys;
         window.enemies = enemies;
         window.obstacles = obstacles;
 
@@ -2725,12 +2080,12 @@
         // Expose domain objects for testing
         // Engine domain
         window.Engine = Engine;
-        window.Collision = Collision;
-        window.Input = Input;
-        window.GameState = GameState;
-        window.GameLoop = GameLoop;
-        window.SceneManager = SceneManager;
-        window.EntityManager = EntityManager;
+        window.CollisionSystem = CollisionSystem;
+        window.InputSystem = InputSystem;
+        window.StateSystem = StateSystem;
+        window.LoopSystem = LoopSystem;
+        window.SceneSystem = SceneSystem;
+        window.EntitySystem = EntitySystem;
 
         // Weapon domain
         window.Weapon = Weapon;
@@ -2777,12 +2132,12 @@
         initThree();
 
         // Initialize engine systems
-        GameState.init('MENU');
-        GameLoop.init(THREE);
+        StateSystem.init('MENU');
+        LoopSystem.init(THREE);
 
         // Configure game loop callbacks
-        GameLoop.setUpdateCallback(update);
-        GameLoop.setRenderCallback((dt) => {
+        LoopSystem.setUpdateCallback(update);
+        LoopSystem.setRenderCallback((dt) => {
             // Decay damage vignette (for CSS overlay)
             damageVignetteStrength *= 0.95;
 
@@ -2794,23 +2149,23 @@
             }
         });
 
-        Input.init();
-        EntityManager.init(scene);
+        InputSystem.init();
+        EntitySystem.init(scene);
 
         // Register Input action callbacks
-        Input.onActionStart('fire', () => {
-            if (GameState.is('PLAYING')) startCharging();
+        InputSystem.onActionStart('fire', () => {
+            if (StateSystem.is('PLAYING')) startCharging();
         });
-        Input.onActionRelease('fire', () => {
-            if (GameState.is('PLAYING')) releaseAndFire();
+        InputSystem.onActionRelease('fire', () => {
+            if (StateSystem.is('PLAYING')) releaseAndFire();
         });
-        Input.onActionStart('pause', togglePause);
+        InputSystem.onActionStart('pause', togglePause);
 
         // Register entity types with EntityManager
-        EntityManager.registerType('enemy', { maxCount: 10, despawnDistance: 20 });
-        EntityManager.registerType('obstacle', { maxCount: 15, despawnDistance: 30 });
-        EntityManager.registerType('projectile', { maxCount: 50, despawnDistance: 20 });
-        EntityManager.registerType('particle', { maxCount: 100, despawnDistance: 50 });
+        EntitySystem.registerType('enemy', { maxCount: 10, despawnDistance: 20 });
+        EntitySystem.registerType('obstacle', { maxCount: 15, despawnDistance: 30 });
+        EntitySystem.registerType('projectile', { maxCount: 50, despawnDistance: 20 });
+        EntitySystem.registerType('particle', { maxCount: 100, despawnDistance: 50 });
 
         // Initialize domain systems
         WeaponSystem.init(Weapon);
@@ -2823,7 +2178,7 @@
         hud.style.display = 'none';
 
         // Start the game loop
-        GameLoop.start();
+        LoopSystem.start();
     </script>
 </body>
 </html>

@@ -1,10 +1,10 @@
 // ============================================
-// INPUT - Keyboard Input Handling
+// INPUT SYSTEM - Keyboard Input Handling
 // ============================================
 // Handles keyboard input with customizable bindings
 // and action-based callbacks.
 
-const Input = {
+const InputSystem = {
     // Current key states (action name -> boolean)
     keys: {
         forward: false,
