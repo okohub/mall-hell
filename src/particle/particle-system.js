@@ -50,12 +50,18 @@ const ParticleSystem = {
         const {
             velocitySpread = 10,
             upwardVelocity = { min: 2, max: 10 },
-            life = this.defaultLife
+            life = this.defaultLife,
+            scale = 1
         } = options;
 
         const geometry = this.getGeometry(THREE);
         const material = new THREE.MeshBasicMaterial({ color: color });
         const particle = new THREE.Mesh(geometry, material);
+
+        // Apply scale for smaller/larger particles
+        if (scale !== 1) {
+            particle.scale.setScalar(scale);
+        }
 
         // Copy position
         if (position.clone) {

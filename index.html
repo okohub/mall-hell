@@ -481,13 +481,19 @@
                     playerRadius: Player.visual.COLLISION_RADIUS
                 }),
                 onCollision: (pos, dir, intensity) => {
-                    // Spawn sparks on environment collision
+                    // Spawn metal sparks on environment collision
                     const sparkCount = Math.ceil(3 + intensity * 5);
-                    ParticleSystem.spawn(THREE, pos, 0xffaa00, sparkCount, particles, scene, {
-                        velocitySpread: 5,
-                        upwardVelocity: { min: 1, max: 4 },
-                        life: 0.3 + intensity * 0.2
-                    });
+                    // Metal spark colors: bright orange, yellow, white-hot
+                    const sparkColors = [0xff6600, 0xff9900, 0xffcc00, 0xffff66, 0xffffff];
+                    for (let i = 0; i < sparkCount; i++) {
+                        const color = sparkColors[Math.floor(Math.random() * sparkColors.length)];
+                        ParticleSystem.spawn(THREE, pos, color, 1, particles, scene, {
+                            velocitySpread: 10 + intensity * 8,
+                            upwardVelocity: { min: 3, max: 12 },
+                            life: 0.2 + Math.random() * 0.3,
+                            scale: 0.3 + Math.random() * 0.4  // Small sparks
+                        });
+                    }
                 },
                 cart: playerCart,
                 camera

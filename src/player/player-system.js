@@ -227,17 +227,24 @@ const PlayerSystem = {
             collisionCheck(newPos.x, newPos.z, this.position.x, this.position.z) :
             { blocked: false, blockedX: false, blockedZ: false };
 
-        // Trigger collision callback if blocked (for spark effects)
-        if (collision.blocked && this.speed > 2 && onCollision) {
+        // Trigger collision callback if blocked and pressing into wall (for spark effects)
+        const velocity = this.getVelocity();
+        const pressingIntoWall = collision.blocked && (
+            (collision.blockedX && Math.abs(velocity.x) > 0.1) ||
+            (collision.blockedZ && Math.abs(velocity.z) > 0.1)
+        );
+
+        if (pressingIntoWall && onCollision) {
             const config = this.getMovementConfig();
-            const velocity = this.getVelocity();
-            const intensity = Math.min(1, this.speed / config.MAX_SPEED);
+            const intensity = Math.min(1, (Math.abs(velocity.x) + Math.abs(velocity.z)) / config.MAX_SPEED);
 
             // Calculate collision point (at the edge of player in direction of movement)
+            // Add slight randomness for continuous grinding effect
+            const randOffset = () => (Math.random() - 0.5) * 0.3;
             const collisionPos = {
-                x: this.position.x + (collision.blockedX ? Math.sign(velocity.x) * 1.2 : 0),
-                y: 1.5, // Cart height
-                z: this.position.z + (collision.blockedZ ? Math.sign(velocity.z) * 1.2 : 0)
+                x: this.position.x + (collision.blockedX ? Math.sign(velocity.x) * 1.5 : 0) + randOffset(),
+                y: 0.8 + Math.random() * 0.8, // Random height on cart
+                z: this.position.z + (collision.blockedZ ? Math.sign(velocity.z) * 1.5 : 0) + randOffset()
             };
             const collisionDir = {
                 x: collision.blockedX ? -Math.sign(velocity.x) : 0,
