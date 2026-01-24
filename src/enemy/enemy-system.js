@@ -427,16 +427,23 @@ const EnemySystem = {
      */
     _resolveEnvironmentCollisions(enemy, allEnemies, obstacles, shelves) {
         const pos = enemy.position;
-        const enemyRadius = 1.2;
+        // Use actual collision radius from enemy config, fallback to size-based calculation
+        const enemyConfig = enemy.userData.config;
+        const enemyRadius = enemyConfig?.collisionRadius ||
+            (enemyConfig?.visual?.size ? Math.max(enemyConfig.visual.size.w, enemyConfig.visual.size.d) / 2 : 1.5);
 
         // Enemy-Enemy collision (separation)
         allEnemies.forEach(other => {
             if (other === enemy || !other.userData.active) return;
 
+            const otherConfig = other.userData.config;
+            const otherRadius = otherConfig?.collisionRadius ||
+                (otherConfig?.visual?.size ? Math.max(otherConfig.visual.size.w, otherConfig.visual.size.d) / 2 : 1.5);
+
             const dx = pos.x - other.position.x;
             const dz = pos.z - other.position.z;
             const dist = Math.sqrt(dx * dx + dz * dz);
-            const minDist = enemyRadius * 2;
+            const minDist = enemyRadius + otherRadius;
 
             if (dist < minDist && dist > 0.01) {
                 // Push apart
@@ -453,10 +460,15 @@ const EnemySystem = {
             obstacles.forEach(obs => {
                 if (!obs.userData.active || obs.userData.hit) return;
 
+                // Use obstacle's collision radius - check multiple sources
+                const obsConfig = obs.userData.config;
+                const obsRadius = obs.userData.collisionRadius ||
+                    obsConfig?.collisionRadius ||
+                    (obs.userData.width ? obs.userData.width / 2 : 1.5);
+
                 const dx = pos.x - obs.position.x;
                 const dz = pos.z - obs.position.z;
                 const dist = Math.sqrt(dx * dx + dz * dz);
-                const obsRadius = (obs.userData.width || 1.5) * 0.6;
                 const minDist = enemyRadius + obsRadius;
 
                 if (dist < minDist && dist > 0.01) {
@@ -475,9 +487,9 @@ const EnemySystem = {
             shelves.forEach(shelf => {
                 if (!shelf.position) return;
 
-                // Shelves are rectangular - use AABB-ish check
-                const shelfWidth = 3;
-                const shelfDepth = 1.5;
+                // Get shelf dimensions from userData or use defaults
+                const shelfWidth = shelf.userData?.width || 4;
+                const shelfDepth = shelf.userData?.depth || 2;
                 const halfW = shelfWidth / 2 + enemyRadius;
                 const halfD = shelfDepth / 2 + enemyRadius;
 

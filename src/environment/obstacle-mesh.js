@@ -279,6 +279,12 @@ const ObstacleVisual = {
         group.userData.fallAngle = 0;
         group.userData.fallSpeed = 0;
 
+        // Set collision radius based on type (use Obstacle data if available)
+        const obstacleData = typeof Obstacle !== 'undefined' ? Obstacle.get(type.toUpperCase()) : null;
+        group.userData.config = obstacleData;
+        group.userData.collisionRadius = obstacleData?.collisionRadius ||
+            (group.userData.width ? group.userData.width / 2 : 1.5);
+
         return group;
     },
 
