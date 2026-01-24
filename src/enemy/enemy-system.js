@@ -317,5 +317,92 @@ const EnemySystem = {
         const health = enemy.userData.health || 0;
         const maxHealth = enemy.userData.maxHealth || 1;
         return health / maxHealth;
+    },
+
+    /**
+     * Update all enemies in an array (for external enemy arrays)
+     * @param {Array} enemies - Array of enemy meshes
+     * @param {Object} options - Update options
+     * @param {Object} options.playerPosition - Player position {x, z}
+     * @param {Object} options.playerCart - Player cart mesh (for collision)
+     * @param {number} options.dt - Delta time
+     * @param {number} options.baseSpeed - Base movement speed
+     * @param {boolean} options.isInvulnerable - Whether player is invulnerable
+     * @param {Function} options.onPlayerCollision - Callback when enemy hits player (damage)
+     * @param {number} options.despawnDistance - Distance to despawn (default 60)
+     * @param {number} options.collisionDistance - Collision distance (default 3.5)
+     */
+    updateAll(enemies, options) {
+        const {
+            playerPosition,
+            playerCart,
+            dt,
+            baseSpeed,
+            isInvulnerable = false,
+            onPlayerCollision = null,
+            despawnDistance = 60,
+            collisionDistance = 3.5
+        } = options;
+
+        enemies.forEach(enemy => {
+            if (!enemy.userData.active) return;
+
+            // Behavior updates (movement + drift)
+            this.updateBehavior(enemy, playerPosition, dt, baseSpeed);
+
+            // Calculate distance to player
+            const dx = playerPosition.x - enemy.position.x;
+            const dz = playerPosition.z - enemy.position.z;
+            const distToPlayer = Math.sqrt(dx * dx + dz * dz);
+
+            // Face player
+            const lookDir = Math.atan2(dx, dz);
+            enemy.rotation.y = lookDir;
+
+            // Animate eyes (track player)
+            if (typeof EnemyVisual !== 'undefined' && enemy.userData.cart) {
+                EnemyVisual.animateEyes(enemy.userData.cart, playerPosition);
+            }
+
+            // Animate skeleton walking
+            if (typeof EnemyVisual !== 'undefined' && enemy.userData.skeleton) {
+                const walkSpeed = enemy.userData.config?.walkSpeed || 3.5;
+                enemy.userData.walkTimer = (enemy.userData.walkTimer || 0) + dt * walkSpeed;
+                EnemyVisual.animateSkeletonWalk(enemy.userData.cart, enemy.userData.walkTimer, walkSpeed);
+            }
+
+            // Hit flash
+            if (enemy.userData.hitFlash > 0) {
+                enemy.userData.hitFlash -= dt * 5;
+                if (enemy.userData.hitFlash < 0) enemy.userData.hitFlash = 0;
+
+                if (typeof EnemyVisual !== 'undefined' && enemy.userData.cart) {
+                    EnemyVisual.applyHitFlash(enemy.userData.cart, enemy.userData.hitFlash);
+                } else {
+                    // Fallback for legacy enemies
+                    enemy.children.forEach(child => {
+                        if (child.material && child.material.emissive) {
+                            child.material.emissiveIntensity = enemy.userData.hitFlash;
+                        }
+                    });
+                }
+            }
+
+            // Remove if too far from player
+            if (distToPlayer > despawnDistance) {
+                enemy.userData.active = false;
+            }
+
+            // Player collision
+            if (enemy.userData.active && !isInvulnerable && playerCart) {
+                const cartDist = Math.sqrt(
+                    Math.pow(enemy.position.x - playerCart.position.x, 2) +
+                    Math.pow(enemy.position.z - playerCart.position.z, 2)
+                );
+                if (cartDist < collisionDistance && onPlayerCollision) {
+                    onPlayerCollision(enemy);
+                }
+            }
+        });
     }
 };

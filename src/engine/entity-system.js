@@ -406,6 +406,70 @@ const EntitySystem = {
     },
 
     // ==========================================
+    // ARRAY-BASED CLEANUP (for external arrays)
+    // ==========================================
+
+    /**
+     * Clean up inactive meshes from an array
+     * @param {Array} meshArray - Array of THREE.js meshes with userData.active flag
+     * @param {Object} scene - THREE.js scene for removal
+     * @param {Object} options - Cleanup options
+     * @param {string} options.checkField - Field to check (default: 'active')
+     * @param {*} options.checkValue - Value that indicates removal (default: false)
+     * @param {boolean} options.invertCheck - Invert the check (for fields like 'life' <= 0)
+     * @returns {Array} Filtered array with only active meshes
+     */
+    cleanupInactive(meshArray, scene, options = {}) {
+        const {
+            checkField = 'active',
+            checkValue = false,
+            invertCheck = false
+        } = options;
+
+        return meshArray.filter(mesh => {
+            let shouldRemove;
+
+            if (invertCheck) {
+                // For fields like 'life' where <= 0 means remove
+                shouldRemove = mesh.userData[checkField] <= checkValue;
+            } else {
+                // Standard check - remove if field matches checkValue
+                shouldRemove = mesh.userData[checkField] === checkValue;
+            }
+
+            if (shouldRemove) {
+                scene.remove(mesh);
+                return false;
+            }
+            return true;
+        });
+    },
+
+    /**
+     * Clean up multiple arrays at once
+     * @param {Object} arrays - Object mapping names to arrays
+     * @param {Object} scene - THREE.js scene for removal
+     * @returns {Object} Object with cleaned arrays
+     */
+    cleanupAllInactive(arrays, scene) {
+        const result = {};
+        for (const name in arrays) {
+            const arr = arrays[name];
+            // Special case for particles (check life <= 0)
+            if (name === 'particles') {
+                result[name] = this.cleanupInactive(arr, scene, {
+                    checkField: 'life',
+                    checkValue: 0,
+                    invertCheck: true
+                });
+            } else {
+                result[name] = this.cleanupInactive(arr, scene);
+            }
+        }
+        return result;
+    },
+
+    // ==========================================
     // TYPE INFO
     // ==========================================
 

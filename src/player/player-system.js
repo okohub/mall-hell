@@ -405,5 +405,53 @@ const PlayerSystem = {
      */
     setRotation(rotation) {
         this.rotation = rotation;
+    },
+
+    /**
+     * Full update including movement, visuals, and camera
+     * @param {Object} options - Update options
+     * @param {Object} options.keys - Input state from InputSystem
+     * @param {number} options.dt - Delta time
+     * @param {Function} options.collisionCheck - Collision check function
+     * @param {Object} options.cart - Player cart mesh (optional)
+     * @param {Object} options.camera - Camera object (optional)
+     * @returns {Object} Updated state for syncing with local variables
+     */
+    fullUpdate(options) {
+        const { keys, dt, collisionCheck, cart, camera } = options;
+
+        // Update movement
+        this.updateMovement(keys, dt, collisionCheck);
+
+        // Update cart mesh
+        if (cart) {
+            cart.position.x = this.position.x;
+            cart.position.z = this.position.z;
+            cart.rotation.y = this.rotation;
+            cart.rotation.z = this.currentLeanAngle;
+        }
+
+        // Update camera
+        if (camera) {
+            const camState = this.getCameraState();
+            camera.position.x = camState.x;
+            camera.position.y = camState.y;
+            camera.position.z = camState.z;
+            camera.rotation.set(0, 0, 0);
+            camera.rotation.y = camState.rotationY;
+            camera.rotation.x = camState.rotationX;
+            camera.rotation.z = camState.rotationZ;
+        }
+
+        // Return state for syncing with local variables if needed
+        return {
+            position: { x: this.position.x, z: this.position.z },
+            rotation: this.rotation,
+            speed: this.speed,
+            currentTurnRate: this.currentTurnRate,
+            currentLeanAngle: this.currentLeanAngle,
+            wallBumpIntensity: this.wallBumpIntensity,
+            wallBumpDirection: { ...this.wallBumpDirection }
+        };
     }
 };

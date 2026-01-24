@@ -406,6 +406,121 @@ const CollisionSystem = {
         return null; // Not adjacent
     },
 
+    // ==========================================
+    // PROJECTILE HIT DETECTION
+    // ==========================================
+
+    /**
+     * Process projectile hits against enemies and obstacles
+     * Uses sweep collision for fast-moving projectiles
+     * @param {Array} projectiles - Array of projectile meshes
+     * @param {Array} enemies - Array of enemy meshes
+     * @param {Array} obstacles - Array of obstacle meshes
+     * @param {Object} options - Options and callbacks
+     * @param {Function} options.onEnemyHit - Callback(enemy, damage, closestPoint, destroyed)
+     * @param {Function} options.onObstacleHit - Callback(obstacle, closestPoint)
+     * @param {Object} options.THREE - Three.js library reference
+     */
+    processProjectileHits(projectiles, enemies, obstacles, options) {
+        const {
+            onEnemyHit = null,
+            onObstacleHit = null,
+            THREE
+        } = options;
+
+        projectiles.forEach(proj => {
+            if (!proj.userData.active) return;
+
+            // Store previous position for sweep check
+            const prevPos = proj.userData.prevPosition || proj.position.clone();
+            const currPos = proj.position;
+
+            // Calculate projectile direction and length
+            const projDir = currPos.clone().sub(prevPos);
+            const projLen = projDir.length();
+            if (projLen > 0) {
+                projDir.normalize();
+            }
+
+            // Check enemy collisions with early exit and optimized vectors
+            for (let i = 0; i < enemies.length && proj.userData.active; i++) {
+                const enemy = enemies[i];
+                if (!enemy.userData.active) continue;
+
+                // Quick distance check first (cheaper than full calculation)
+                const dx = enemy.position.x - currPos.x;
+                const dz = enemy.position.z - currPos.z;
+                if (dx * dx + dz * dz > 100) continue;  // Skip if > 10 units away
+
+                // Enemy hitbox center
+                const enemyCenter = enemy.position.clone();
+                enemyCenter.y += 1.2;
+
+                const hitRadius = 2.5;
+                const toEnemy = enemyCenter.sub(prevPos);  // Reuse enemyCenter vector
+
+                if (projLen > 0) {
+                    const dot = toEnemy.dot(projDir);
+                    const clampedDot = Math.max(0, Math.min(projLen, dot));
+                    const closestPoint = prevPos.clone().addScaledVector(projDir, clampedDot);
+                    enemyCenter.copy(enemy.position).y += 1.2;  // Restore for distance check
+                    const dist = closestPoint.distanceTo(enemyCenter);
+
+                    if (dist < hitRadius) {
+                        proj.userData.active = false;
+                        const damage = 1 + Math.round((proj.userData.power || 0) * 2);
+
+                        // Use EnemySystem for damage handling
+                        const result = typeof EnemySystem !== 'undefined'
+                            ? EnemySystem.damage(enemy, damage)
+                            : { hit: true, destroyed: enemy.userData.health <= damage };
+
+                        if (result && onEnemyHit) {
+                            onEnemyHit(enemy, damage, closestPoint, result);
+                        }
+                    }
+                }
+            }
+
+            // Check obstacle collisions with optimization
+            for (let i = 0; i < obstacles.length && proj.userData.active; i++) {
+                const obs = obstacles[i];
+                if (!obs.userData.active || obs.userData.hit) continue;
+
+                // Quick distance check
+                const dx = obs.position.x - currPos.x;
+                const dz = obs.position.z - currPos.z;
+                if (dx * dx + dz * dz > 64) continue;  // Skip if > 8 units away
+
+                const obsCenter = obs.position.clone();
+                obsCenter.y += (obs.userData.height || 2) * 0.4;
+                const hitRadius = (obs.userData.width || 2) * 0.8;
+
+                const toObs = obsCenter.sub(prevPos);
+
+                if (projLen > 0) {
+                    const dot = toObs.dot(projDir);
+                    const clampedDot = Math.max(0, Math.min(projLen, dot));
+                    const closestPoint = prevPos.clone().addScaledVector(projDir, clampedDot);
+                    obsCenter.copy(obs.position).y += (obs.userData.height || 2) * 0.4;
+                    const dist = closestPoint.distanceTo(obsCenter);
+
+                    if (dist < hitRadius) {
+                        proj.userData.active = false;
+                        obs.userData.hit = true;
+
+                        if (onObstacleHit) {
+                            onObstacleHit(obs, closestPoint);
+                        }
+                    }
+                }
+            }
+
+            // Store current position for next frame's sweep check
+            proj.userData.prevPosition = proj.position.clone();
+        });
+    },
+
     /**
      * Check line of sight between two points (respects room walls and doors)
      * @param {number} fromX - Source X position

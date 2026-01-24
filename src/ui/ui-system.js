@@ -324,5 +324,74 @@ const UISystem = {
             x: (vector.x * 0.5 + 0.5) * window.innerWidth,
             y: (-vector.y * 0.5 + 0.5) * window.innerHeight
         };
+    },
+
+    // ==========================================
+    // CROSSHAIR & AIMING
+    // ==========================================
+
+    /**
+     * Update crosshair position and aim-assist visual
+     * @param {number} x - Screen X position
+     * @param {number} y - Screen Y position
+     * @param {boolean} aimAssistActive - Whether aim assist is locked on target
+     */
+    updateCrosshairUI(x, y, aimAssistActive) {
+        const crosshairEl = document.getElementById('crosshair');
+        if (crosshairEl) {
+            if (aimAssistActive) {
+                crosshairEl.classList.add('aim-assist-active');
+            } else {
+                crosshairEl.classList.remove('aim-assist-active');
+            }
+            crosshairEl.style.left = x + 'px';
+            crosshairEl.style.top = y + 'px';
+        }
+    },
+
+    /**
+     * Update tension indicator UI
+     * @param {number} x - Screen X position (follows crosshair)
+     * @param {number} y - Screen Y position
+     * @param {boolean} isCharging - Whether currently charging
+     * @param {number} tension - Current tension value (0-1)
+     * @param {number} maxTension - Maximum tension value
+     */
+    updateTensionUI(x, y, isCharging, tension, maxTension = 1.0) {
+        const tensionEl = document.getElementById('tension-indicator');
+        if (!tensionEl) return;
+
+        tensionEl.style.left = x + 'px';
+        tensionEl.style.top = y + 'px';
+
+        if (isCharging) {
+            tensionEl.classList.add('charging');
+
+            // Update tension class for color
+            tensionEl.classList.remove('medium', 'high', 'max');
+            if (tension >= maxTension) {
+                tensionEl.classList.add('max');
+            } else if (tension >= 0.7) {
+                tensionEl.classList.add('high');
+            } else if (tension >= 0.4) {
+                tensionEl.classList.add('medium');
+            }
+
+            // Update arc fill (283 = circumference of r=45 circle)
+            const fillEl = tensionEl.querySelector('.tension-fill');
+            if (fillEl) {
+                const dashOffset = 283 * (1 - tension);
+                fillEl.style.strokeDashoffset = dashOffset;
+            }
+
+            // Update text
+            const textEl = document.getElementById('tension-text');
+            if (textEl) {
+                const power = Math.round(tension * 100);
+                textEl.textContent = power >= 100 ? 'MAX POWER!' : power + '%';
+            }
+        } else {
+            tensionEl.classList.remove('charging', 'medium', 'high', 'max');
+        }
     }
 };

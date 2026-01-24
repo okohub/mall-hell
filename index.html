@@ -363,7 +363,7 @@
         let fpsWeapon; // Slingshot with hands visible in FPS mode
         let fpsHands;  // Hands group for animation
         let fpsBandL, fpsBandR, fpsPouch, fpsStone; // For pull animation
-        let fpsFireAnim = 0; // Firing animation progress (0 = ready, >0 = animating)
+        // fpsFireAnim moved to WeaponSystem.fireAnim
 
         // Slingshot Tension State
         let slingshotTension = 0;        // Current tension (0 to TENSION_MAX)
@@ -1018,7 +1018,7 @@
 
             // Trigger FPS firing animation
             if (cameraMode === 'hybrid-fps') {
-                fpsFireAnim = 1.0; // Start animation
+                WeaponSystem.triggerFireAnim();
             }
 
             // Get spawn position (FPS mode only)
@@ -1075,7 +1075,6 @@
 
             // Reset cart visual state
             currentLeanAngle = 0;
-            fpsFireAnim = 0;
 
             // Reset room tracking
             currentRoom = null;
@@ -1262,86 +1261,36 @@
                 ambientLight.color.lerp(targetColor, 0.02);
             }
 
-            // === WASD DRIVING MOVEMENT ===
-            // Handle turning (A/D)
-            const targetTurnRate = (InputSystem.keys.turnLeft ? 1 : 0) - (InputSystem.keys.turnRight ? 1 : 0);
-            currentTurnRate += (targetTurnRate * CART_TURN_SPEED - currentTurnRate) * 8 * dt;
-            playerRotation += currentTurnRate * dt;
+            // === WASD DRIVING MOVEMENT (using PlayerSystem) ===
+            // Sync PlayerSystem state from local variables
+            PlayerSystem.position.x = playerPosition.x;
+            PlayerSystem.position.z = playerPosition.z;
+            PlayerSystem.rotation = playerRotation;
+            PlayerSystem.speed = playerSpeed;
+            PlayerSystem.currentTurnRate = currentTurnRate;
+            PlayerSystem.currentLeanAngle = currentLeanAngle;
+            PlayerSystem.wallBumpIntensity = wallBumpIntensity;
+            PlayerSystem.wallBumpDirection = wallBumpDirection;
 
-            // Handle acceleration/deceleration (W/S)
-            if (InputSystem.keys.forward) {
-                playerSpeed += CART_ACCELERATION * dt;
-            } else if (InputSystem.keys.backward) {
-                playerSpeed -= CART_ACCELERATION * dt;
-            } else {
-                // Apply friction when no input, but maintain small idle drift
-                if (playerSpeed > CART_IDLE_DRIFT) {
-                    playerSpeed = Math.max(CART_IDLE_DRIFT, playerSpeed - CART_FRICTION * dt);
-                } else if (playerSpeed < CART_IDLE_DRIFT) {
-                    // Accelerate towards idle drift speed
-                    playerSpeed = Math.min(CART_IDLE_DRIFT, playerSpeed + CART_FRICTION * 0.5 * dt);
-                }
-            }
+            // Full update (movement, cart, camera)
+            const moveResult = PlayerSystem.fullUpdate({
+                keys: InputSystem.keys,
+                dt: dt,
+                collisionCheck: (newX, newZ, oldX, oldZ) =>
+                    CollisionSystem.checkWallCollision(newX, newZ, oldX, oldZ, mallGrid, Room.structure),
+                cart: playerCart,
+                camera: camera
+            });
 
-            // Clamp speed
-            playerSpeed = Math.max(-CART_REVERSE_SPEED, Math.min(CART_MAX_SPEED, playerSpeed));
-
-            // Calculate velocity from rotation + speed
-            const velocityX = -Math.sin(playerRotation) * playerSpeed;
-            const velocityZ = -Math.cos(playerRotation) * playerSpeed;
-
-            // Calculate new position
-            let newX = playerPosition.x + velocityX * dt;
-            let newZ = playerPosition.z + velocityZ * dt;
-
-            // Wall collision detection
-            const collision = CollisionSystem.checkWallCollision(newX, newZ, playerPosition.x, playerPosition.z, mallGrid, Room.structure);
-
-            // Trigger wall bump effect on collision
-            if (collision.blocked && playerSpeed > 1) {
-                wallBumpIntensity = Math.min(1, playerSpeed / CART_MAX_SPEED);
-                wallBumpDirection = {
-                    x: collision.blockedX ? -Math.sign(velocityX) : 0,
-                    z: collision.blockedZ ? -Math.sign(velocityZ) : 0
-                };
-                // Reduce speed on impact
-                playerSpeed *= 0.3;
-            }
-
-            if (!collision.blockedX) playerPosition.x = newX;
-            if (!collision.blockedZ) playerPosition.z = newZ;
-
-            // Decay wall bump effect
-            wallBumpIntensity *= 0.85;
-            if (wallBumpIntensity < 0.01) wallBumpIntensity = 0;
-
-            // Update cart position and rotation
-            playerCart.position.x = playerPosition.x;
-            playerCart.position.z = playerPosition.z;
-            playerCart.rotation.y = playerRotation;
-
-            // Cart leaning based on turn rate
-            const targetLeanAngle = -currentTurnRate * CART_LEAN_ANGLE;
-            currentLeanAngle += (targetLeanAngle - currentLeanAngle) * 8 * dt;
-            playerCart.rotation.z = currentLeanAngle;
-
-            // === FPS CAMERA (follows player rotation) ===
-            // Apply wall bump offset to camera
-            const bumpOffsetX = wallBumpDirection.x * wallBumpIntensity * 0.3;
-            const bumpOffsetZ = wallBumpDirection.z * wallBumpIntensity * 0.3;
-            const bumpShake = wallBumpIntensity * (Math.random() - 0.5) * 0.1;
-
-            camera.position.x = playerPosition.x + bumpOffsetX;
-            camera.position.y = 2.2 + bumpShake;
-            camera.position.z = playerPosition.z + bumpOffsetZ;
-
-            // Camera follows player rotation
-            camera.rotation.set(0, 0, 0);
-            camera.rotation.y = playerRotation;
-            camera.rotation.x = -0.12 + wallBumpIntensity * 0.05; // Tilt on bump
-
-            // Subtle roll for immersion + bump roll
-            camera.rotation.z = currentLeanAngle * CAMERA_ROLL_FACTOR * 0.5 + bumpShake * 2;
+            // Sync local variables from PlayerSystem
+            playerPosition.x = moveResult.position.x;
+            playerPosition.z = moveResult.position.z;
+            playerRotation = moveResult.rotation;
+            playerSpeed = moveResult.speed;
+            currentTurnRate = moveResult.currentTurnRate;
+            currentLeanAngle = moveResult.currentLeanAngle;
+            wallBumpIntensity = moveResult.wallBumpIntensity;
+            wallBumpDirection = moveResult.wallBumpDirection;
 
             // FPS mode: hide child, show hands
             playerCart.visible = true;
@@ -1365,276 +1314,38 @@
             // Update charging
             updateCharging(dt);
 
-            // Animate FPS slingshot - LEFT hand pulls back pouch
-            if (isChargingSlingshot) {
-                // CHARGING: Left hand pulls back based on tension
-                const pullBack = slingshotTension; // 0 to 1
-                const pullZ = pullBack * 0.2;  // Pull back distance
-                const pullY = pullBack * 0.03; // Slight upward pull
-
-                // Move pouch and stone back with left hand
-                if (fpsPouch) {
-                    fpsPouch.position.z = 0.08 + pullZ;
-                    fpsPouch.position.y = 0.02 + pullY;
-                }
-                if (fpsStone) {
-                    fpsStone.position.z = 0.08 + pullZ;
-                    fpsStone.position.y = 0.025 + pullY;
-                    fpsStone.visible = true;
-                }
-
-                // Rubber bands stretch and thin out with tension
-                const bandStretch = 1 + pullBack * 1.8;  // Length multiplier
-                const bandThin = 1 - pullBack * 0.3;     // Thinner when stretched
-                const bandAngle = pullBack * 0.6;        // Angle toward pull point
-
-                if (fpsBandL) {
-                    fpsBandL.scale.set(bandThin, bandStretch, bandThin);
-                    fpsBandL.position.z = 0.04 + pullZ * 0.5;
-                    fpsBandL.rotation.x = 0.3 + bandAngle;
-                    fpsBandL.rotation.z = 0.1 - pullBack * 0.05;
-                }
-                if (fpsBandR) {
-                    fpsBandR.scale.set(bandThin, bandStretch, bandThin);
-                    fpsBandR.position.z = 0.04 + pullZ * 0.5;
-                    fpsBandR.rotation.x = 0.3 + bandAngle;
-                    fpsBandR.rotation.z = -0.1 + pullBack * 0.05;
-                }
-
-                // Pull LEFT hand back with pouch (pinching gesture)
-                if (fpsHands && fpsHands.userData.leftHand) {
-                    const leftHand = fpsHands.userData.leftHand;
-                    leftHand.position.z = -0.15 + pullZ;
-                    leftHand.position.y = -0.08 + pullY;
-                    // Tighten pinch as tension increases
-                    if (leftHand.userData.fingers) {
-                        leftHand.userData.fingers[0].rotation.x = 0.8 + pullBack * 0.3; // Index curls more
-                    }
-                    if (leftHand.userData.thumb) {
-                        leftHand.userData.thumb.rotation.x = 0.4 + pullBack * 0.2;
-                    }
-                }
-            } else if (fpsFireAnim > 0) {
-                // FIRING: Quick release animation - bands snap back
-                fpsFireAnim -= dt * 8; // Fast snap
-                if (fpsFireAnim < 0) fpsFireAnim = 0;
-
-                const snapProgress = 1 - fpsFireAnim; // 0 to 1
-                const snapZ = (1 - snapProgress) * 0.08;
-                const snapY = (1 - snapProgress) * 0.02;
-
-                // Pouch snaps forward
-                if (fpsPouch) {
-                    fpsPouch.position.z = 0.08 + snapZ;
-                    fpsPouch.position.y = 0.02 + snapY;
-                }
-                if (fpsStone) {
-                    fpsStone.position.z = 0.08 + snapZ;
-                    fpsStone.position.y = 0.025 + snapY;
-                    fpsStone.visible = fpsFireAnim > 0.7; // Stone disappears quickly (fired)
-                }
-
-                // Bands snap back with slight overshoot
-                const bandSnap = 1 + (1 - snapProgress) * 0.4;
-                const overshoot = snapProgress > 0.8 ? Math.sin((snapProgress - 0.8) * Math.PI * 5) * 0.1 : 0;
-
-                if (fpsBandL) {
-                    fpsBandL.scale.set(1, bandSnap + overshoot, 1);
-                    fpsBandL.position.z = 0.04 + snapZ * 0.3;
-                    fpsBandL.rotation.x = 0.3 + (1 - snapProgress) * 0.3;
-                }
-                if (fpsBandR) {
-                    fpsBandR.scale.set(1, bandSnap + overshoot, 1);
-                    fpsBandR.position.z = 0.04 + snapZ * 0.3;
-                    fpsBandR.rotation.x = 0.3 + (1 - snapProgress) * 0.3;
-                }
-
-                // Left hand follows release
-                if (fpsHands && fpsHands.userData.leftHand) {
-                    const leftHand = fpsHands.userData.leftHand;
-                    leftHand.position.z = -0.15 + snapZ;
-                    leftHand.position.y = -0.08 + snapY;
-                    // Open fingers after release
-                    if (leftHand.userData.fingers) {
-                        leftHand.userData.fingers[0].rotation.x = 0.8 + (1 - snapProgress) * 0.3;
-                    }
-                }
-            } else {
-                // READY: Reset to ready position
-                if (fpsPouch) {
-                    fpsPouch.position.set(0, 0.02, 0.08);
-                }
-                if (fpsStone) {
-                    fpsStone.position.set(0, 0.025, 0.08);
-                    fpsStone.visible = true;
-                }
-                if (fpsBandL) {
-                    fpsBandL.scale.set(1, 1, 1);
-                    fpsBandL.position.z = 0.04;
-                    fpsBandL.rotation.set(0.3, 0, 0.1);
-                }
-                if (fpsBandR) {
-                    fpsBandR.scale.set(1, 1, 1);
-                    fpsBandR.position.z = 0.04;
-                    fpsBandR.rotation.set(0.3, 0, -0.1);
-                }
-                if (fpsHands && fpsHands.userData.leftHand) {
-                    const leftHand = fpsHands.userData.leftHand;
-                    leftHand.position.set(-0.05, -0.08, -0.15);
-                    if (leftHand.userData.fingers) {
-                        leftHand.userData.fingers[0].rotation.x = 0.8;
-                    }
-                    if (leftHand.userData.thumb) {
-                        leftHand.userData.thumb.rotation.x = 0.4;
-                    }
-                }
-            }
+            // Animate FPS slingshot using WeaponSystem
+            WeaponSystem.animateFPS({
+                pouch: fpsPouch,
+                stone: fpsStone,
+                bandL: fpsBandL,
+                bandR: fpsBandR,
+                hands: fpsHands
+            }, dt, isChargingSlingshot, slingshotTension);
 
             // Update current room for spawning
             updateCurrentRoom();
 
-            // Smart Auto-Aim with Sticky Targeting - using AimingSystem
-            let aimAssistActive = false;
-            const aimConfig = AimingSystem.getProfileConfig();
+            // Smart Auto-Aim with Sticky Targeting - using WeaponSystem
+            const aimResult = WeaponSystem.updateAim({
+                camera: camera,
+                playerPosition: playerPosition,
+                enemies: enemies,
+                obstacles: obstacles,
+                collisionSystem: CollisionSystem,
+                gridSystem: mallGrid,
+                roomConfig: Room.structure,
+                boundsMargin: CROSSHAIR_BOUNDS_MARGIN
+            });
 
-            // Helper to check if a target object is still valid
-            function isTargetValid(obj) {
-                if (!obj || !obj.userData?.active) return false;
-                if (obj.userData.hit) return false; // Obstacle already hit
+            // Update local crosshair state from WeaponSystem
+            crosshairX = aimResult.crosshairX;
+            crosshairY = aimResult.crosshairY;
+            lockedTarget = WeaponSystem.getLockedTarget();
 
-                // Check if in front of camera
-                const pos = obj.position.clone();
-                pos.project(camera);
-                if (pos.z >= 1 || pos.z <= 0) return false;
-
-                // Check if passed behind player
-                const zDist = camera.position.z - obj.position.z;
-                if (zDist < -10) return false; // Too far behind
-
-                // Check line-of-sight (no walls blocking)
-                if (!CollisionSystem.hasLineOfSight(playerPosition.x, playerPosition.z, obj.position.x, obj.position.z, mallGrid, Room.structure)) {
-                    return false; // Wall blocks view
-                }
-
-                return true;
-            }
-
-            // Helper to get screen position of target
-            function getTargetScreenPos(obj, yOffset = 0) {
-                const pos = obj.position.clone();
-                pos.y += yOffset;
-                pos.project(camera);
-                return {
-                    x: (pos.x * 0.5 + 0.5) * window.innerWidth,
-                    y: (-pos.y * 0.5 + 0.5) * window.innerHeight
-                };
-            }
-
-            // Only do aim assist if enabled by AimingSystem and WeaponSystem
-            if (AimingSystem.isEnabled() && WeaponSystem.getAimAssistEnabled()) {
-                // Check if current locked target is still valid (sticky targeting)
-                if (lockedTarget && aimConfig.stickyTargeting && isTargetValid(lockedTarget)) {
-                    // Keep tracking current target
-                    aimAssistActive = true;
-                    AimingSystem.setLock(lockedTarget);
-                    const yOffset = lockedTarget.userData.height ? lockedTarget.userData.height * 0.4 : 1.5;
-                    const screenPos = getTargetScreenPos(lockedTarget, yOffset);
-                    crosshairX = screenPos.x;
-                    crosshairY = screenPos.y;
-                } else {
-                    // Find new best target using AimingSystem scoring
-                    AimingSystem.clearLock();
-                    lockedTarget = null;
-                    let bestTarget = null;
-                    let bestScore = -Infinity;
-
-                    // Evaluate enemies using AimingSystem.scoreEnemy
-                    enemies.forEach(enemy => {
-                        if (!isTargetValid(enemy)) return;
-                        const score = AimingSystem.scoreEnemy(enemy, camera.position, playerPosition, aimConfig);
-                        if (score > bestScore) {
-                            bestScore = score;
-                            bestTarget = enemy;
-                        }
-                    });
-
-                    // Evaluate obstacles using AimingSystem.scoreObstacle
-                    obstacles.forEach(obs => {
-                        if (!isTargetValid(obs)) return;
-                        const score = AimingSystem.scoreObstacle(obs, camera.position, playerPosition, aimConfig);
-                        if (score > bestScore) {
-                            bestScore = score;
-                            bestTarget = obs;
-                        }
-                    });
-
-                    // Lock onto new target
-                    if (bestTarget) {
-                        lockedTarget = bestTarget;
-                        aimAssistActive = true;
-                        AimingSystem.setLock(bestTarget);
-                        const yOffset = bestTarget.userData.height ? bestTarget.userData.height * 0.4 : 1.5;
-                        const screenPos = getTargetScreenPos(bestTarget, yOffset);
-                        crosshairX = screenPos.x;
-                        crosshairY = screenPos.y;
-                    }
-                }
-            }
-
-            // Sync crosshair position with AimingSystem
-            AimingSystem.updateCrosshair(crosshairX, crosshairY);
-
-            // Keep crosshair within screen bounds
-            crosshairX = Math.max(CROSSHAIR_BOUNDS_MARGIN, Math.min(window.innerWidth - CROSSHAIR_BOUNDS_MARGIN, crosshairX));
-            crosshairY = Math.max(CROSSHAIR_BOUNDS_MARGIN, Math.min(window.innerHeight - CROSSHAIR_BOUNDS_MARGIN, crosshairY));
-
-            // Update crosshair DOM position and aim-assist visual feedback (using AimingSystem state)
-            const crosshairEl = document.getElementById('crosshair');
-            if (AimingSystem.isAimAssistActive()) {
-                crosshairEl.classList.add('aim-assist-active');
-            } else {
-                crosshairEl.classList.remove('aim-assist-active');
-            }
-            const crosshairPos = AimingSystem.getCrosshairPosition();
-            crosshairEl.style.left = crosshairPos.x + 'px';
-            crosshairEl.style.top = crosshairPos.y + 'px';
-
-            // Update tension indicator (using AimingSystem for position)
-            const tensionEl = document.getElementById('tension-indicator');
-            if (tensionEl) {
-                tensionEl.style.left = crosshairPos.x + 'px';
-                tensionEl.style.top = crosshairPos.y + 'px';
-
-                if (isChargingSlingshot) {
-                    tensionEl.classList.add('charging');
-
-                    // Update tension class for color
-                    tensionEl.classList.remove('medium', 'high', 'max');
-                    if (slingshotTension >= TENSION_MAX) {
-                        tensionEl.classList.add('max');
-                    } else if (slingshotTension >= 0.7) {
-                        tensionEl.classList.add('high');
-                    } else if (slingshotTension >= 0.4) {
-                        tensionEl.classList.add('medium');
-                    }
-
-                    // Update arc fill (283 = circumference of r=45 circle)
-                    const fillEl = tensionEl.querySelector('.tension-fill');
-                    if (fillEl) {
-                        const dashOffset = 283 * (1 - slingshotTension);
-                        fillEl.style.strokeDashoffset = dashOffset;
-                    }
-
-                    // Update text
-                    const textEl = document.getElementById('tension-text');
-                    if (textEl) {
-                        const power = Math.round(slingshotTension * 100);
-                        textEl.textContent = power >= 100 ? 'MAX POWER!' : power + '%';
-                    }
-                } else {
-                    tensionEl.classList.remove('charging', 'medium', 'high', 'max');
-                }
-            }
+            // Update crosshair and tension UI
+            UISystem.updateCrosshairUI(crosshairX, crosshairY, aimResult.aimAssistActive);
+            UISystem.updateTensionUI(crosshairX, crosshairY, isChargingSlingshot, slingshotTension, TENSION_MAX);
 
             // Spawn new objects (room-based)
             spawnObjects();
@@ -1652,108 +1363,22 @@
                 }
             });
 
-            // Update enemies
-            enemies.forEach(enemy => {
-                if (!enemy.userData.active) return;
-
-                // Use EnemySystem for behavior updates (movement + drift)
-                EnemySystem.updateBehavior(enemy, playerPosition, dt, CART_SPEED);
-
-                // Calculate distance for other checks
-                const toPlayer = new THREE.Vector3(
-                    playerPosition.x - enemy.position.x,
-                    0,
-                    playerPosition.z - enemy.position.z
-                );
-                const distToPlayer = toPlayer.length();
-
-                // Face player
-                const lookDir = Math.atan2(
-                    playerPosition.x - enemy.position.x,
-                    playerPosition.z - enemy.position.z
-                );
-                enemy.rotation.y = lookDir;
-
-                // Animate eyes (track player)
-                if (typeof EnemyVisual !== 'undefined' && enemy.userData.cart) {
-                    EnemyVisual.animateEyes(enemy.userData.cart, playerPosition);
-                }
-
-                // Animate skeleton walking (pushing cart with effort)
-                if (typeof EnemyVisual !== 'undefined' && enemy.userData.skeleton) {
-                    const walkSpeed = enemy.userData.config?.walkSpeed || 3.5;
-                    enemy.userData.walkTimer = (enemy.userData.walkTimer || 0) + dt * walkSpeed;
-                    EnemyVisual.animateSkeletonWalk(enemy.userData.cart, enemy.userData.walkTimer, walkSpeed);
-                }
-
-                // Hit flash
-                if (enemy.userData.hitFlash > 0) {
-                    enemy.userData.hitFlash -= dt * 5;
-                    if (enemy.userData.hitFlash < 0) enemy.userData.hitFlash = 0;
-
-                    // Use EnemyVisual for hit flash if available
-                    if (typeof EnemyVisual !== 'undefined' && enemy.userData.cart) {
-                        EnemyVisual.applyHitFlash(enemy.userData.cart, enemy.userData.hitFlash);
-                    } else {
-                        // Fallback for legacy enemies
-                        enemy.children.forEach(child => {
-                            if (child.material && child.material.emissive) {
-                                child.material.emissiveIntensity = enemy.userData.hitFlash;
-                            }
-                        });
-                    }
-                }
-
-                // Remove if too far from player (outside current room area)
-                if (distToPlayer > 60) {
-                    enemy.userData.active = false;
-                }
-
-                // Player collision with enemy (use cart position, not camera)
-                if (enemy.userData.active && !isInvulnerable) {
-                    const distToPlayer = Math.sqrt(
-                        Math.pow(enemy.position.x - playerCart.position.x, 2) +
-                        Math.pow(enemy.position.z - playerCart.position.z, 2)
-                    );
-                    if (distToPlayer < 3.5) {
-                        damagePlayer(ENEMY_COLLISION_DAMAGE);
-                    }
-                }
+            // Update enemies using EnemySystem
+            EnemySystem.updateAll(enemies, {
+                playerPosition: playerPosition,
+                playerCart: playerCart,
+                dt: dt,
+                baseSpeed: CART_SPEED,
+                isInvulnerable: isInvulnerable,
+                onPlayerCollision: () => damagePlayer(ENEMY_COLLISION_DAMAGE)
             });
 
-            // Update obstacles
-            obstacles.forEach(obs => {
-                if (!obs.userData.active) return;
-
-                if (obs.userData.hit) {
-                    obs.userData.fallSpeed += 5 * dt;
-                    obs.userData.fallAngle += obs.userData.fallSpeed * dt;
-                    obs.rotation.x = obs.userData.fallAngle;
-                    obs.position.y -= obs.userData.fallSpeed * dt * 0.5;
-
-                    if (obs.userData.fallAngle > Math.PI / 2) {
-                        obs.userData.active = false;
-                    }
-                }
-
-                // Remove if too far from player
-                const distToPlayer = obs.position.distanceTo(playerCart.position);
-                if (distToPlayer > 60) {
-                    obs.userData.active = false;
-                }
-
-                // Player collision with obstacle (use cart position, not camera)
-                if (obs.userData.active && !obs.userData.hit && !isInvulnerable) {
-                    const distToPlayer = Math.sqrt(
-                        Math.pow(obs.position.x - playerCart.position.x, 2) +
-                        Math.pow(obs.position.z - playerCart.position.z, 2)
-                    );
-                    const hitDist = (obs.userData.width || 2) * 0.6;
-                    if (distToPlayer < hitDist + 1.5) {
-                        damagePlayer(OBSTACLE_COLLISION_DAMAGE);
-                        obs.userData.hit = true; // Knock it over too
-                    }
-                }
+            // Update obstacles using EnvironmentSystem
+            EnvironmentSystem.updateObstaclesArray(obstacles, {
+                playerCart: playerCart,
+                dt: dt,
+                isInvulnerable: isInvulnerable,
+                onPlayerCollision: () => damagePlayer(OBSTACLE_COLLISION_DAMAGE)
             });
 
             // Update particles
@@ -1765,151 +1390,52 @@
                 particle.material.transparent = true;
             });
 
-            // Collision detection with improved accuracy
-            projectiles.forEach(proj => {
-                if (!proj.userData.active) return;
+            // Collision detection with improved accuracy (using CollisionSystem)
+            CollisionSystem.processProjectileHits(projectiles, enemies, obstacles, {
+                THREE,
+                onEnemyHit: (enemy, damage, closestPoint, result) => {
+                    UISystem.showHitMarker();
 
-                // Store previous position for sweep check
-                const prevPos = proj.userData.prevPosition || proj.position.clone();
-                const currPos = proj.position;
-
-                // Check enemy collisions - optimized with early exit and reused vectors
-                const projDir = currPos.clone().sub(prevPos);
-                const projLen = projDir.length();
-                if (projLen > 0) {
-                    projDir.normalize();
-                }
-
-                for (let i = 0; i < enemies.length && proj.userData.active; i++) {
-                    const enemy = enemies[i];
-                    if (!enemy.userData.active) continue;
-
-                    // Quick distance check first (cheaper than full calculation)
-                    const dx = enemy.position.x - currPos.x;
-                    const dz = enemy.position.z - currPos.z;
-                    if (dx * dx + dz * dz > 100) continue;  // Skip if > 10 units away
-
-                    // Enemy hitbox center
-                    const enemyCenter = enemy.position.clone();
-                    enemyCenter.y += 1.2;
-
-                    const hitRadius = 2.5;
-                    const toEnemy = enemyCenter.sub(prevPos);  // Reuse enemyCenter vector
-
-                    if (projLen > 0) {
-                        const dot = toEnemy.dot(projDir);
-                        const clampedDot = Math.max(0, Math.min(projLen, dot));
-                        const closestPoint = prevPos.clone().addScaledVector(projDir, clampedDot);
-                        enemyCenter.copy(enemy.position).y += 1.2;  // Restore for distance check
-                        const dist = closestPoint.distanceTo(enemyCenter);
-
-                        if (dist < hitRadius) {
-                            proj.userData.active = false;
-                            const damage = 1 + Math.round((proj.userData.power || 0) * 2);
-
-                            // Use EnemySystem for damage handling
-                            const result = EnemySystem.damage(enemy, damage);
-                            if (result) {
-                                UISystem.showHitMarker();
-
-                                // Update health bar using EnemySystem helper
-                                const healthPercent = EnemySystem.getHealthPercent(enemy);
-                                const healthBarGroup = enemy.userData.healthBar;
-                                if (healthBarGroup && typeof EnemyVisual !== 'undefined') {
-                                    EnemyVisual.updateHealthBar(healthBarGroup, healthPercent);
-                                } else {
-                                    // Fallback for legacy health bar
-                                    const healthBar = enemy.getObjectByName('healthBar');
-                                    if (healthBar) {
-                                        healthBar.scale.x = healthPercent;
-                                        healthBar.position.x = -(1 - healthBar.scale.x);
-                                    }
-                                }
-
-                                // Use score values from EnemySystem result
-                                const config = enemy.userData.config || ENEMY_TYPES.CART;
-                                const visualColor = config.visual?.bodyColor || 0xe94560;
-                                if (result.destroyed) {
-                                    addScore(result.scoreDestroy, enemy.position);
-                                    spawnParticles(enemy.position, visualColor, 15);
-                                } else {
-                                    addScore(result.scoreHit, enemy.position);
-                                    spawnParticles(closestPoint, 0xf39c12, 3);
-                                }
-                            }
+                    // Update health bar using EnemySystem helper
+                    const healthPercent = EnemySystem.getHealthPercent(enemy);
+                    const healthBarGroup = enemy.userData.healthBar;
+                    if (healthBarGroup && typeof EnemyVisual !== 'undefined') {
+                        EnemyVisual.updateHealthBar(healthBarGroup, healthPercent);
+                    } else {
+                        // Fallback for legacy health bar
+                        const healthBar = enemy.getObjectByName('healthBar');
+                        if (healthBar) {
+                            healthBar.scale.x = healthPercent;
+                            healthBar.position.x = -(1 - healthBar.scale.x);
                         }
                     }
-                }
 
-                // Check obstacle collisions - optimized
-                for (let i = 0; i < obstacles.length && proj.userData.active; i++) {
-                    const obs = obstacles[i];
-                    if (!obs.userData.active || obs.userData.hit) continue;
-
-                    // Quick distance check
-                    const dx = obs.position.x - currPos.x;
-                    const dz = obs.position.z - currPos.z;
-                    if (dx * dx + dz * dz > 64) continue;  // Skip if > 8 units away
-
-                    const obsCenter = obs.position.clone();
-                    obsCenter.y += (obs.userData.height || 2) * 0.4;
-                    const hitRadius = (obs.userData.width || 2) * 0.8;
-
-                    const toObs = obsCenter.sub(prevPos);
-
-                    if (projLen > 0) {
-                        const dot = toObs.dot(projDir);
-                        const clampedDot = Math.max(0, Math.min(projLen, dot));
-                        const closestPoint = prevPos.clone().addScaledVector(projDir, clampedDot);
-                        obsCenter.copy(obs.position).y += (obs.userData.height || 2) * 0.4;
-                        const dist = closestPoint.distanceTo(obsCenter);
-
-                        if (dist < hitRadius) {
-                            proj.userData.active = false;
-                            obs.userData.hit = true;
-                            UISystem.showHitMarker();
-                            addScore(150, obs.position);
-                            spawnParticles(obs.position, 0xf1c40f, 10);  // Fewer particles
-                        }
+                    // Use score values from EnemySystem result
+                    const config = enemy.userData.config || ENEMY_TYPES.CART;
+                    const visualColor = config.visual?.bodyColor || 0xe94560;
+                    if (result.destroyed) {
+                        addScore(result.scoreDestroy, enemy.position);
+                        spawnParticles(enemy.position, visualColor, 15);
+                    } else {
+                        addScore(result.scoreHit, enemy.position);
+                        spawnParticles(closestPoint, 0xf39c12, 3);
                     }
+                },
+                onObstacleHit: (obs, closestPoint) => {
+                    UISystem.showHitMarker();
+                    addScore(150, obs.position);
+                    spawnParticles(obs.position, 0xf1c40f, 10);
                 }
-
-                // Store current position for next frame's sweep check
-                proj.userData.prevPosition = proj.position.clone();
             });
 
-            // Clean up inactive objects
-            projectiles = projectiles.filter(p => {
-                if (!p.userData.active) {
-                    scene.remove(p);
-                    return false;
-                }
-                return true;
-            });
-
-            enemies = enemies.filter(e => {
-                if (!e.userData.active) {
-                    scene.remove(e);
-                    return false;
-                }
-                return true;
-            });
-
-            obstacles = obstacles.filter(o => {
-                if (!o.userData.active) {
-                    scene.remove(o);
-                    return false;
-                }
-                return true;
-            });
-
-            particles = particles.filter(p => {
-                if (p.userData.life <= 0) {
-                    scene.remove(p);
-                    return false;
-                }
-                return true;
-            });
+            // Clean up inactive objects (using EntitySystem)
+            const cleaned = EntitySystem.cleanupAllInactive({
+                projectiles, enemies, obstacles, particles
+            }, scene);
+            projectiles = cleaned.projectiles;
+            enemies = cleaned.enemies;
+            obstacles = cleaned.obstacles;
+            particles = cleaned.particles;
 
             updateCooldownIndicator();
         }

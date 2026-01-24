@@ -290,5 +290,62 @@ const EnvironmentSystem = {
      */
     getShelfCount() {
         return this.shelves.length;
+    },
+
+    /**
+     * Update all obstacles in an array (for external obstacle arrays)
+     * @param {Array} obstacles - Array of obstacle meshes
+     * @param {Object} options - Update options
+     * @param {Object} options.playerCart - Player cart mesh (for collision)
+     * @param {number} options.dt - Delta time
+     * @param {boolean} options.isInvulnerable - Whether player is invulnerable
+     * @param {Function} options.onPlayerCollision - Callback when obstacle hits player
+     * @param {number} options.despawnDistance - Distance to despawn (default 60)
+     */
+    updateObstaclesArray(obstacles, options) {
+        const {
+            playerCart,
+            dt,
+            isInvulnerable = false,
+            onPlayerCollision = null,
+            despawnDistance = 60
+        } = options;
+
+        obstacles.forEach(obs => {
+            if (!obs.userData.active) return;
+
+            // Falling animation
+            if (obs.userData.hit) {
+                obs.userData.fallSpeed += 5 * dt;
+                obs.userData.fallAngle += obs.userData.fallSpeed * dt;
+                obs.rotation.x = obs.userData.fallAngle;
+                obs.position.y -= obs.userData.fallSpeed * dt * 0.5;
+
+                if (obs.userData.fallAngle > Math.PI / 2) {
+                    obs.userData.active = false;
+                }
+            }
+
+            // Remove if too far from player
+            if (playerCart) {
+                const distToPlayer = obs.position.distanceTo(playerCart.position);
+                if (distToPlayer > despawnDistance) {
+                    obs.userData.active = false;
+                }
+
+                // Player collision
+                if (obs.userData.active && !obs.userData.hit && !isInvulnerable) {
+                    const cartDist = Math.sqrt(
+                        Math.pow(obs.position.x - playerCart.position.x, 2) +
+                        Math.pow(obs.position.z - playerCart.position.z, 2)
+                    );
+                    const hitDist = (obs.userData.width || 2) * 0.6;
+                    if (cartDist < hitDist + 1.5 && onPlayerCollision) {
+                        onPlayerCollision(obs);
+                        obs.userData.hit = true; // Knock it over
+                    }
+                }
+            }
+        });
     }
 };
