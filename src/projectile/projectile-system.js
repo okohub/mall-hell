@@ -202,5 +202,187 @@ const ProjectileSystem = {
      */
     getCount() {
         return this.projectiles.length;
+    },
+
+    /**
+     * Create projectile mesh group (for external array management in index.html)
+     * @param {THREE} THREE - Three.js library
+     * @param {Object} direction - Direction vector (THREE.Vector3)
+     * @param {Object} spawnPos - Spawn position (THREE.Vector3)
+     * @param {number} speed - Projectile speed
+     * @param {Object} options - Additional options
+     * @param {number} options.speedMin - Min speed for power calculation
+     * @param {number} options.speedMax - Max speed for power calculation
+     * @param {Object} options.fallbackCamera - Camera for fallback position
+     * @returns {THREE.Group} Projectile mesh group with userData
+     */
+    createMesh(THREE, direction, spawnPos, speed, options = {}) {
+        const {
+            speedMin = 60,
+            speedMax = 180,
+            fallbackCamera = null
+        } = options;
+
+        const group = new THREE.Group();
+
+        // Get projectile config from WeaponSystem
+        const projConfig = typeof WeaponSystem !== 'undefined'
+            ? WeaponSystem.getProjectileConfig()
+            : { size: 0.2, color: 0xf39c12, glow: true };
+
+        const baseSize = projConfig.size || 0.2;
+        const baseColor = projConfig.color || 0xf39c12;
+        const hasGlow = projConfig.glow !== false;
+        const emissiveMin = projConfig.emissiveIntensity?.min || 0.2;
+        const emissiveMax = projConfig.emissiveIntensity?.max || 0.6;
+
+        // Stone/ball projectile - size scales slightly with power
+        const sizeScale = 0.8 + (speed / speedMax) * 0.4;
+        const stoneGeo = new THREE.SphereGeometry(baseSize * sizeScale, 12, 12);
+        const stoneMat = new THREE.MeshStandardMaterial({
+            color: baseColor,
+            emissive: baseColor,
+            emissiveIntensity: emissiveMin + (speed / speedMax) * (emissiveMax - emissiveMin)
+        });
+        const stone = new THREE.Mesh(stoneGeo, stoneMat);
+        group.add(stone);
+
+        // Glow - brighter for faster projectiles (if enabled)
+        if (hasGlow) {
+            const glowColor = projConfig.glowColor || baseColor;
+            const glowGeo = new THREE.SphereGeometry(baseSize * 1.5 * sizeScale, 12, 12);
+            const glowMat = new THREE.MeshBasicMaterial({
+                color: glowColor,
+                transparent: true,
+                opacity: 0.2 + (speed / speedMax) * 0.3
+            });
+            const glow = new THREE.Mesh(glowGeo, glowMat);
+            group.add(glow);
+        }
+
+        // Use provided spawn position (slingshot) or fallback to camera
+        if (spawnPos) {
+            group.position.copy(spawnPos);
+        } else if (fallbackCamera) {
+            group.position.copy(fallbackCamera.position);
+            group.position.y -= 0.5;
+        }
+
+        // Calculate power (0-1) based on speed
+        const power = (speed - speedMin) / (speedMax - speedMin);
+
+        group.userData = {
+            velocity: direction.clone().multiplyScalar(speed),
+            active: true,
+            prevPosition: group.position.clone(), // For sweep collision detection
+            power: Math.max(0, Math.min(1, power)), // Clamped 0-1
+            projectileType: typeof WeaponSystem !== 'undefined'
+                ? WeaponSystem.getWeaponConfig()?.projectile || 'STONE'
+                : 'STONE'
+        };
+
+        return group;
+    },
+
+    /**
+     * Calculate spawn position for FPS projectile
+     * @param {THREE} THREE - Three.js library
+     * @param {Object} camera - Camera object
+     * @param {Object} options - Options
+     * @param {number} options.forwardOffset - How far in front of camera (default: 0.5)
+     * @param {number} options.downOffset - How far below camera (default: 0.3)
+     * @returns {THREE.Vector3} Spawn position
+     */
+    calculateSpawnPosition(THREE, camera, options = {}) {
+        const { forwardOffset = 0.5, downOffset = 0.3 } = options;
+
+        const spawnPos = camera.position.clone();
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+        spawnPos.add(forward.multiplyScalar(forwardOffset));
+        spawnPos.y -= downOffset;
+
+        return spawnPos;
+    },
+
+    /**
+     * Calculate fire direction from crosshair position
+     * @param {THREE} THREE - Three.js library
+     * @param {Object} camera - Camera object
+     * @param {number} crosshairX - Crosshair X screen position
+     * @param {number} crosshairY - Crosshair Y screen position
+     * @param {THREE.Vector3} spawnPos - Projectile spawn position
+     * @returns {THREE.Vector3} Normalized direction vector
+     */
+    calculateFireDirection(THREE, camera, crosshairX, crosshairY, spawnPos) {
+        // Create raycaster from crosshair
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2(
+            (crosshairX / window.innerWidth) * 2 - 1,
+            -(crosshairY / window.innerHeight) * 2 + 1
+        );
+        raycaster.setFromCamera(mouse, camera);
+
+        // Calculate far point where crosshair is aiming
+        const farPoint = new THREE.Vector3();
+        farPoint.copy(raycaster.ray.direction).multiplyScalar(100).add(raycaster.ray.origin);
+
+        // Direction from spawn position to far point
+        const direction = new THREE.Vector3();
+        direction.subVectors(farPoint, spawnPos);
+        direction.normalize();
+
+        return direction;
+    },
+
+    /**
+     * Full fire calculation (spawn position + direction)
+     * @param {THREE} THREE - Three.js library
+     * @param {Object} camera - Camera object
+     * @param {number} crosshairX - Crosshair X screen position
+     * @param {number} crosshairY - Crosshair Y screen position
+     * @returns {Object} { spawnPos, direction }
+     */
+    calculateFire(THREE, camera, crosshairX, crosshairY) {
+        const spawnPos = this.calculateSpawnPosition(THREE, camera);
+        const direction = this.calculateFireDirection(THREE, camera, crosshairX, crosshairY, spawnPos);
+        return { spawnPos, direction };
+    },
+
+    /**
+     * Update mesh-based projectiles (for external array management)
+     * @param {Array} projectiles - Array of projectile mesh groups
+     * @param {Object} options - Update options
+     * @param {number} options.dt - Delta time in seconds
+     * @param {THREE.Vector3} options.cameraPosition - Camera position for distance check
+     * @param {number} options.maxDistance - Max distance from camera (default: 150)
+     * @param {number} options.minY - Min Y position (default: 0)
+     * @param {number} options.maxY - Max Y position (default: 15)
+     */
+    updateMeshArray(projectiles, options = {}) {
+        const {
+            dt,
+            cameraPosition,
+            maxDistance = 150,
+            minY = 0,
+            maxY = 15
+        } = options;
+
+        projectiles.forEach(proj => {
+            if (!proj.userData.active) return;
+
+            // Move projectile based on velocity
+            proj.position.add(proj.userData.velocity.clone().multiplyScalar(dt));
+
+            // Check if out of bounds
+            const distFromCamera = cameraPosition
+                ? proj.position.distanceTo(cameraPosition)
+                : 0;
+
+            if (distFromCamera > maxDistance ||
+                proj.position.y < minY ||
+                proj.position.y > maxY) {
+                proj.userData.active = false;
+            }
+        });
     }
 };

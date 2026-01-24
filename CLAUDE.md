@@ -157,11 +157,14 @@ mall-hell/
 │   │   ├── player-system.js    # Player state management
 │   │   └── player.test.js      # Player tests
 │   │
-│   ├── weapon/             # Weapon domain
-│   │   ├── weapon.js           # Weapon data (types, configs)
-│   │   ├── weapon-theme.js     # Weapon colors/materials
-│   │   ├── weapon-mesh.js      # FPS weapon, slingshot meshes
-│   │   ├── weapon-system.js    # Charging, firing, aiming
+│   ├── weapon/             # Weapon domain (self-contained weapons)
+│   │   ├── weapon.js           # Weapon data (types, aim profiles)
+│   │   ├── weapon-manager.js   # Thin orchestrator (registry, delegation)
+│   │   ├── slingshot.js        # Self-contained slingshot weapon
+│   │   ├── watergun.js         # Self-contained water gun weapon
+│   │   ├── nerfgun.js          # Self-contained nerf gun weapon
+│   │   ├── pickup.js           # Weapon pickup definitions
+│   │   ├── pickup-system.js    # Pickup spawn and collection
 │   │   └── weapon.test.js      # Weapon tests
 │   │
 │   ├── projectile/         # Projectile domain
@@ -189,8 +192,17 @@ mall-hell/
 │       └── environment.test.js # Environment tests
 │
 ├── tests/
-│   ├── unit-tests.html     # Unit test runner (loads domain tests)
-│   └── ui-tests.html       # UI/integration tests
+│   ├── test-framework.js       # Unit test framework class
+│   ├── unit-tests.html         # Unit test runner (thin loader)
+│   ├── ui-test-framework.js    # UI test framework class
+│   ├── ui-tests.html           # UI test runner (thin loader)
+│   └── ui/                     # UI test domain files
+│       ├── menu.tests.js       # Menu, How to Play tests
+│       ├── game-flow.tests.js  # Start, Pause, Game Over tests
+│       ├── player.tests.js     # Movement, Health tests
+│       ├── weapon.tests.js     # FPS, Charging, Projectile tests
+│       ├── enemy.tests.js      # Spawning, Skeleton tests
+│       └── environment.tests.js # Visual, Shelf tests
 │
 └── .test-output/           # Test results (gitignored)
 ```
@@ -206,6 +218,13 @@ Each domain follows this file naming pattern:
 | `<domain>-mesh.js` | THREE.js mesh/geometry creation |
 | `<domain>-system.js` | Orchestrator: state management, logic, coordination |
 | `<domain>.test.js` | Domain-specific unit tests |
+
+**Weapon Domain Pattern:** Each weapon is a self-contained module implementing the weapon interface:
+- `weapon.js` = Shared aim profiles and config types
+- `weapon-manager.js` = Thin orchestrator (registry, equip, delegation)
+- `slingshot.js`, `watergun.js`, `nerfgun.js` = Complete weapon modules (config, theme, mesh, animation, state)
+- `pickup.js` + `pickup-system.js` = Weapon pickup spawning and collection
+- New weapons: Create `<weapon>.js` implementing the weapon interface
 
 ### Key Principles
 
@@ -251,12 +270,25 @@ const roomSize = Room.structure.UNIT;
 
 // Create meshes using domain mesh files
 const playerCart = PlayerMesh.createPlayerCart(THREE, MaterialsTheme);
-const fpsWeapon = WeaponMesh.createFPSWeapon(THREE, MaterialsTheme);
 
-// Use domain systems for state management
-WeaponSystem.init(Weapon);
-WeaponSystem.startCharge();
-const result = WeaponSystem.fire(Date.now());
+// Use WeaponManager for weapon orchestration
+WeaponManager.init(scene);
+WeaponManager.register(Slingshot);
+WeaponManager.register(WaterGun);
+WeaponManager.register(NerfGun);
+WeaponManager.equip('slingshot', THREE, MaterialsTheme, camera);
+
+// Handle weapon input
+WeaponManager.onFireStart(Date.now());
+const result = WeaponManager.onFireRelease(Date.now());
+WeaponManager.update(dt, Date.now());
+WeaponManager.animateFPS(dt);
+
+// Pickup system
+PickupSystem.init(scene, THREE);
+PickupSystem.trySpawnForRoom(roomPosition, width, length);
+const collected = PickupSystem.update(dt, playerPosition, time);
+collected.forEach(p => PickupSystem.collect(p, WeaponManager, THREE, materials, camera));
 
 // Use engine systems
 StateSystem.init('MENU');

@@ -308,6 +308,37 @@ const EnemySystem = {
     },
 
     /**
+     * Create enemy mesh group (for external array management in index.html)
+     * @param {THREE} THREE - Three.js library
+     * @param {string} typeId - Enemy type ID (e.g., 'SKELETON', 'CART')
+     * @param {number} x - X position
+     * @param {number} z - Z position
+     * @returns {THREE.Group} Enemy mesh group with userData
+     */
+    createMesh(THREE, typeId = 'SKELETON', x = 0, z = 0) {
+        // Get config from ENEMY_TYPES registry
+        const config = (typeof ENEMY_TYPES !== 'undefined' && ENEMY_TYPES[typeId])
+            ? ENEMY_TYPES[typeId]
+            : (this.enemyData ? this.enemyData.get(typeId) : null);
+
+        if (!config) return null;
+
+        // Create mesh using EnemyVisual
+        const group = (typeof EnemyVisual !== 'undefined')
+            ? EnemyVisual.createEnemy(THREE, config)
+            : new THREE.Group();
+
+        // Set userData using createEnemyData helper
+        const enemyData = this.createEnemyData(typeId);
+        Object.assign(group.userData, enemyData);
+
+        // Position the enemy
+        group.position.set(x, 0, z);
+
+        return group;
+    },
+
+    /**
      * Get health percentage for an enemy
      * @param {Object} enemy - Enemy mesh with userData
      * @returns {number} Health percentage 0-1

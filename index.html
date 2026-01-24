@@ -153,6 +153,7 @@
     <script src="./src/engine/loop-system.js"></script>
     <script src="./src/engine/scene-system.js"></script>
     <script src="./src/engine/entity-system.js"></script>
+    <script src="./src/engine/post-process-system.js"></script>
 
     <!-- Room Domain -->
     <script src="./src/room/room.js"></script>
@@ -168,15 +169,19 @@
 
     <!-- Weapon Domain -->
     <script src="./src/weapon/weapon.js"></script>
-    <script src="./src/weapon/weapon-theme.js"></script>
-    <script src="./src/weapon/weapon-mesh.js"></script>
-    <script src="./src/weapon/weapon-system.js"></script>
+    <script src="./src/weapon/weapon-manager.js"></script>
+    <script src="./src/weapon/slingshot.js"></script>
+    <script src="./src/weapon/watergun.js"></script>
+    <script src="./src/weapon/nerfgun.js"></script>
+    <script src="./src/weapon/pickup.js"></script>
+    <script src="./src/weapon/pickup-system.js"></script>
 
     <!-- Projectile Domain -->
     <script src="./src/projectile/projectile.js"></script>
     <script src="./src/projectile/projectile-theme.js"></script>
     <script src="./src/projectile/projectile-mesh.js"></script>
     <script src="./src/projectile/projectile-system.js"></script>
+    <script src="./src/particle/particle-system.js"></script>
 
     <!-- Enemy Domain -->
     <script src="./src/enemy/enemy.js"></script>
@@ -198,7 +203,7 @@
         // Domain modules loaded:
         // - Room: Room, RoomTheme, RoomMesh, RoomSystem
         // - Player: Player, PlayerTheme, PlayerMesh, PlayerSystem
-        // - Weapon: Weapon, WeaponTheme, WeaponMesh, WeaponSystem
+        // - Weapon: Weapon, WeaponManager, Slingshot, WaterGun, NerfGun, WeaponPickup, PickupSystem
         // - Projectile: Projectile, ProjectileTheme, ProjectileMesh (as ProjectileVisual), ProjectileSystem
         // - Enemy: Enemy, EnemyTheme, EnemyMesh (as EnemyVisual), EnemySystem
         // - Environment: Obstacle, ObstacleTheme, ObstacleMesh (as ObstacleVisual), Shelf, ShelfTheme, ShelfMesh, EnvironmentSystem
@@ -253,18 +258,18 @@
         // Mall themes - alias to RoomTheme for backward compatibility
         const MALL_THEMES = RoomTheme.themes;
 
-        // AimingSystem shim - delegates to WeaponSystem for backward compatibility
+        // AimingSystem shim - delegates to WeaponManager
         const AimingSystem = {
-            reset: () => WeaponSystem.reset(),
-            getProfileConfig: () => WeaponSystem.getAimProfileConfig(),
-            isEnabled: () => WeaponSystem.isAimingEnabled(),
-            setLock: (target) => WeaponSystem.setLock(target),
-            clearLock: () => WeaponSystem.clearLock(),
-            scoreEnemy: (enemy, cameraPos, playerPos, config) => WeaponSystem.scoreEnemy(enemy, cameraPos, playerPos),
-            scoreObstacle: (obs, cameraPos, playerPos, config) => WeaponSystem.scoreObstacle(obs, cameraPos, playerPos),
-            updateCrosshair: (x, y) => WeaponSystem.updateCrosshair(x, y),
-            getCrosshairPosition: () => WeaponSystem.getCrosshairPosition(),
-            isAimAssistActive: () => WeaponSystem.isAimAssistActive()
+            reset: () => WeaponManager.reset(),
+            getProfileConfig: () => WeaponManager.getAimProfileConfig(),
+            isEnabled: () => WeaponManager.isAimingEnabled(),
+            setLock: (target) => WeaponManager.setLock(target),
+            clearLock: () => WeaponManager.clearLock(),
+            scoreEnemy: (enemy, cameraPos, playerPos, config) => WeaponManager.scoreEnemy(enemy, cameraPos, playerPos),
+            scoreObstacle: (obs, cameraPos, playerPos, config) => WeaponManager.scoreObstacle(obs, cameraPos, playerPos),
+            updateCrosshair: (x, y) => WeaponManager.updateCrosshair(x, y),
+            getCrosshairPosition: () => WeaponManager.getCrosshairPosition(),
+            isAimAssistActive: () => WeaponManager.isAimAssistActive()
         };
 
         // ShelfSystem shim - delegates to Shelf for backward compatibility
@@ -274,61 +279,12 @@
             pickProductColor: (theme) => Shelf.pickColor(theme.productColors || theme)
         };
 
-        // Mall Grid Layout (16 rooms)
-        // Grid coordinates: x = column (0-4), z = row (0-4)
-        // Each room is ROOM_UNIT x ROOM_UNIT (30x30)
-        // World position: worldX = gridX * ROOM_UNIT, worldZ = gridZ * ROOM_UNIT
-        const MALL_GRID = {
-            // Row 0 (z=0)
-            '0_0': { theme: 'ELECTRONICS', doors: ['south'] },
-            '1_0': { theme: 'GAMING', doors: ['south', 'east'] },
-            '2_0': { theme: 'TOYS', doors: ['south'] },
-            // Row 1 (z=1)
-            '0_1': { theme: 'APPLIANCES', doors: ['north', 'south', 'east'] },
-            '1_1': { theme: 'JUNCTION', doors: ['north', 'south', 'east', 'west'] },
-            '2_1': { theme: 'SPORTS', doors: ['north', 'south', 'west'] },
-            // Row 2 (z=2) - Main corridor with ENTRANCE
-            '-1_2': { theme: 'BAKERY', doors: ['east'] },
-            '0_2': { theme: 'PRODUCE', doors: ['north', 'south', 'east', 'west'] },
-            '1_2': { theme: 'ENTRANCE', doors: ['north', 'south', 'east', 'west'] },
-            '2_2': { theme: 'DAIRY', doors: ['north', 'south', 'east', 'west'] },
-            '3_2': { theme: 'FROZEN', doors: ['west'] },
-            // Row 3 (z=3)
-            '0_3': { theme: 'SNACKS', doors: ['north', 'south', 'east'] },
-            '1_3': { theme: 'JUNCTION', doors: ['north', 'south', 'east', 'west'] },
-            '2_3': { theme: 'BEVERAGES', doors: ['north', 'south', 'west'] },
-            // Row 4 (z=4)
-            '0_4': { theme: 'CLOTHING', doors: ['north', 'east'] },
-            '1_4': { theme: 'PHARMACY', doors: ['north', 'west'] },
-        };
+        // Initialize RoomSystem with layout from Room.layout
+        RoomSystem.init(Room, RoomTheme);
+        RoomSystem.loadLayout(MALL_THEMES);
 
-        // Mall Grid Helper Functions
-        const mallGrid = {
-            getRoom(gridX, gridZ) {
-                const key = `${gridX}_${gridZ}`;
-                const roomDef = MALL_GRID[key];
-                if (!roomDef) return null;
-                return {
-                    ...roomDef,
-                    gridX,
-                    gridZ,
-                    worldX: gridX * ROOM_UNIT + ROOM_UNIT / 2,
-                    worldZ: gridZ * ROOM_UNIT + ROOM_UNIT / 2,
-                    themeData: MALL_THEMES[roomDef.theme]
-                };
-            },
-            getRoomAtWorld(worldX, worldZ) {
-                const gridX = Math.floor(worldX / ROOM_UNIT);
-                const gridZ = Math.floor(worldZ / ROOM_UNIT);
-                return this.getRoom(gridX, gridZ);
-            },
-            getGridFromWorld(worldX, worldZ) {
-                return {
-                    x: Math.floor(worldX / ROOM_UNIT),
-                    z: Math.floor(worldZ / ROOM_UNIT)
-                };
-            }
-        };
+        // Mall Grid interface (delegates to RoomSystem)
+        const mallGrid = RoomSystem;
 
         // Legacy compatibility - get theme at world position
         function getSectionAtZ(z) {
@@ -363,7 +319,7 @@
         let fpsWeapon; // Slingshot with hands visible in FPS mode
         let fpsHands;  // Hands group for animation
         let fpsBandL, fpsBandR, fpsPouch, fpsStone; // For pull animation
-        // fpsFireAnim moved to WeaponSystem.fireAnim
+        // fpsFireAnim handled by WeaponManager
 
         // Slingshot Tension State
         let slingshotTension = 0;        // Current tension (0 to TENSION_MAX)
@@ -508,16 +464,23 @@
             playerCart.position.set(0, 0, -5);
             scene.add(playerCart);
 
-            // Create FPS weapon using domain mesh
-            const fpsWeaponResult = WeaponMesh.createFPSWeapon(THREE, MaterialsTheme);
-            fpsWeapon = fpsWeaponResult.weapon;
-            fpsHands = fpsWeaponResult.hands;
-            fpsBandL = fpsWeaponResult.bandL;
-            fpsBandR = fpsWeaponResult.bandR;
-            fpsPouch = fpsWeaponResult.pouch;
-            fpsStone = fpsWeaponResult.stone;
-            camera.add(fpsWeapon);
-            fpsWeapon.visible = false;
+            // Initialize WeaponManager and register weapons
+            WeaponManager.init(scene);
+            WeaponManager.register(Slingshot);
+            WeaponManager.register(WaterGun);
+            WeaponManager.register(NerfGun);
+            WeaponManager.equip('slingshot', THREE, MaterialsTheme, camera);
+
+            // Get FPS weapon references for backward compat
+            fpsWeapon = WeaponManager.fpsMesh;
+            fpsHands = WeaponManager.fpsRefs?.hands;
+            fpsBandL = WeaponManager.fpsRefs?.bandL;
+            fpsBandR = WeaponManager.fpsRefs?.bandR;
+            fpsPouch = WeaponManager.fpsRefs?.pouch;
+            fpsStone = WeaponManager.fpsRefs?.stone;
+
+            // Initialize pickup system
+            PickupSystem.init(scene, THREE);
 
             window.addEventListener('resize', onWindowResize);
 
@@ -527,229 +490,22 @@
             window.renderer = renderer;
         }
 
-        // === POST-PROCESSING SETUP ===
+        // === POST-PROCESSING SETUP (using PostProcessSystem) ===
         function initPostProcessing() {
-            // EffectComposer - inline implementation for r128 compatibility
-            // Based on Three.js examples/jsm/postprocessing
-
-            // RenderPass - renders scene to texture
-            class RenderPass {
-                constructor(scene, camera) {
-                    this.scene = scene;
-                    this.camera = camera;
-                    this.clear = true;
-                    this.clearDepth = false;
-                    this.needsSwap = false;
-                    this.enabled = true;
-                }
-                render(renderer, writeBuffer, readBuffer) {
-                    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
-                    if (this.clear) renderer.clear();
-                    renderer.render(this.scene, this.camera);
-                }
-            }
-
-            // ShaderPass - applies a shader to the scene
-            class ShaderPass {
-                constructor(shader) {
-                    this.uniforms = THREE.UniformsUtils.clone(shader.uniforms);
-                    this.material = new THREE.ShaderMaterial({
-                        uniforms: this.uniforms,
-                        vertexShader: shader.vertexShader,
-                        fragmentShader: shader.fragmentShader
-                    });
-                    this.fsQuad = new FullScreenQuad(this.material);
-                    this.enabled = true;
-                    this.needsSwap = true;
-                    this.clear = false;
-                    this.renderToScreen = false;
-                }
-                render(renderer, writeBuffer, readBuffer) {
-                    this.uniforms.tDiffuse.value = readBuffer.texture;
-                    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
-                    if (this.clear) renderer.clear();
-                    this.fsQuad.render(renderer);
-                }
-            }
-
-            // FullScreenQuad helper
-            class FullScreenQuad {
-                constructor(material) {
-                    const geo = new THREE.PlaneGeometry(2, 2);
-                    this.mesh = new THREE.Mesh(geo, material);
-                    this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-                    this.scene = new THREE.Scene();
-                    this.scene.add(this.mesh);
-                }
-                render(renderer) {
-                    renderer.render(this.scene, this.camera);
-                }
-                get material() { return this.mesh.material; }
-                set material(v) { this.mesh.material = v; }
-            }
-
-            // EffectComposer
-            class EffectComposer {
-                constructor(renderer, renderTarget) {
-                    this.renderer = renderer;
-                    const size = renderer.getSize(new THREE.Vector2());
-                    this.renderTarget1 = renderTarget || new THREE.WebGLRenderTarget(size.x, size.y, {
-                        minFilter: THREE.LinearFilter,
-                        magFilter: THREE.LinearFilter,
-                        format: THREE.RGBAFormat
-                    });
-                    this.renderTarget2 = this.renderTarget1.clone();
-                    this.writeBuffer = this.renderTarget1;
-                    this.readBuffer = this.renderTarget2;
-                    this.passes = [];
-                }
-                addPass(pass) {
-                    this.passes.push(pass);
-                    const size = this.renderer.getSize(new THREE.Vector2());
-                    pass.setSize && pass.setSize(size.x, size.y);
-                }
-                render(deltaTime) {
-                    let maskActive = false;
-                    for (let i = 0; i < this.passes.length; i++) {
-                        const pass = this.passes[i];
-                        if (!pass.enabled) continue;
-                        pass.renderToScreen = (i === this.passes.length - 1);
-                        pass.render(this.renderer, this.writeBuffer, this.readBuffer, deltaTime, maskActive);
-                        if (pass.needsSwap) {
-                            const tmp = this.readBuffer;
-                            this.readBuffer = this.writeBuffer;
-                            this.writeBuffer = tmp;
-                        }
-                    }
-                }
-                setSize(width, height) {
-                    this.renderTarget1.setSize(width, height);
-                    this.renderTarget2.setSize(width, height);
-                    this.passes.forEach(pass => pass.setSize && pass.setSize(width, height));
-                }
-            }
-
-            // Bloom shader (simplified UnrealBloom)
-            const BloomShader = {
-                uniforms: {
-                    tDiffuse: { value: null },
-                    bloomStrength: { value: 0.5 },
-                    bloomThreshold: { value: 0.85 }
-                },
-                vertexShader: `
-                    varying vec2 vUv;
-                    void main() {
-                        vUv = uv;
-                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                    }
-                `,
-                fragmentShader: `
-                    uniform sampler2D tDiffuse;
-                    uniform float bloomStrength;
-                    uniform float bloomThreshold;
-                    varying vec2 vUv;
-
-                    void main() {
-                        vec4 texel = texture2D(tDiffuse, vUv);
-                        float brightness = dot(texel.rgb, vec3(0.2126, 0.7152, 0.0722));
-                        vec3 bloom = vec3(0.0);
-                        if (brightness > bloomThreshold) {
-                            bloom = (texel.rgb - bloomThreshold) * bloomStrength;
-                        }
-                        // Simple box blur for bloom spread
-                        vec2 texelSize = vec2(1.0 / 1920.0, 1.0 / 1080.0);
-                        for (int x = -2; x <= 2; x++) {
-                            for (int y = -2; y <= 2; y++) {
-                                vec4 neighbor = texture2D(tDiffuse, vUv + vec2(float(x), float(y)) * texelSize * 2.0);
-                                float nb = dot(neighbor.rgb, vec3(0.2126, 0.7152, 0.0722));
-                                if (nb > bloomThreshold) {
-                                    bloom += (neighbor.rgb - bloomThreshold) * bloomStrength * 0.04;
-                                }
-                            }
-                        }
-                        gl_FragColor = vec4(texel.rgb + bloom, texel.a);
-                    }
-                `
-            };
-
-            // Vignette + Color Grading shader
-            const VignetteShader = {
-                uniforms: {
-                    tDiffuse: { value: null },
-                    damageIntensity: { value: 0.0 },
-                    saturation: { value: 1.1 },
-                    contrast: { value: 1.05 }
-                },
-                vertexShader: `
-                    varying vec2 vUv;
-                    void main() {
-                        vUv = uv;
-                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                    }
-                `,
-                fragmentShader: `
-                    uniform sampler2D tDiffuse;
-                    uniform float damageIntensity;
-                    uniform float saturation;
-                    uniform float contrast;
-                    varying vec2 vUv;
-
-                    void main() {
-                        vec4 texel = texture2D(tDiffuse, vUv);
-
-                        // Subtle always-on vignette for atmosphere
-                        float baseVignette = 1.0 - smoothstep(0.4, 1.0, length(vUv - 0.5) * 1.2);
-
-                        // Damage vignette (red edges)
-                        float damageVignette = smoothstep(0.3, 0.9, length(vUv - 0.5) * 1.5);
-                        vec3 damageColor = vec3(0.9, 0.1, 0.05);
-
-                        // Apply color grading
-                        vec3 color = texel.rgb;
-
-                        // Saturation
-                        float gray = dot(color, vec3(0.2126, 0.7152, 0.0722));
-                        color = mix(vec3(gray), color, saturation);
-
-                        // Contrast
-                        color = (color - 0.5) * contrast + 0.5;
-
-                        // Apply vignettes
-                        color *= baseVignette * 0.15 + 0.85;
-                        color = mix(color, damageColor, damageVignette * damageIntensity);
-
-                        gl_FragColor = vec4(color, texel.a);
-                    }
-                `
-            };
-
-            // Create composer
-            composer = new EffectComposer(renderer);
-
-            // Render pass
-            const renderPass = new RenderPass(scene, camera);
-            composer.addPass(renderPass);
-
-            // Bloom pass
-            bloomPass = new ShaderPass(BloomShader);
-            bloomPass.uniforms.bloomStrength.value = 0.4;
-            bloomPass.uniforms.bloomThreshold.value = 0.8;
-            composer.addPass(bloomPass);
-
-            // Vignette + color grading pass
-            vignettePass = new ShaderPass(VignetteShader);
-            vignettePass.uniforms.damageIntensity.value = 0.0;
-            composer.addPass(vignettePass);
-
-            // Store for resize
+            const result = PostProcessSystem.init(THREE, renderer, scene, camera, {
+                bloomStrength: 0.4,
+                bloomThreshold: 0.8,
+                damageIntensity: 0.0
+            });
+            composer = result.composer;
+            bloomPass = result.bloomPass;
+            vignettePass = result.vignettePass;
             window.composer = composer;
         }
 
         function createEnvironment() {
             // Create all rooms in the grid using RoomSystem
-            Object.keys(MALL_GRID).forEach(key => {
-                const [gridX, gridZ] = key.split('_').map(Number);
-                const room = mallGrid.getRoom(gridX, gridZ);
+            RoomSystem.getAllRooms().forEach(room => {
                 if (room) {
                     RoomSystem.createRoomMeshes(THREE, room, {
                         scene: scene,
@@ -761,106 +517,18 @@
         }
 
         function createEnemyCart(x, z, enemyType = 'SKELETON') {
-            // Get config from ENEMY_TYPES registry
-            const config = ENEMY_TYPES[enemyType] || ENEMY_TYPES.CART;
+            // Use EnemySystem for mesh creation with userData
+            const group = EnemySystem.createMesh(THREE, enemyType, x, z);
+            if (!group) return null;
 
-            // Use EnemyVisual to create the mesh (handles both CART and SKELETON)
-            const group = EnemyVisual.createEnemy(THREE, config);
-
-            // Set userData using EnemySystem helper (includes health, damage, etc.)
-            const enemyData = EnemySystem.createEnemyData(enemyType);
-            Object.assign(group.userData, enemyData);
-
-            // Position and add to scene
-            group.position.set(x, 0, z);
             scene.add(group);
             enemies.push(group);
             return group;
         }
 
         function createObstacle(x, z, type) {
-            const group = new THREE.Group();
-            group.userData = {
-                type: type,
-                active: true,
-                hit: false,
-                fallAngle: 0,
-                fallSpeed: 0
-            };
-
-            if (type === 'stack') {
-                const colors = [0xe74c3c, 0x3498db, 0x2ecc71, 0xf1c40f, 0x9b59b6];
-                const color = colors[Math.floor(Math.random() * colors.length)];
-
-                // Pyramid of boxes
-                for (let row = 0; row < 3; row++) {
-                    const boxesInRow = 3 - row;
-                    for (let col = 0; col < boxesInRow; col++) {
-                        const boxGeo = new THREE.BoxGeometry(1, 0.8, 1);
-                        const boxMat = new THREE.MeshStandardMaterial({ color: color });
-                        const box = new THREE.Mesh(boxGeo, boxMat);
-                        box.position.set(
-                            (col - (boxesInRow - 1) / 2) * 1.1,
-                            0.4 + row * 0.85,
-                            0
-                        );
-                        box.castShadow = true;
-                        group.add(box);
-                    }
-                }
-                group.userData.width = 3;
-                group.userData.height = 3;
-            } else if (type === 'barrel') {
-                const barrelGeo = new THREE.CylinderGeometry(0.6, 0.6, 1.5, 16);
-                const barrelMat = new THREE.MeshStandardMaterial({ color: 0x2980b9 });
-                const barrel = new THREE.Mesh(barrelGeo, barrelMat);
-                barrel.position.y = 0.75;
-                barrel.castShadow = true;
-                group.add(barrel);
-
-                // Bands
-                const bandGeo = new THREE.TorusGeometry(0.62, 0.05, 8, 32);
-                const bandMat = new THREE.MeshStandardMaterial({ color: 0x1a5276 });
-                [-0.4, 0.4].forEach(y => {
-                    const band = new THREE.Mesh(bandGeo, bandMat);
-                    band.rotation.x = Math.PI / 2;
-                    band.position.y = 0.75 + y;
-                    group.add(band);
-                });
-
-                group.userData.width = 1.5;
-                group.userData.height = 2;
-            } else if (type === 'display') {
-                // Promotional display stand
-                const standGeo = new THREE.BoxGeometry(2, 3, 1.5);
-                const standMat = new THREE.MeshStandardMaterial({ color: 0xf39c12 });
-                const stand = new THREE.Mesh(standGeo, standMat);
-                stand.position.y = 1.5;
-                stand.castShadow = true;
-                group.add(stand);
-
-                // Sale sign
-                const signGeo = new THREE.BoxGeometry(1.8, 0.8, 0.1);
-                const signCanvas = document.createElement('canvas');
-                signCanvas.width = 256;
-                signCanvas.height = 128;
-                const ctx = signCanvas.getContext('2d');
-                ctx.fillStyle = '#e74c3c';
-                ctx.fillRect(0, 0, 256, 128);
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 48px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('SALE!', 128, 80);
-                const signTex = new THREE.CanvasTexture(signCanvas);
-                const signMat = new THREE.MeshStandardMaterial({ map: signTex });
-                const sign = new THREE.Mesh(signGeo, signMat);
-                sign.position.set(0, 3.5, 0);
-                group.add(sign);
-
-                group.userData.width = 2.5;
-                group.userData.height = 4;
-            }
-
+            // Use ObstacleVisual for mesh creation
+            const group = ObstacleVisual.createByType(THREE, type);
             group.position.set(x, 0, z);
             scene.add(group);
             obstacles.push(group);
@@ -868,94 +536,20 @@
         }
 
         function createProjectile(direction, spawnPos, speed = PROJECTILE_SPEED_MAX) {
-            const group = new THREE.Group();
-
-            // Get projectile config from WeaponSystem
-            const projConfig = WeaponSystem.getProjectileConfig();
-            const baseSize = projConfig.size || 0.2;
-            const baseColor = projConfig.color || 0xf39c12;
-            const hasGlow = projConfig.glow !== false;
-            const emissiveMin = projConfig.emissiveIntensity?.min || 0.2;
-            const emissiveMax = projConfig.emissiveIntensity?.max || 0.6;
-
-            // Stone/ball projectile - size scales slightly with power
-            const sizeScale = 0.8 + (speed / PROJECTILE_SPEED_MAX) * 0.4;
-            const stoneGeo = new THREE.SphereGeometry(baseSize * sizeScale, 12, 12);
-            const stoneMat = new THREE.MeshStandardMaterial({
-                color: baseColor,
-                emissive: baseColor,
-                emissiveIntensity: emissiveMin + (speed / PROJECTILE_SPEED_MAX) * (emissiveMax - emissiveMin)
+            // Use ProjectileSystem for mesh creation
+            const group = ProjectileSystem.createMesh(THREE, direction, spawnPos, speed, {
+                speedMin: PROJECTILE_SPEED_MIN,
+                speedMax: PROJECTILE_SPEED_MAX,
+                fallbackCamera: camera
             });
-            const stone = new THREE.Mesh(stoneGeo, stoneMat);
-            group.add(stone);
-
-            // Glow - brighter for faster projectiles (if enabled)
-            if (hasGlow) {
-                const glowColor = projConfig.glowColor || baseColor;
-                const glowGeo = new THREE.SphereGeometry(baseSize * 1.5 * sizeScale, 12, 12);
-                const glowMat = new THREE.MeshBasicMaterial({
-                    color: glowColor,
-                    transparent: true,
-                    opacity: 0.2 + (speed / PROJECTILE_SPEED_MAX) * 0.3
-                });
-                const glow = new THREE.Mesh(glowGeo, glowMat);
-                group.add(glow);
-            }
-
-            // Use provided spawn position (slingshot) or fallback to camera
-            if (spawnPos) {
-                group.position.copy(spawnPos);
-            } else {
-                group.position.copy(camera.position);
-                group.position.y -= 0.5;
-            }
-
-            // Calculate power (0-1) based on speed
-            const power = (speed - PROJECTILE_SPEED_MIN) / (PROJECTILE_SPEED_MAX - PROJECTILE_SPEED_MIN);
-
-            group.userData = {
-                velocity: direction.clone().multiplyScalar(speed),
-                active: true,
-                prevPosition: group.position.clone(), // For sweep collision detection
-                power: Math.max(0, Math.min(1, power)), // Clamped 0-1
-                projectileType: WeaponSystem.getWeaponConfig().projectile
-            };
-
             scene.add(group);
             projectiles.push(group);
             return group;
         }
 
-        // Shared particle geometry for performance
-        const particleGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-        const MAX_PARTICLES = 50;  // Limit particle count
-
-        function createParticle(position, color) {
-            // Enforce particle limit
-            if (particles.length >= MAX_PARTICLES) return;
-
-            const mat = new THREE.MeshBasicMaterial({ color: color });
-            const particle = new THREE.Mesh(particleGeo, mat);
-            particle.position.copy(position);
-            particle.userData = {
-                velocity: new THREE.Vector3(
-                    (Math.random() - 0.5) * 10,
-                    Math.random() * 8 + 2,
-                    (Math.random() - 0.5) * 10
-                ),
-                life: 0.8  // Shorter life
-            };
-            scene.add(particle);
-            particles.push(particle);
-        }
-
+        // Particle spawning (using ParticleSystem)
         function spawnParticles(position, color, count) {
-            // Limit particles based on current count
-            const available = MAX_PARTICLES - particles.length;
-            const toSpawn = Math.min(count, available);
-            for (let i = 0; i < toSpawn; i++) {
-                createParticle(position, color);
-            }
+            ParticleSystem.spawn(THREE, position, color, count, particles, scene);
         }
 
         function addScore(points, position) {
@@ -967,149 +561,148 @@
             UISystem.showScorePopup(points, screenPos.x, screenPos.y);
         }
 
-        // Slingshot Charging Functions (delegating to WeaponSystem)
+        // Weapon Charging Functions (delegating to WeaponManager)
         function startCharging() {
-            if (!isChargingSlingshot && StateSystem.is('PLAYING')) {
+            if (StateSystem.is('PLAYING')) {
                 const now = Date.now();
-                if (!WeaponSystem.canFire(now)) return; // Still on cooldown
+                WeaponManager.onFireStart(now);
 
-                // Start weapon system charge
-                if (WeaponSystem.startCharge(now)) {
-                    // Sync legacy state for backward compatibility
-                    isChargingSlingshot = true;
-                    slingshotTension = WeaponSystem.getTension();
-                }
+                // Sync legacy state for backward compatibility
+                isChargingSlingshot = WeaponManager.isCharging();
+                slingshotTension = WeaponManager.getTension();
             }
         }
 
         function updateCharging(dt) {
-            if (WeaponSystem.isCharging) {
-                WeaponSystem.updateCharge(dt);
-                // Sync legacy state
-                slingshotTension = WeaponSystem.getTension();
-                isChargingSlingshot = WeaponSystem.isCharging;
+            const now = Date.now();
+            const fireResult = WeaponManager.update(dt, now);
+
+            // Sync legacy state
+            slingshotTension = WeaponManager.getTension();
+            isChargingSlingshot = WeaponManager.isCharging();
+
+            // For auto-fire weapons, handle fire result from update
+            if (fireResult) {
+                shoot(fireResult.speed, fireResult);
             }
         }
 
         function cancelCharging() {
-            WeaponSystem.reset();
+            WeaponManager.cancelAction();
             isChargingSlingshot = false;
             slingshotTension = 0;
         }
 
         function releaseAndFire() {
-            if (!WeaponSystem.isCharging) return;
-
             const now = Date.now();
-            const fireResult = WeaponSystem.fire(now);
+            const fireResult = WeaponManager.onFireRelease(now);
 
             // Sync legacy state
             isChargingSlingshot = false;
             slingshotTension = 0;
 
             if (fireResult) {
-                shoot(fireResult.speed);
+                shoot(fireResult.speed, fireResult);
             }
         }
 
-        function shoot(speed = PROJECTILE_SPEED_MAX) {
+        function shoot(speed = PROJECTILE_SPEED_MAX, fireResult = null) {
             const now = Date.now();
             lastShootTime = now;
 
             // Trigger FPS firing animation
             if (cameraMode === 'hybrid-fps') {
-                WeaponSystem.triggerFireAnim();
+                WeaponManager.triggerFireAnim();
             }
 
-            // Get spawn position (FPS mode only)
-            const spawnPos = camera.position.clone();
-            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-            spawnPos.add(forward.multiplyScalar(0.5));
-            spawnPos.y -= 0.3;
+            // Calculate spawn position and direction using ProjectileSystem
+            const { spawnPos, direction } = ProjectileSystem.calculateFire(THREE, camera, crosshairX, crosshairY);
 
-            // Get direction from crosshair using raycaster
-            const raycaster = new THREE.Raycaster();
-            const mouse = new THREE.Vector2(
-                (crosshairX / window.innerWidth) * 2 - 1,
-                -(crosshairY / window.innerHeight) * 2 + 1
-            );
-            raycaster.setFromCamera(mouse, camera);
+            // Apply spread if present (for auto-fire weapons)
+            if (fireResult && fireResult.spread) {
+                direction.x += fireResult.spread.x;
+                direction.y += fireResult.spread.y;
+                direction.normalize();
+            }
 
-            // Shoot toward where crosshair is pointing (auto-aim keeps it on target)
-            const farPoint = new THREE.Vector3();
-            farPoint.copy(raycaster.ray.direction).multiplyScalar(100).add(raycaster.ray.origin);
+            createProjectile(direction, spawnPos, speed, fireResult);
 
-            const direction = new THREE.Vector3();
-            direction.subVectors(farPoint, spawnPos);
-            direction.normalize();
+            // Visual feedback - update ammo display
+            updateAmmoDisplay();
+        }
 
-            createProjectile(direction, spawnPos, speed);
+        function updateAmmoDisplay() {
+            const ammoText = WeaponManager.getAmmoDisplay();
+            const isReloading = WeaponManager.isReloading(Date.now());
 
-            // Visual feedback
-            ammoDisplay.textContent = 'RELOADING...';
-            ammoDisplay.style.borderColor = '#e94560';
-            setTimeout(() => {
-                ammoDisplay.textContent = 'SLINGSHOT READY';
+            if (isReloading) {
+                ammoDisplay.textContent = 'RELOADING...';
+                ammoDisplay.style.borderColor = '#e94560';
+            } else {
+                ammoDisplay.textContent = ammoText || 'READY';
                 ammoDisplay.style.borderColor = '#3498db';
-            }, SHOOT_COOLDOWN);
+            }
         }
 
         function resetGame() {
+            // Reset game state
             score = 0;
             gameTimer = GAME_DURATION;
             lastShootTime = 0;
             scoreElement.textContent = '0';
             updateTimerDisplay();
 
-            // Reset player position and movement (start at center of ENTRANCE room)
-            playerPosition = { x: 45, z: 75 };  // Grid (1,2) center
-            playerRotation = 0;
-            playerSpeed = 0;
-            currentTurnRate = 0;
-            playerHealth = PLAYER_MAX_HEALTH;
-            lastDamageTime = 0;
-            isInvulnerable = false;
-
-            // Reset input state
+            // Reset domain systems
             InputSystem.reset();
+            PlayerSystem.reset();
+            WeaponManager.reset();
+            WeaponManager.equip('slingshot', THREE, MaterialsTheme, camera);
+            PickupSystem.reset();
 
-            // Reset cart visual state
-            currentLeanAngle = 0;
+            // Update FPS weapon references after re-equip
+            fpsWeapon = WeaponManager.fpsMesh;
+            fpsHands = WeaponManager.fpsRefs?.hands;
+            fpsBandL = WeaponManager.fpsRefs?.bandL;
+            fpsBandR = WeaponManager.fpsRefs?.bandR;
+            fpsPouch = WeaponManager.fpsRefs?.pouch;
+            fpsStone = WeaponManager.fpsRefs?.stone;
+
+            // Sync local variables from PlayerSystem
+            playerPosition = PlayerSystem.getPosition();
+            playerRotation = PlayerSystem.getRotation();
+            playerSpeed = PlayerSystem.getSpeed();
+            currentTurnRate = PlayerSystem.currentTurnRate;
+            currentLeanAngle = PlayerSystem.getLeanAngle();
+            playerHealth = PlayerSystem.getHealth();
+            isInvulnerable = PlayerSystem.getIsInvulnerable();
+
+            // Reset weapon/aim state
+            slingshotTension = 0;
+            isChargingSlingshot = false;
+            crosshairX = window.innerWidth / 2;
+            crosshairY = window.innerHeight / 2;
+            lockedTarget = null;
 
             // Reset room tracking
             currentRoom = null;
             visitedRooms.clear();
 
-            // Reset weapon system (also resets slingshot tension)
-            WeaponSystem.reset();
-            slingshotTension = 0;
-            isChargingSlingshot = false;
-
-            // Reset aiming system
-            AimingSystem.reset();
-            crosshairX = window.innerWidth / 2;
-            crosshairY = window.innerHeight / 2;
-            lockedTarget = null;
-
             // Reset health UI
             UISystem.resetHealthBar(PLAYER_MAX_HEALTH);
 
-            // Clear all game objects
+            // Clear all game objects from scene
             projectiles.forEach(p => scene.remove(p));
             enemies.forEach(e => scene.remove(e));
             obstacles.forEach(o => scene.remove(o));
             particles.forEach(p => scene.remove(p));
-
             projectiles = [];
             enemies = [];
             obstacles = [];
             particles = [];
 
-            // Reset cart position
+            // Sync cart and camera from PlayerSystem state
             playerCart.position.set(playerPosition.x, 0, playerPosition.z);
             playerCart.rotation.set(0, playerRotation, 0);
-
-            // Reset camera for FPS view
             camera.position.set(playerPosition.x, 2.2, playerPosition.z);
             camera.rotation.set(-0.12, playerRotation, 0);
         }
@@ -1138,31 +731,35 @@
         }
 
         function damagePlayer(amount) {
-            if (isInvulnerable || !StateSystem.is('PLAYING')) return;
+            if (!StateSystem.is('PLAYING')) return;
 
-            playerHealth = Math.max(0, playerHealth - amount);
+            // Use PlayerSystem for health/invulnerability state
+            const damageApplied = PlayerSystem.damage(amount);
+            if (!damageApplied) return;
+
+            // Sync local variables from PlayerSystem
+            playerHealth = PlayerSystem.getHealth();
+            isInvulnerable = PlayerSystem.getIsInvulnerable();
+
+            // Update UI
             UISystem.updateHealthBar(playerHealth, PLAYER_MAX_HEALTH);
+            UISystem.showDamageOverlay();
 
             // Trigger GPU-based damage vignette (scales with damage)
             damageVignetteStrength = Math.min(1.0, damageVignetteStrength + amount / 50);
 
-            // Flash CSS overlay for immediate feedback
-            UISystem.showDamageOverlay();
-
-            // Start invulnerability
-            isInvulnerable = true;
-            lastDamageTime = Date.now();
-
             // Check for death
-            if (playerHealth <= 0) {
+            if (PlayerSystem.isDead()) {
                 endGame(true);
             }
         }
 
         function updateInvulnerability() {
-            if (isInvulnerable && Date.now() - lastDamageTime >= INVULNERABILITY_DURATION) {
-                isInvulnerable = false;
-            }
+            // Delegate to PlayerSystem
+            PlayerSystem.updateInvulnerability();
+
+            // Sync local variable
+            isInvulnerable = PlayerSystem.getIsInvulnerable();
         }
 
         function pauseGame() {
@@ -1254,12 +851,8 @@
             }
             updateTimerDisplay();
 
-            // Update room-based ambient lighting
-            const room = mallGrid.getRoomAtWorld(playerPosition.x, playerPosition.z);
-            if (room && room.themeData) {
-                const targetColor = new THREE.Color(room.themeData.ambientColor);
-                ambientLight.color.lerp(targetColor, 0.02);
-            }
+            // Update room-based ambient lighting (using RoomSystem)
+            RoomSystem.updateAmbientLighting(ambientLight, playerPosition, mallGrid, THREE);
 
             // === WASD DRIVING MOVEMENT (using PlayerSystem) ===
             // Sync PlayerSystem state from local variables
@@ -1296,38 +889,27 @@
             playerCart.visible = true;
             if (playerChild) playerChild.visible = false;
             if (slingshotArm) slingshotArm.visible = false;
-            if (fpsWeapon) {
-                fpsWeapon.visible = true;
-
-                // Weapon lean when turning (matches cart lean for immersion)
-                const weaponLeanAngle = -currentTurnRate * 0.15; // Subtle lean
-                const weaponSway = currentTurnRate * 0.03;       // Horizontal sway
-
-                // Smoothly interpolate weapon lean
-                fpsWeapon.rotation.z = fpsWeapon.rotation.z * 0.85 + weaponLeanAngle * 0.15;
-                fpsWeapon.position.x = 0.15 + fpsWeapon.position.x * 0.9 + weaponSway * 0.1;
-
-                // Clamp position to prevent drift
-                fpsWeapon.position.x = Math.max(0.1, Math.min(0.2, fpsWeapon.position.x));
+            if (WeaponManager.fpsMesh) {
+                WeaponManager.showFPSWeapon();
+                WeaponManager.updateTransform(currentTurnRate);
+                // Sync local ref in case weapon switched
+                fpsWeapon = WeaponManager.fpsMesh;
             }
 
             // Update charging
             updateCharging(dt);
 
-            // Animate FPS slingshot using WeaponSystem
-            WeaponSystem.animateFPS({
-                pouch: fpsPouch,
-                stone: fpsStone,
-                bandL: fpsBandL,
-                bandR: fpsBandR,
-                hands: fpsHands
-            }, dt, isChargingSlingshot, slingshotTension);
+            // Animate FPS weapon using WeaponManager
+            WeaponManager.animateFPS(dt);
+
+            // Update ammo display periodically
+            updateAmmoDisplay();
 
             // Update current room for spawning
             updateCurrentRoom();
 
-            // Smart Auto-Aim with Sticky Targeting - using WeaponSystem
-            const aimResult = WeaponSystem.updateAim({
+            // Smart Auto-Aim with Sticky Targeting - using WeaponManager
+            const aimResult = WeaponManager.updateAim({
                 camera: camera,
                 playerPosition: playerPosition,
                 enemies: enemies,
@@ -1338,10 +920,41 @@
                 boundsMargin: CROSSHAIR_BOUNDS_MARGIN
             });
 
-            // Update local crosshair state from WeaponSystem
+            // Update local crosshair state from WeaponManager
             crosshairX = aimResult.crosshairX;
             crosshairY = aimResult.crosshairY;
-            lockedTarget = WeaponSystem.getLockedTarget();
+            lockedTarget = WeaponManager.getLockedTarget();
+
+            // Update and collect pickups
+            const collectedPickups = PickupSystem.update(dt, {
+                x: playerPosition.x,
+                y: 0,
+                z: playerPosition.z
+            }, Date.now());
+
+            // Handle collected pickups
+            collectedPickups.forEach(pickup => {
+                const result = PickupSystem.collect(pickup, WeaponManager, THREE, MaterialsTheme, camera);
+                if (result) {
+                    if (result.switched) {
+                        // Update FPS weapon references after switch
+                        fpsWeapon = WeaponManager.fpsMesh;
+                        fpsHands = WeaponManager.fpsRefs?.hands;
+                        fpsBandL = WeaponManager.fpsRefs?.bandL;
+                        fpsBandR = WeaponManager.fpsRefs?.bandR;
+                        fpsPouch = WeaponManager.fpsRefs?.pouch;
+                        fpsStone = WeaponManager.fpsRefs?.stone;
+                        // Show pickup notification
+                        UISystem.showPickupNotification?.(pickup.config.name);
+                    } else if (result.ammoAdded > 0) {
+                        // Show ammo pickup notification
+                        UISystem.showPickupNotification?.(`+${result.ammoAdded} Ammo`);
+                    }
+                }
+            });
+
+            // Cleanup pickups behind player
+            PickupSystem.cleanupBehind(playerPosition.z);
 
             // Update crosshair and tension UI
             UISystem.updateCrosshairUI(crosshairX, crosshairY, aimResult.aimAssistActive);
@@ -1350,17 +963,10 @@
             // Spawn new objects (room-based)
             spawnObjects();
 
-            // Update projectiles
-            projectiles.forEach(proj => {
-                if (!proj.userData.active) return;
-                proj.position.add(proj.userData.velocity.clone().multiplyScalar(dt));
-
-                // Check if out of bounds (relative to camera position)
-                const distFromCamera = proj.position.distanceTo(camera.position);
-                if (distFromCamera > 150 ||
-                    proj.position.y < 0 || proj.position.y > 15) {
-                    proj.userData.active = false;
-                }
+            // Update projectiles using ProjectileSystem
+            ProjectileSystem.updateMeshArray(projectiles, {
+                dt: dt,
+                cameraPosition: camera.position
             });
 
             // Update enemies using EnemySystem
@@ -1381,14 +987,8 @@
                 onPlayerCollision: () => damagePlayer(OBSTACLE_COLLISION_DAMAGE)
             });
 
-            // Update particles
-            particles.forEach(particle => {
-                particle.userData.velocity.y -= 15 * dt;
-                particle.position.add(particle.userData.velocity.clone().multiplyScalar(dt));
-                particle.userData.life -= dt * 2;
-                particle.material.opacity = particle.userData.life;
-                particle.material.transparent = true;
-            });
+            // Update particles (using ParticleSystem)
+            ParticleSystem.updateAll(particles, dt, { gravity: 15, fadeRate: 2 });
 
             // Collision detection with improved accuracy (using CollisionSystem)
             CollisionSystem.processProjectileHits(projectiles, enemies, obstacles, {
@@ -1615,9 +1215,12 @@
 
         // Weapon domain
         window.Weapon = Weapon;
-        window.WeaponMesh = WeaponMesh;
-        window.WeaponVisual = WeaponMesh; // Alias for backward compatibility
-        window.WeaponSystem = WeaponSystem;
+        window.WeaponManager = WeaponManager;
+        window.Slingshot = Slingshot;
+        window.WaterGun = WaterGun;
+        window.NerfGun = NerfGun;
+        window.WeaponPickup = WeaponPickup;
+        window.PickupSystem = PickupSystem;
 
         // Projectile domain
         window.Projectile = Projectile;
@@ -1664,8 +1267,9 @@
         // Configure game loop callbacks
         LoopSystem.setUpdateCallback(update);
         LoopSystem.setRenderCallback((dt) => {
-            // Decay damage vignette (for CSS overlay)
+            // Decay and apply damage vignette to post-processing
             damageVignetteStrength *= 0.95;
+            PostProcessSystem.setDamageIntensity(damageVignetteStrength);
 
             // Render with post-processing
             if (composer) {
@@ -1694,7 +1298,7 @@
         EntitySystem.registerType('particle', { maxCount: 100, despawnDistance: 50 });
 
         // Initialize domain systems
-        WeaponSystem.init(Weapon);
+        // WeaponManager already initialized in initScene()
         EnemySystem.init(Enemy, scene);
 
         updateCursor();

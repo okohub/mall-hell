@@ -34,6 +34,49 @@ const RoomSystem = {
         this.currentRoom = null;
     },
 
+    /**
+     * Load rooms from Room.layout and MALL_THEMES
+     * @param {Object} themesData - MALL_THEMES or RoomTheme data
+     */
+    loadLayout(themesData) {
+        if (!this.roomData || !this.roomData.layout) return;
+
+        const ROOM_UNIT = this.roomData.structure.UNIT;
+        const layout = this.roomData.layout;
+
+        for (const key in layout) {
+            const parts = key.split('_');
+            const gridX = parseInt(parts[0]);
+            const gridZ = parseInt(parts[1]);
+            const roomDef = layout[key];
+
+            // Create room with themeData
+            const room = {
+                ...roomDef,
+                gridX,
+                gridZ,
+                worldX: gridX * ROOM_UNIT + ROOM_UNIT / 2,
+                worldZ: gridZ * ROOM_UNIT + ROOM_UNIT / 2,
+                themeData: themesData ? themesData[roomDef.theme] : null,
+                spawned: false,
+                visited: false
+            };
+
+            this.rooms[key] = room;
+        }
+    },
+
+    /**
+     * Get grid position from world position (helper for external use)
+     * @param {number} worldX - World X position
+     * @param {number} worldZ - World Z position
+     * @returns {Object} Grid position {x, z}
+     */
+    getGridFromWorld(worldX, worldZ) {
+        if (!this.roomData) return { x: 0, z: 0 };
+        return this.roomData.worldToGrid(worldX, worldZ);
+    },
+
     // ==========================================
     // ROOM MANAGEMENT
     // ==========================================
@@ -525,5 +568,23 @@ const RoomSystem = {
      */
     _getKey(gridX, gridZ) {
         return `${gridX}_${gridZ}`;
+    },
+
+    /**
+     * Update ambient lighting based on current room
+     * @param {Object} ambientLight - THREE.js AmbientLight
+     * @param {Object} playerPosition - Player position {x, z}
+     * @param {Object} gridSystem - Grid system with getRoomAtWorld
+     * @param {THREE} THREE - Three.js library
+     * @param {number} lerpSpeed - Color transition speed (default: 0.02)
+     */
+    updateAmbientLighting(ambientLight, playerPosition, gridSystem, THREE, lerpSpeed = 0.02) {
+        if (!ambientLight || !gridSystem) return;
+
+        const room = gridSystem.getRoomAtWorld(playerPosition.x, playerPosition.z);
+        if (room && room.themeData) {
+            const targetColor = new THREE.Color(room.themeData.ambientColor);
+            ambientLight.color.lerp(targetColor, lerpSpeed);
+        }
     }
 };

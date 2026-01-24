@@ -191,6 +191,98 @@ const ObstacleVisual = {
     },
 
     /**
+     * Create obstacle by type string (factory method for index.html)
+     * @param {THREE} THREE - Three.js library
+     * @param {string} type - Type string ('stack', 'barrel', 'display')
+     * @param {Object} options - Optional customization
+     * @returns {THREE.Group} Obstacle mesh group with userData
+     */
+    createByType(THREE, type, options = {}) {
+        const group = new THREE.Group();
+        const colors = options.colors || [0xe74c3c, 0x3498db, 0x2ecc71, 0xf1c40f, 0x9b59b6];
+
+        if (type === 'stack') {
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            // Pyramid of boxes
+            for (let row = 0; row < 3; row++) {
+                const boxesInRow = 3 - row;
+                for (let col = 0; col < boxesInRow; col++) {
+                    const boxGeo = new THREE.BoxGeometry(1, 0.8, 1);
+                    const boxMat = new THREE.MeshStandardMaterial({ color: color });
+                    const box = new THREE.Mesh(boxGeo, boxMat);
+                    box.position.set(
+                        (col - (boxesInRow - 1) / 2) * 1.1,
+                        0.4 + row * 0.85,
+                        0
+                    );
+                    box.castShadow = true;
+                    group.add(box);
+                }
+            }
+            group.userData.width = 3;
+            group.userData.height = 3;
+        } else if (type === 'barrel') {
+            const barrelGeo = new THREE.CylinderGeometry(0.6, 0.6, 1.5, 16);
+            const barrelMat = new THREE.MeshStandardMaterial({ color: 0x2980b9 });
+            const barrel = new THREE.Mesh(barrelGeo, barrelMat);
+            barrel.position.y = 0.75;
+            barrel.castShadow = true;
+            group.add(barrel);
+
+            // Bands
+            const bandGeo = new THREE.TorusGeometry(0.62, 0.05, 8, 32);
+            const bandMat = new THREE.MeshStandardMaterial({ color: 0x1a5276 });
+            [-0.4, 0.4].forEach(y => {
+                const band = new THREE.Mesh(bandGeo, bandMat);
+                band.rotation.x = Math.PI / 2;
+                band.position.y = 0.75 + y;
+                group.add(band);
+            });
+
+            group.userData.width = 1.5;
+            group.userData.height = 2;
+        } else if (type === 'display') {
+            // Promotional display stand
+            const standGeo = new THREE.BoxGeometry(2, 3, 1.5);
+            const standMat = new THREE.MeshStandardMaterial({ color: 0xf39c12 });
+            const stand = new THREE.Mesh(standGeo, standMat);
+            stand.position.y = 1.5;
+            stand.castShadow = true;
+            group.add(stand);
+
+            // Sale sign
+            const signGeo = new THREE.BoxGeometry(1.8, 0.8, 0.1);
+            const signCanvas = document.createElement('canvas');
+            signCanvas.width = 256;
+            signCanvas.height = 128;
+            const ctx = signCanvas.getContext('2d');
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(0, 0, 256, 128);
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('SALE!', 128, 80);
+            const signTex = new THREE.CanvasTexture(signCanvas);
+            const signMat = new THREE.MeshStandardMaterial({ map: signTex });
+            const sign = new THREE.Mesh(signGeo, signMat);
+            sign.position.set(0, 3.5, 0);
+            group.add(sign);
+
+            group.userData.width = 2.5;
+            group.userData.height = 4;
+        }
+
+        // Set common userData for all obstacle types
+        group.userData.type = type;
+        group.userData.active = true;
+        group.userData.hit = false;
+        group.userData.fallAngle = 0;
+        group.userData.fallSpeed = 0;
+
+        return group;
+    },
+
+    /**
      * Create hit effect (scatter boxes for stack)
      * @param {THREE} THREE - Three.js library
      * @param {THREE.Group} mesh - Obstacle mesh
