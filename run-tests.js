@@ -615,7 +615,7 @@ async function runAllTests() {
 
     saveResults({ unitResults, uiResults, totalPassed, totalFailed });
 
-    if (totalFailed > 0) process.exit(1);
+    process.exit(totalFailed > 0 ? 1 : 0);
 }
 
 async function runUnitTestsOnly() {
@@ -649,7 +649,7 @@ async function runUnitTestsOnly() {
 
     saveResults({ unitResults, totalPassed: unitResults.passed, totalFailed: unitResults.failed });
 
-    if (unitResults.failed > 0) process.exit(1);
+    process.exit(unitResults.failed > 0 ? 1 : 0);
 }
 
 async function runUITestsOnly() {
@@ -683,7 +683,7 @@ async function runUITestsOnly() {
 
     saveResults({ uiResults, totalPassed: uiResults.passed, totalFailed: uiResults.failed });
 
-    if (uiResults.failed > 0) process.exit(1);
+    process.exit(uiResults.failed > 0 ? 1 : 0);
 }
 
 function saveResults(data) {

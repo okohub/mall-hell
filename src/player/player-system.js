@@ -210,8 +210,9 @@ const PlayerSystem = {
      * @param {Object} keys - Input state {forward, backward, turnLeft, turnRight}
      * @param {number} dt - Delta time in seconds
      * @param {Function} collisionCheck - Function(newX, newZ, oldX, oldZ) returning collision result
+     * @param {Function} onCollision - Optional callback when collision occurs (position, direction, intensity)
      */
-    updateMovement(keys, dt, collisionCheck) {
+    updateMovement(keys, dt, collisionCheck, onCollision) {
         // Update turning
         this.updateTurning(keys.turnLeft, keys.turnRight, dt);
 
@@ -225,6 +226,25 @@ const PlayerSystem = {
         const collision = collisionCheck ?
             collisionCheck(newPos.x, newPos.z, this.position.x, this.position.z) :
             { blocked: false, blockedX: false, blockedZ: false };
+
+        // Trigger collision callback if blocked (for spark effects)
+        if (collision.blocked && this.speed > 2 && onCollision) {
+            const config = this.getMovementConfig();
+            const velocity = this.getVelocity();
+            const intensity = Math.min(1, this.speed / config.MAX_SPEED);
+
+            // Calculate collision point (at the edge of player in direction of movement)
+            const collisionPos = {
+                x: this.position.x + (collision.blockedX ? Math.sign(velocity.x) * 1.2 : 0),
+                y: 1.5, // Cart height
+                z: this.position.z + (collision.blockedZ ? Math.sign(velocity.z) * 1.2 : 0)
+            };
+            const collisionDir = {
+                x: collision.blockedX ? -Math.sign(velocity.x) : 0,
+                z: collision.blockedZ ? -Math.sign(velocity.z) : 0
+            };
+            onCollision(collisionPos, collisionDir, intensity);
+        }
 
         // Apply movement
         this.applyMovement(newPos, collision);
@@ -428,10 +448,10 @@ const PlayerSystem = {
      * @returns {Object} Updated state for syncing with local variables
      */
     fullUpdate(options) {
-        const { keys, dt, collisionCheck, cart, camera } = options;
+        const { keys, dt, collisionCheck, onCollision, cart, camera } = options;
 
         // Update movement
-        this.updateMovement(keys, dt, collisionCheck);
+        this.updateMovement(keys, dt, collisionCheck, onCollision);
 
         // Update cart mesh
         if (cart) {

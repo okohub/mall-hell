@@ -480,6 +480,15 @@
                     shelves,
                     playerRadius: Player.visual.COLLISION_RADIUS
                 }),
+                onCollision: (pos, dir, intensity) => {
+                    // Spawn sparks on environment collision
+                    const sparkCount = Math.ceil(3 + intensity * 5);
+                    ParticleSystem.spawn(THREE, pos, 0xffaa00, sparkCount, particles, scene, {
+                        velocitySpread: 5,
+                        upwardVelocity: { min: 1, max: 4 },
+                        life: 0.3 + intensity * 0.2
+                    });
+                },
                 cart: playerCart,
                 camera
             });
