@@ -19,6 +19,7 @@ const Slingshot = {
     config: {
         fireMode: 'charge',  // Hold to charge, release to fire
         cooldown: 300,       // ms between shots
+        range: 120,          // Targeting range in units (enemies spawn at 150)
         aimAssist: true,
 
         ammo: {

@@ -47,7 +47,8 @@ const InputSystem = {
                 'KeyD': 'turnRight',
                 'ArrowRight': 'turnRight',
                 'Space': 'fire',
-                'Escape': 'pause'
+                'Escape': 'pause',
+                'KeyP': 'freeze'
             };
 
         this.bindings = { ...defaults, ...(customBindings || {}) };

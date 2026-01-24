@@ -332,7 +332,7 @@ UISystem.showGameOver(score, UI.getScoreRating(score), died);
 ## Overview
 
 **Title:** Mall Hell
-**Version:** 4.0
+**Version:** 4.1
 **Platform:** Desktop Browser
 **Tech Stack:** HTML5, CSS3, JavaScript, Three.js (r128)
 **Delivery:** Single `index.html` file with domain modules in `src/`
@@ -376,11 +376,13 @@ GAME_OVER → PLAYING (Play Again button)
 
 | Input | Action |
 |-------|--------|
-| Arrow Keys | Aim crosshair |
-| A / D | Dodge cart left/right |
+| W / S | Drive forward/backward |
+| A / D | Dodge cart left/right (also used for aiming) |
 | SPACE (hold) | Charge slingshot |
 | SPACE (release) | Fire projectile |
 | ESC | Pause/Resume game |
+
+**Note:** The crosshair is fixed at screen center (slightly above). Aim by dodging left/right with A/D keys - projectile collision handles hits.
 
 ## Core Mechanics
 
@@ -411,7 +413,9 @@ GAME_OVER → PLAYING (Play Again button)
 - Charge rate: 1.2 per second
 - Projectile speed: 60-180 units/second (based on tension)
 - Shooting cooldown: 300ms
-- Aim-assist locks onto nearby targets
+- **Fixed crosshair aiming**: Crosshair fixed at screen center (slightly above)
+  - Player aims by dodging left/right with A/D keys
+  - Projectile collision detection handles hits
 - Projectiles despawn when out of bounds
 - Visual: Orange glowing sphere
 
@@ -473,7 +477,7 @@ All obstacles fall/topple when hit.
 - **Progress Bar** (top-center): Distance to checkout
 - **Ammo Status** (bottom-right): "SLINGSHOT READY" / "RELOADING..."
 - **Tension Indicator** (around crosshair): Ring showing charge level
-- **Crosshair** (center): White cross with red dot, turns green on aim-assist lock
+- **Crosshair** (center): Fixed position crosshair, slightly above center
 - **Health Bar** (bottom-left): Current player health
 - **Pause Hint** (top-right): "ESC to Pause"
 
@@ -545,9 +549,9 @@ Objects are removed when:
 ### Technical Implementation
 - All 3D models are procedurally generated using Three.js primitives
 - Canvas textures used for signs and floor tiles
-- Keyboard-based crosshair aiming (arrow keys)
+- Fixed crosshair aiming (player aims by dodging left/right)
 - Tension-based shooting with visual feedback
-- Aim-assist with target proximity detection
+- Projectile collision detection for hit registration
 - requestAnimationFrame for game loop
 - Delta time used for frame-rate independent movement
 - Objects stored in arrays, filtered each frame for cleanup

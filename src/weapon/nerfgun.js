@@ -19,6 +19,7 @@ const NerfGun = {
     config: {
         fireMode: 'single',  // Tap to fire
         cooldown: 400,       // Slightly slower than slingshot
+        range: 140,          // Longest range for nerf blaster (enemies spawn at 150)
         aimAssist: true,
 
         ammo: {

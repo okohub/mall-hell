@@ -48,64 +48,69 @@ canvas { display: block; }
 }
 
 /* ============================================
-   Crosshair
+   Crosshair - Circle with plus in center
    ============================================ */
 #crosshair {
     position: absolute;
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
     pointer-events: none;
     transform: translate(-50%, -50%);
 }
 
-#crosshair::before, #crosshair::after {
-    content: '';
-    position: absolute;
-    background: rgba(255, 255, 255, 0.9);
-    box-shadow: 0 0 10px rgba(233, 69, 96, 0.8);
-}
-
-#crosshair::before {
-    top: 50%;
-    left: 0;
-    right: 0;
-    height: 2px;
-    transform: translateY(-50%);
-}
-
-#crosshair::after {
-    left: 50%;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    transform: translateX(-50%);
-}
-
-#crosshair-dot {
+/* Circle outline */
+#crosshair-circle {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 6px;
-    height: 6px;
-    background: #e94560;
+    width: 32px;
+    height: 32px;
+    border: 2px solid rgba(255, 255, 255, 0.9);
     border-radius: 50%;
-    box-shadow: 0 0 10px #e94560;
-    transition: all 0.15s ease;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.5), 0 0 4px rgba(255, 255, 255, 0.3);
 }
 
-/* Aim-assist locked on */
-#crosshair.aim-assist-active::before,
-#crosshair.aim-assist-active::after {
+/* Plus sign - horizontal line */
+#crosshair::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 14px;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.9);
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Plus sign - vertical line */
+#crosshair::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 2px;
+    height: 14px;
+    background: rgba(255, 255, 255, 0.9);
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Center dot - hidden */
+#crosshair-dot {
+    display: none;
+}
+
+/* Target locked state - not used anymore but keep for compatibility */
+#crosshair.target-locked #crosshair-circle {
+    border-color: rgba(0, 255, 136, 0.9);
+    box-shadow: 0 0 12px rgba(0, 255, 136, 0.6);
+}
+
+#crosshair.target-locked::before,
+#crosshair.target-locked::after {
     background: rgba(0, 255, 136, 0.95);
-    box-shadow: 0 0 15px rgba(0, 255, 136, 0.9);
-}
-
-#crosshair.aim-assist-active #crosshair-dot {
-    background: #00ff88;
-    box-shadow: 0 0 15px #00ff88, 0 0 30px #00ff88;
-    width: 8px;
-    height: 8px;
 }
 
 /* ============================================

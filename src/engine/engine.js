@@ -35,7 +35,8 @@ const Engine = {
         TURN_LEFT: 'turnLeft',
         TURN_RIGHT: 'turnRight',
         FIRE: 'fire',
-        PAUSE: 'pause'
+        PAUSE: 'pause',
+        FREEZE: 'freeze'
     },
 
     // Default key bindings (key code -> action)
@@ -49,7 +50,8 @@ const Engine = {
         'KeyD': 'turnRight',
         'ArrowRight': 'turnRight',
         'Space': 'fire',
-        'Escape': 'pause'
+        'Escape': 'pause',
+        'KeyP': 'freeze'
     },
 
     // ==========================================
@@ -106,8 +108,8 @@ const Engine = {
             defaultObstacleWidth: 2,
 
             // Line of sight
-            losRayStepSize: 2,               // Step size for ray march LOS check
-            losDoorTolerance: 1              // Extra width tolerance for door checks
+            losRayStepSize: 1,               // Step size for ray march LOS check (smaller = more accurate)
+            losDoorTolerance: 3              // Extra width tolerance for door checks
         },
 
         // Spawn limits

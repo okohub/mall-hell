@@ -603,7 +603,10 @@ const EnemySystem = {
             this.updateBehavior(enemy, playerPosition, dt, baseSpeed, { collisionCheck, hasLineOfSight });
 
             // Environment collision (obstacles, other enemies, shelves)
-            this._resolveEnvironmentCollisions(enemy, enemies, obstacles, shelves);
+            // Run multiple passes to handle nested overlaps
+            for (let i = 0; i < 3; i++) {
+                this._resolveEnvironmentCollisions(enemy, enemies, obstacles, shelves);
+            }
 
             // Calculate distance to player
             const dx = playerPosition.x - enemy.position.x;

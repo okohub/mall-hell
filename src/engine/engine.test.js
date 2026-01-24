@@ -46,6 +46,7 @@
             test.assertEqual(Engine.getActionForKey('KeyD'), 'turnRight');
             test.assertEqual(Engine.getActionForKey('Space'), 'fire');
             test.assertEqual(Engine.getActionForKey('Escape'), 'pause');
+            test.assertEqual(Engine.getActionForKey('KeyP'), 'freeze');
         });
 
         test.it('should have all actions defined', () => {
@@ -56,6 +57,7 @@
             test.assertEqual(actions.includes('turnRight'), true);
             test.assertEqual(actions.includes('fire'), true);
             test.assertEqual(actions.includes('pause'), true);
+            test.assertEqual(actions.includes('freeze'), true);
         });
     });
 
@@ -257,6 +259,202 @@
     });
 
     // ==========================================
+    // LINE-OF-SIGHT TESTS
+    // ==========================================
+
+    test.describe('Engine: Line-of-Sight', () => {
+        test.it('lineAABB2D - should detect line intersecting AABB', () => {
+            const lineStart = { x: 0, z: 0 };
+            const lineEnd = { x: 10, z: 0 };
+            const box = { minX: 4, maxX: 6, minZ: -2, maxZ: 2 };
+
+            test.assertTrue(CollisionSystem.lineAABB2D(lineStart, lineEnd, box), 'Line should intersect box');
+        });
+
+        test.it('lineAABB2D - should not detect when line misses AABB', () => {
+            const lineStart = { x: 0, z: 0 };
+            const lineEnd = { x: 10, z: 0 };
+            const box = { minX: 4, maxX: 6, minZ: 5, maxZ: 10 };
+
+            test.assertFalse(CollisionSystem.lineAABB2D(lineStart, lineEnd, box), 'Line should miss box');
+        });
+
+        test.it('lineAABB2D - should handle diagonal lines', () => {
+            const lineStart = { x: 0, z: 0 };
+            const lineEnd = { x: 10, z: 10 };
+            const box = { minX: 4, maxX: 6, minZ: 4, maxZ: 6 };
+
+            test.assertTrue(CollisionSystem.lineAABB2D(lineStart, lineEnd, box), 'Diagonal should intersect');
+        });
+
+        test.it('lineAABB2D - should handle line starting inside AABB', () => {
+            const lineStart = { x: 5, z: 0 };
+            const lineEnd = { x: 10, z: 0 };
+            const box = { minX: 4, maxX: 6, minZ: -2, maxZ: 2 };
+
+            test.assertTrue(CollisionSystem.lineAABB2D(lineStart, lineEnd, box), 'Line starting inside should intersect');
+        });
+
+        test.it('lineAABB2D - should handle parallel line not intersecting', () => {
+            const lineStart = { x: 0, z: 10 };
+            const lineEnd = { x: 10, z: 10 };
+            const box = { minX: 4, maxX: 6, minZ: 0, maxZ: 5 };
+
+            test.assertFalse(CollisionSystem.lineAABB2D(lineStart, lineEnd, box), 'Parallel line should not intersect');
+        });
+
+        test.it('hasLineOfSightWithPhysicals - should pass with no obstacles', () => {
+            const mockGrid = {
+                getRoomAtWorld: () => ({
+                    gridX: 0, gridZ: 0,
+                    doors: ['north', 'south', 'east', 'west']
+                })
+            };
+            const mockRoomConfig = { UNIT: 30, DOOR_WIDTH: 6 };
+
+            const result = CollisionSystem.hasLineOfSightWithPhysicals(0, 0, 10, 10, {
+                gridSystem: mockGrid,
+                roomConfig: mockRoomConfig,
+                obstacles: [],
+                shelves: [],
+                playerRadius: 1.2
+            });
+            test.assertTrue(result, 'Should have LOS with no obstacles');
+        });
+
+        test.it('hasLineOfSightWithPhysicals - should be blocked by obstacle in path', () => {
+            const mockGrid = {
+                getRoomAtWorld: () => ({
+                    gridX: 0, gridZ: 0,
+                    doors: ['north', 'south', 'east', 'west']
+                })
+            };
+            const mockRoomConfig = { UNIT: 30, DOOR_WIDTH: 6 };
+
+            const obstacles = [{
+                position: { x: 5, z: 5 },
+                userData: { active: true, hit: false, collisionRadius: 2 }
+            }];
+
+            const result = CollisionSystem.hasLineOfSightWithPhysicals(0, 0, 10, 10, {
+                gridSystem: mockGrid,
+                roomConfig: mockRoomConfig,
+                obstacles,
+                shelves: [],
+                playerRadius: 1.2
+            });
+            test.assertFalse(result, 'Should be blocked by obstacle in path');
+        });
+
+        test.it('hasLineOfSightWithPhysicals - should not be blocked by obstacle off to side', () => {
+            const mockGrid = {
+                getRoomAtWorld: () => ({
+                    gridX: 0, gridZ: 0,
+                    doors: ['north', 'south', 'east', 'west']
+                })
+            };
+            const mockRoomConfig = { UNIT: 30, DOOR_WIDTH: 6 };
+
+            const obstacles = [{
+                position: { x: 20, z: 5 },
+                userData: { active: true, hit: false, collisionRadius: 2 }
+            }];
+
+            const result = CollisionSystem.hasLineOfSightWithPhysicals(0, 0, 10, 10, {
+                gridSystem: mockGrid,
+                roomConfig: mockRoomConfig,
+                obstacles,
+                shelves: [],
+                playerRadius: 1.2
+            });
+            test.assertTrue(result, 'Should not be blocked by distant obstacle');
+        });
+
+        test.it('hasLineOfSightWithPhysicals - should be blocked by shelf in path', () => {
+            const mockGrid = {
+                getRoomAtWorld: () => ({
+                    gridX: 0, gridZ: 0,
+                    doors: ['north', 'south', 'east', 'west']
+                })
+            };
+            const mockRoomConfig = { UNIT: 30, DOOR_WIDTH: 6 };
+
+            const shelves = [{
+                position: { x: 5, z: 0 },
+                userData: { width: 4, depth: 2 }
+            }];
+
+            const result = CollisionSystem.hasLineOfSightWithPhysicals(0, 0, 10, 0, {
+                gridSystem: mockGrid,
+                roomConfig: mockRoomConfig,
+                obstacles: [],
+                shelves,
+                playerRadius: 1.2
+            });
+            test.assertFalse(result, 'Should be blocked by shelf in path');
+        });
+
+        test.it('hasLineOfSightWithPhysicals - should ignore inactive obstacles', () => {
+            const mockGrid = {
+                getRoomAtWorld: () => ({
+                    gridX: 0, gridZ: 0,
+                    doors: ['north', 'south', 'east', 'west']
+                })
+            };
+            const mockRoomConfig = { UNIT: 30, DOOR_WIDTH: 6 };
+
+            const obstacles = [{
+                position: { x: 5, z: 5 },
+                userData: { active: false, hit: false, collisionRadius: 2 }
+            }];
+
+            const result = CollisionSystem.hasLineOfSightWithPhysicals(0, 0, 10, 10, {
+                gridSystem: mockGrid,
+                roomConfig: mockRoomConfig,
+                obstacles,
+                shelves: [],
+                playerRadius: 1.2
+            });
+            test.assertTrue(result, 'Should ignore inactive obstacle');
+        });
+
+        test.it('hasLineOfSightWithPhysicals - should ignore hit obstacles', () => {
+            const mockGrid = {
+                getRoomAtWorld: () => ({
+                    gridX: 0, gridZ: 0,
+                    doors: ['north', 'south', 'east', 'west']
+                })
+            };
+            const mockRoomConfig = { UNIT: 30, DOOR_WIDTH: 6 };
+
+            const obstacles = [{
+                position: { x: 5, z: 5 },
+                userData: { active: true, hit: true, collisionRadius: 2 }
+            }];
+
+            const result = CollisionSystem.hasLineOfSightWithPhysicals(0, 0, 10, 10, {
+                gridSystem: mockGrid,
+                roomConfig: mockRoomConfig,
+                obstacles,
+                shelves: [],
+                playerRadius: 1.2
+            });
+            test.assertTrue(result, 'Should ignore hit obstacle');
+        });
+
+        test.it('hasLineOfSightWithPhysicals - should handle null options gracefully', () => {
+            const result = CollisionSystem.hasLineOfSightWithPhysicals(0, 0, 10, 10, {
+                gridSystem: null,
+                roomConfig: null,
+                obstacles: null,
+                shelves: null,
+                playerRadius: 1.2
+            });
+            test.assertTrue(result, 'Should pass with null options');
+        });
+    });
+
+    // ==========================================
     // INPUT TESTS
     // ==========================================
 
@@ -273,6 +471,7 @@
         test.it('should initialize with default bindings', () => {
             test.assertEqual(InputSystem.getBinding('KeyW'), 'forward');
             test.assertEqual(InputSystem.getBinding('Space'), 'fire');
+            test.assertEqual(InputSystem.getBinding('KeyP'), 'freeze');
         });
 
         test.it('should track key states', () => {

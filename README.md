@@ -16,8 +16,7 @@ A fast, chaotic first-person browser game where you're a mischievous kid in a sh
 
 | Input | Action |
 |-------|--------|
-| **A / D** | Dodge left/right |
-| **Arrow Keys** | Aim crosshair |
+| **A / D** | Dodge left/right (also aim) |
 | **SPACE (hold)** | Charge slingshot |
 | **SPACE (release)** | Fire projectile |
 | **ESC** | Pause |
@@ -28,7 +27,7 @@ The slingshot uses a **tension system** - hold SPACE to charge up power:
 - Quick tap = weak shot (minimum speed)
 - Hold longer = more power (maximum speed)
 - Visual indicator shows charge level around crosshair
-- Aim-assist helps lock onto nearby targets
+- **Fixed crosshair** - aim by dodging left/right with A/D keys
 
 ## Scoring
 
@@ -53,7 +52,7 @@ The slingshot uses a **tension system** - hold SPACE to charge up power:
 
 - First-person view with visible slingshot weapon
 - Tension-based shooting mechanic (hold to charge)
-- Aim-assist that locks onto nearby targets
+- Fixed crosshair aiming - dodge to aim, projectiles handle hit detection
 - Acceleration-based dodge with cart leaning
 - Player health system with damage and invulnerability
 - Procedurally generated 3D supermarket environment
@@ -118,6 +117,7 @@ mall-hell/
 
 ## Version History
 
+- **v4.1** - Fixed crosshair aiming (removed auto-aim), simplified controls, improved shooting experience
 - **v4.0** - Smart enemy AI (home-return behavior), config-driven architecture, improved collision system
 - **v3.3** - Skeleton enemy with creepy backwards-facing joker skull, fixed movement AI
 - **v3.2** - Domain-driven architecture, separated test commands

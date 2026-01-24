@@ -309,6 +309,15 @@ const WeaponManager = {
     },
 
     /**
+     * Get targeting range for current weapon
+     * @returns {number} Range in units
+     */
+    getRange() {
+        if (!this.currentWeapon?.config) return 50;
+        return this.currentWeapon.config.range || 50;
+    },
+
+    /**
      * Check if currently charging
      * @returns {boolean}
      */
@@ -456,7 +465,6 @@ const WeaponManager = {
      */
     setLock(target) {
         this.lockedTarget = target;
-        this.aimAssistActive = target !== null;
     },
 
     /**
@@ -464,7 +472,6 @@ const WeaponManager = {
      */
     clearLock() {
         this.lockedTarget = null;
-        this.aimAssistActive = false;
     },
 
     /**
@@ -476,11 +483,11 @@ const WeaponManager = {
     },
 
     /**
-     * Check if aim assist is active
+     * Check if aim assist is active (always true - auto-aim is always on)
      * @returns {boolean}
      */
     isAimAssistActive() {
-        return this.aimAssistActive;
+        return true;
     },
 
     /**
@@ -529,21 +536,36 @@ const WeaponManager = {
     },
 
     /**
-     * Check if a target is valid
+     * Check if a target is valid for auto-aim (obstacles only - enemies have inline checks)
+     * @param {Object} obj - Target object
+     * @param {Object} camera - Camera for projection
+     * @param {Object} playerPosition - Player position {x, z}
+     * @param {Object} options - LOS check options
+     * @returns {boolean}
      */
-    isTargetValid(obj, camera, playerPosition, collisionSystem, gridSystem, roomConfig) {
+    isTargetValid(obj, camera, playerPosition, options = {}) {
+        const { collisionSystem, gridSystem, roomConfig } = options;
+
+        // Basic validity checks
         if (!obj || !obj.userData?.active) return false;
         if (obj.userData.hit) return false;
 
-        const pos = obj.position.clone();
-        pos.project(camera);
-        if (pos.z >= 1 || pos.z <= 0) return false;
-
+        // Check if target is in front of camera (not behind)
         const zDist = camera.position.z - obj.position.z;
-        if (zDist < -10) return false;
+        if (zDist < -5) return false;
 
+        // Calculate 2D distance
+        const maxRange = this.getAimProfileConfig()?.maxRange || 100;
+        const dist2D = CollisionSystem.distance2D(playerPosition, obj.position);
+        if (dist2D > maxRange) return false;
+
+        // Wall LOS check only
         if (collisionSystem && gridSystem && roomConfig) {
-            if (!collisionSystem.hasLineOfSight(playerPosition.x, playerPosition.z, obj.position.x, obj.position.z, gridSystem, roomConfig)) {
+            if (!collisionSystem.hasLineOfSight(
+                playerPosition.x, playerPosition.z,
+                obj.position.x, obj.position.z,
+                gridSystem, roomConfig
+            )) {
                 return false;
             }
         }
@@ -555,6 +577,9 @@ const WeaponManager = {
      * Get screen position of a target
      */
     getTargetScreenPos(obj, camera, yOffset = 0) {
+        // Ensure camera matrices are up-to-date
+        camera.updateMatrixWorld();
+
         const pos = obj.position.clone();
         pos.y += yOffset;
         pos.project(camera);
@@ -565,70 +590,24 @@ const WeaponManager = {
     },
 
     /**
-     * Update aim assist
+     * Update crosshair position - fixed center, no auto-aim
+     * Player aims by moving left/right to face enemies
+     * Projectile collision handles hit detection
      */
     updateAim(options) {
-        const { camera, playerPosition, enemies, obstacles, collisionSystem, gridSystem, roomConfig, boundsMargin = 50 } = options;
-
-        const aimConfig = this.getAimProfileConfig();
-        let crosshairX = this.crosshairX;
-        let crosshairY = this.crosshairY;
-
-        if (this.isAimingEnabled() && this.getAimAssistEnabled()) {
-            if (this.lockedTarget && aimConfig?.stickyTargeting &&
-                this.isTargetValid(this.lockedTarget, camera, playerPosition, collisionSystem, gridSystem, roomConfig)) {
-                this.aimAssistActive = true;
-                const yOffset = this.lockedTarget.userData.height ? this.lockedTarget.userData.height * 0.4 : 1.5;
-                const screenPos = this.getTargetScreenPos(this.lockedTarget, camera, yOffset);
-                crosshairX = screenPos.x;
-                crosshairY = screenPos.y;
-            } else {
-                this.clearLock();
-                let bestTarget = null;
-                let bestScore = -Infinity;
-
-                if (enemies) {
-                    enemies.forEach(enemy => {
-                        if (!this.isTargetValid(enemy, camera, playerPosition, collisionSystem, gridSystem, roomConfig)) return;
-                        const score = this.scoreEnemy(enemy, camera.position, playerPosition);
-                        if (score > bestScore) {
-                            bestScore = score;
-                            bestTarget = enemy;
-                        }
-                    });
-                }
-
-                if (obstacles) {
-                    obstacles.forEach(obs => {
-                        if (!this.isTargetValid(obs, camera, playerPosition, collisionSystem, gridSystem, roomConfig)) return;
-                        const score = this.scoreObstacle(obs, camera.position, playerPosition);
-                        if (score > bestScore) {
-                            bestScore = score;
-                            bestTarget = obs;
-                        }
-                    });
-                }
-
-                if (bestTarget) {
-                    this.setLock(bestTarget);
-                    const yOffset = bestTarget.userData.height ? bestTarget.userData.height * 0.4 : 1.5;
-                    const screenPos = this.getTargetScreenPos(bestTarget, camera, yOffset);
-                    crosshairX = screenPos.x;
-                    crosshairY = screenPos.y;
-                }
-            }
-        }
-
-        crosshairX = Math.max(boundsMargin, Math.min(window.innerWidth - boundsMargin, crosshairX));
-        crosshairY = Math.max(boundsMargin, Math.min(window.innerHeight - boundsMargin, crosshairY));
+        // Fixed crosshair: center horizontally, slightly above center vertically
+        // (player is in a cart looking forward, so aim slightly up)
+        const crosshairX = window.innerWidth / 2;
+        const crosshairY = window.innerHeight * 0.42;
 
         this.crosshairX = crosshairX;
         this.crosshairY = crosshairY;
+        this.lockedTarget = null;
 
         return {
             crosshairX,
             crosshairY,
-            aimAssistActive: this.aimAssistActive
+            hasTarget: false
         };
     },
 

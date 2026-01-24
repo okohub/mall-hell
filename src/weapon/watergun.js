@@ -19,6 +19,7 @@ const WaterGun = {
     config: {
         fireMode: 'auto',    // Hold to continuously fire
         cooldown: 50,        // 20 shots per second
+        range: 80,           // Shorter range for water gun (enemies spawn at 150)
         aimAssist: true,
 
         ammo: {

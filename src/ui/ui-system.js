@@ -331,18 +331,18 @@ const UISystem = {
     // ==========================================
 
     /**
-     * Update crosshair position and aim-assist visual
+     * Update crosshair position and target lock visual
      * @param {number} x - Screen X position
      * @param {number} y - Screen Y position
-     * @param {boolean} aimAssistActive - Whether aim assist is locked on target
+     * @param {boolean} hasTarget - Whether there's a locked target
      */
-    updateCrosshairUI(x, y, aimAssistActive) {
+    updateCrosshairUI(x, y, hasTarget) {
         const crosshairEl = document.getElementById('crosshair');
         if (crosshairEl) {
-            if (aimAssistActive) {
-                crosshairEl.classList.add('aim-assist-active');
+            if (hasTarget) {
+                crosshairEl.classList.add('target-locked');
             } else {
-                crosshairEl.classList.remove('aim-assist-active');
+                crosshairEl.classList.remove('target-locked');
             }
             crosshairEl.style.left = x + 'px';
             crosshairEl.style.top = y + 'px';

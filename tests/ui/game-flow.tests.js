@@ -434,4 +434,98 @@
         }
     );
 
+    // Freeze Tests
+    runner.addTest('freeze-p-key', 'Freeze', 'P key freezes game without menu',
+        'Verifies pressing P during gameplay freezes game without showing pause menu',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+            const startBtn = runner.getElement('#start-btn');
+            runner.simulateClick(startBtn);
+            await runner.wait(300);
+
+            // Get initial timer
+            const initialTimer = runner.gameWindow.__gameInternals?.getGameTimer?.() || runner.gameWindow.gameTimer || 180;
+
+            // Press P to freeze
+            runner.simulateKeyDown('KeyP');
+            await runner.wait(100);
+
+            // Wait a bit to see if timer stops
+            await runner.wait(500);
+
+            const afterFreezeTimer = runner.gameWindow.__gameInternals?.getGameTimer?.() || runner.gameWindow.gameTimer || 180;
+
+            // Timer should NOT have decreased much (frozen)
+            const timerDiff = initialTimer - afterFreezeTimer;
+            if (timerDiff > 0.2) {
+                throw new Error(`Timer decreased by ${timerDiff}s while frozen - should be stopped`);
+            }
+
+            // Pause menu should NOT be visible
+            const pauseScreen = runner.getElement('#pause-screen');
+            if (runner.isVisible(pauseScreen)) {
+                throw new Error('Pause menu should not show during freeze');
+            }
+
+            // Game state should still be PLAYING (not PAUSED)
+            if (runner.getGameState() !== 'PLAYING') {
+                throw new Error(`Expected PLAYING state during freeze, got ${runner.getGameState()}`);
+            }
+        }
+    );
+
+    runner.addTest('freeze-toggle-unfreeze', 'Freeze', 'P key toggles freeze off',
+        'Verifies pressing P again unfreezes the game',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+            const startBtn = runner.getElement('#start-btn');
+            runner.simulateClick(startBtn);
+            await runner.wait(300);
+
+            // Freeze
+            runner.simulateKeyDown('KeyP');
+            await runner.wait(100);
+
+            // Unfreeze
+            runner.simulateKeyDown('KeyP');
+            await runner.wait(100);
+
+            // Get timer and wait
+            const beforeTimer = runner.gameWindow.__gameInternals?.getGameTimer?.() || runner.gameWindow.gameTimer || 180;
+            await runner.wait(600);
+            const afterTimer = runner.gameWindow.__gameInternals?.getGameTimer?.() || runner.gameWindow.gameTimer || 180;
+
+            // Timer should have decreased (game running)
+            const timerDiff = beforeTimer - afterTimer;
+            if (timerDiff < 0.3) {
+                throw new Error(`Timer only decreased by ${timerDiff}s after unfreeze - should be running`);
+            }
+        }
+    );
+
+    runner.addTest('freeze-not-in-menu', 'Freeze', 'P key does nothing in menu',
+        'Verifies pressing P in menu state has no effect',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+
+            // Press P in menu
+            runner.simulateKeyDown('KeyP');
+            await runner.wait(100);
+
+            // Should still be in MENU state
+            if (runner.getGameState() !== 'MENU') {
+                throw new Error(`Expected MENU state, got ${runner.getGameState()}`);
+            }
+
+            // Menu should still be visible
+            const menuScreen = runner.getElement('#menu-screen');
+            if (!runner.isVisible(menuScreen)) {
+                throw new Error('Menu screen should still be visible');
+            }
+        }
+    );
+
 })(window.runner);

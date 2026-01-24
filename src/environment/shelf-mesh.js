@@ -76,6 +76,11 @@ const ShelfVisual = {
             this.addProductsToShelf(THREE, group, shelf, template.productsPerShelf, productColors, shelfY);
         }
 
+        // Set collision data
+        group.userData.width = size.w;
+        group.userData.depth = size.d;
+        group.userData.height = size.h;
+
         return group;
     },
 
@@ -119,6 +124,11 @@ const ShelfVisual = {
                 group.add(product);
             }
         }
+
+        // Set collision data
+        group.userData.width = size.w;
+        group.userData.depth = size.d;
+        group.userData.height = size.h;
 
         return group;
     },

@@ -27,7 +27,7 @@ const Player = {
         CAMERA_ROLL_FACTOR: 0.1,
         CAMERA_HEIGHT: 2.2,
         CAMERA_ROTATION_X: -0.12,  // Base camera pitch (slight downward tilt)
-        COLLISION_RADIUS: 1.2,     // Player collision radius for wall detection
+        COLLISION_RADIUS: 2.0,     // Player collision radius for wall detection (larger to prevent camera clipping)
         WALL_BUMP_DECAY: 0.85,     // Wall bump effect decay per frame
         CAMERA_BUMP_OFFSET: 0.3,   // Camera bump X/Z offset scale
         CAMERA_BUMP_SHAKE: 0.1,    // Camera bump shake scale

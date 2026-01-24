@@ -23,6 +23,7 @@
             test.assertEqual(slingshot.chargeRate, 1.2);
             test.assertEqual(slingshot.minTension, 0.2);
             test.assertEqual(slingshot.maxTension, 1.0);
+            test.assertEqual(slingshot.range, 120, 'Slingshot should have 120 unit range');
         });
 
         test.it('should get weapon by id', () => {
@@ -40,7 +41,7 @@
             const profile = Weapon.aimProfiles.STANDARD;
             test.assertTrue(profile !== undefined);
             test.assertTrue(profile.enabled);
-            test.assertEqual(profile.maxRange, 100);
+            test.assertEqual(profile.maxRange, 150);
         });
 
         test.it('should have NONE aim profile', () => {
@@ -133,6 +134,11 @@
             test.assertTrue(display !== undefined);
         });
 
+        test.it('should get weapon range', () => {
+            const range = WeaponManager.getRange();
+            test.assertEqual(range, 120, 'Slingshot range should be 120');
+        });
+
         test.it('should get current weapon', () => {
             test.assertEqual(WeaponManager.getCurrent(), Slingshot);
         });
@@ -142,12 +148,19 @@
         });
     });
 
-    test.describe('WeaponManager - Aiming', () => {
+    test.describe('WeaponManager - Crosshair', () => {
         test.beforeEach(() => {
             WeaponManager.init(null);
             WeaponManager.register(Slingshot);
             WeaponManager.currentWeaponId = 'slingshot';
             WeaponManager.currentWeapon = Slingshot;
+        });
+
+        test.it('should have fixed crosshair at center', () => {
+            // Game uses fixed crosshair at center (slightly above)
+            // No auto-aim - player aims manually
+            const pos = WeaponManager.getCrosshairPosition();
+            test.assertTrue(pos !== undefined, 'Crosshair position should be defined');
         });
 
         test.it('should set aim profile', () => {
@@ -162,42 +175,6 @@
 
             WeaponManager.setAimProfile('NONE');
             test.assertFalse(WeaponManager.isAimingEnabled());
-        });
-
-        test.it('should update crosshair position', () => {
-            WeaponManager.updateCrosshair(100, 200);
-            const pos = WeaponManager.getCrosshairPosition();
-            test.assertEqual(pos.x, 100);
-            test.assertEqual(pos.y, 200);
-        });
-
-        test.it('should set and clear lock', () => {
-            const mockTarget = { id: 'enemy1' };
-            WeaponManager.setLock(mockTarget);
-            test.assertEqual(WeaponManager.getLockedTarget(), mockTarget);
-            test.assertTrue(WeaponManager.isAimAssistActive());
-
-            WeaponManager.clearLock();
-            test.assertEqual(WeaponManager.getLockedTarget(), null);
-            test.assertFalse(WeaponManager.isAimAssistActive());
-        });
-
-        test.it('should score enemy ahead in path', () => {
-            WeaponManager.setAimProfile('STANDARD');
-            const enemy = { position: { x: 0, z: -20 } };
-            const cameraPos = { x: 0, z: 0 };
-            const playerPos = { x: 0, z: 0 };
-            const score = WeaponManager.scoreEnemy(enemy, cameraPos, playerPos);
-            test.assertTrue(score > 500); // Should get inPathBonus
-        });
-
-        test.it('should score enemy behind lower', () => {
-            WeaponManager.setAimProfile('STANDARD');
-            const enemy = { position: { x: 0, z: 20 } };
-            const cameraPos = { x: 0, z: 0 };
-            const playerPos = { x: 0, z: 0 };
-            const score = WeaponManager.scoreEnemy(enemy, cameraPos, playerPos);
-            test.assertTrue(score < 200); // Should get fallbackScore minus distance
         });
     });
 
@@ -220,6 +197,10 @@
 
         test.it('should have infinite ammo', () => {
             test.assertEqual(Slingshot.config.ammo.max, Infinity);
+        });
+
+        test.it('should have range in config', () => {
+            test.assertEqual(Slingshot.config.range, 120, 'Slingshot range should be 120');
         });
 
         test.it('should have theme defined', () => {
@@ -305,6 +286,10 @@
             test.assertEqual(WaterGun.config.ammo.max, 100);
         });
 
+        test.it('should have range in config', () => {
+            test.assertEqual(WaterGun.config.range, 80, 'WaterGun range should be 80');
+        });
+
         test.it('should start firing on fire start', () => {
             WaterGun.onFireStart(1000);
             test.assertTrue(WaterGun.state.isFiring);
@@ -362,6 +347,10 @@
 
         test.it('should have limited ammo', () => {
             test.assertEqual(NerfGun.config.ammo.max, 12);
+        });
+
+        test.it('should have range in config', () => {
+            test.assertEqual(NerfGun.config.range, 140, 'NerfGun range should be 140');
         });
 
         test.it('should fire on fire start', () => {

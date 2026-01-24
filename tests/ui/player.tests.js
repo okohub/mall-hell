@@ -72,34 +72,6 @@
         }
     );
 
-    runner.addTest('smart-auto-aim', 'Auto-Aim', 'Crosshair automatically tracks targets',
-        'Verifies crosshair moves to track enemies/obstacles',
-        async () => {
-            runner.resetGame();
-            await runner.wait(100);
-            const startBtn = runner.getElement('#start-btn');
-            runner.simulateClick(startBtn);
-            await runner.wait(500);
-
-            const enemies = runner.gameWindow.enemies?.filter(e => e.userData?.active) || [];
-            const obstacles = runner.gameWindow.obstacles?.filter(o => o.userData?.active && !o.userData?.hit) || [];
-
-            if (enemies.length === 0 && obstacles.length === 0) {
-                return;
-            }
-
-            const crosshair = runner.getElement('#crosshair');
-            if (!crosshair) {
-                throw new Error('Crosshair element not found');
-            }
-
-            const style = crosshair.style;
-            if (!style.left || !style.top) {
-                throw new Error('Crosshair position not set');
-            }
-        }
-    );
-
     runner.addTest('movement-bounds-check', 'Player Movement', 'Cart stays within bounds',
         'Verifies cart cannot move outside game boundaries',
         async () => {

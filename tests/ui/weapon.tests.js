@@ -29,7 +29,7 @@
         }
     );
 
-    runner.addTest('fps-only-mode', 'FPS Mode', 'Game is FPS only in v3.0',
+    runner.addTest('fps-only-mode', 'FPS Mode', 'Game runs in first-person mode',
         'Verifies the game runs in FPS mode only (no third-person)',
         async () => {
             runner.resetGame();
@@ -41,7 +41,7 @@
 
             const fpsWeaponVisible = runner.gameWindow.fpsWeapon?.visible;
             if (!fpsWeaponVisible) {
-                throw new Error('FPS weapon should be visible in v3.0');
+                throw new Error('FPS weapon should be visible');
             }
 
             const childVisible = runner.gameWindow.playerChild?.visible;

@@ -546,6 +546,75 @@ const CollisionSystem = {
     },
 
     /**
+     * Push entity out of overlapping obstacles and shelves
+     * @param {Object} position - Entity position {x, z} - will be modified
+     * @param {Array} obstacles - Obstacle meshes
+     * @param {Array} shelves - Shelf meshes
+     * @param {number} entityRadius - Entity collision radius
+     * @returns {boolean} True if any push-out was applied
+     */
+    pushOutOfOverlaps(position, obstacles, shelves, entityRadius = 1.2) {
+        let pushed = false;
+
+        // Push out of obstacles
+        if (obstacles) {
+            for (const obs of obstacles) {
+                if (!obs.userData?.active || obs.userData.hit) continue;
+
+                const obsRadius = obs.userData.collisionRadius ||
+                    obs.userData.config?.collisionRadius ||
+                    (obs.userData.width ? obs.userData.width / 2 : 1.5);
+
+                const minDist = entityRadius + obsRadius;
+                const dx = position.x - obs.position.x;
+                const dz = position.z - obs.position.z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+
+                if (dist < minDist && dist > 0.01) {
+                    // Push out along the shortest path
+                    const overlap = minDist - dist;
+                    const nx = dx / dist;
+                    const nz = dz / dist;
+                    position.x += nx * overlap;
+                    position.z += nz * overlap;
+                    pushed = true;
+                }
+            }
+        }
+
+        // Push out of shelves
+        if (shelves) {
+            for (const shelf of shelves) {
+                if (!shelf.position) continue;
+
+                const shelfWidth = shelf.userData?.width || 4;
+                const shelfDepth = shelf.userData?.depth || 2;
+                const halfW = shelfWidth / 2 + entityRadius;
+                const halfD = shelfDepth / 2 + entityRadius;
+
+                const dx = position.x - shelf.position.x;
+                const dz = position.z - shelf.position.z;
+
+                // Check if overlapping
+                if (Math.abs(dx) < halfW && Math.abs(dz) < halfD) {
+                    // Find shortest push-out direction
+                    const overlapX = halfW - Math.abs(dx);
+                    const overlapZ = halfD - Math.abs(dz);
+
+                    if (overlapX < overlapZ) {
+                        position.x += Math.sign(dx) * overlapX;
+                    } else {
+                        position.z += Math.sign(dz) * overlapZ;
+                    }
+                    pushed = true;
+                }
+            }
+        }
+
+        return pushed;
+    },
+
+    /**
      * Get wall direction between two adjacent rooms
      * @param {Object} fromRoom - Source room {gridX, gridZ}
      * @param {Object} toRoom - Target room {gridX, gridZ}
@@ -568,7 +637,7 @@ const CollisionSystem = {
     // ==========================================
 
     /**
-     * Process projectile hits against enemies and obstacles
+     * Process projectile hits against enemies, obstacles, walls, and shelves
      * Uses sweep collision for fast-moving projectiles
      * @param {Array} projectiles - Array of projectile meshes
      * @param {Array} enemies - Array of enemy meshes
@@ -576,12 +645,20 @@ const CollisionSystem = {
      * @param {Object} options - Options and callbacks
      * @param {Function} options.onEnemyHit - Callback(enemy, damage, closestPoint, destroyed)
      * @param {Function} options.onObstacleHit - Callback(obstacle, closestPoint)
+     * @param {Function} options.onWallHit - Callback(position) when hitting wall/shelf
+     * @param {Object} options.gridSystem - Grid system for wall collision
+     * @param {Object} options.roomConfig - Room config for wall collision
+     * @param {Array} options.shelves - Shelf meshes for collision
      * @param {Object} options.THREE - Three.js library reference
      */
     processProjectileHits(projectiles, enemies, obstacles, options) {
         const {
             onEnemyHit = null,
             onObstacleHit = null,
+            onWallHit = null,
+            gridSystem = null,
+            roomConfig = null,
+            shelves = null,
             THREE
         } = options;
 
@@ -597,6 +674,46 @@ const CollisionSystem = {
             const projLen = projDir.length();
             if (projLen > 0) {
                 projDir.normalize();
+            }
+
+            // Check wall collision (using 2D line check)
+            if (gridSystem && roomConfig && proj.userData.active) {
+                // Check if LOS is blocked between prev and current position
+                if (!this.hasLineOfSight(prevPos.x, prevPos.z, currPos.x, currPos.z, gridSystem, roomConfig)) {
+                    proj.userData.active = false;
+                    if (onWallHit) {
+                        onWallHit(currPos.clone());
+                    }
+                }
+            }
+
+            // Check shelf collision
+            if (shelves && shelves.length > 0 && proj.userData.active) {
+                for (const shelf of shelves) {
+                    if (!shelf.position) continue;
+
+                    const shelfWidth = shelf.userData?.width || 4;
+                    const shelfDepth = shelf.userData?.depth || 2;
+                    const shelfHeight = shelf.userData?.height || 3;
+
+                    // Check Y range (shelf height)
+                    if (currPos.y < 0 || currPos.y > shelfHeight) continue;
+
+                    const box = {
+                        minX: shelf.position.x - shelfWidth / 2,
+                        maxX: shelf.position.x + shelfWidth / 2,
+                        minZ: shelf.position.z - shelfDepth / 2,
+                        maxZ: shelf.position.z + shelfDepth / 2
+                    };
+
+                    if (this.lineAABB2D({ x: prevPos.x, z: prevPos.z }, { x: currPos.x, z: currPos.z }, box)) {
+                        proj.userData.active = false;
+                        if (onWallHit) {
+                            onWallHit(currPos.clone());
+                        }
+                        break;
+                    }
+                }
             }
 
             // Check enemy collisions with early exit and optimized vectors
@@ -682,6 +799,74 @@ const CollisionSystem = {
     },
 
     /**
+     * Check if a 2D line segment intersects an axis-aligned bounding box
+     * @param {Object} lineStart - Start point {x, z}
+     * @param {Object} lineEnd - End point {x, z}
+     * @param {Object} box - AABB {minX, minZ, maxX, maxZ}
+     * @returns {boolean} True if line intersects box
+     */
+    lineAABB2D(lineStart, lineEnd, box) {
+        // Parametric line: P = lineStart + t * (lineEnd - lineStart), t in [0, 1]
+        const dx = lineEnd.x - lineStart.x;
+        const dz = lineEnd.z - lineStart.z;
+
+        let tMin = 0;
+        let tMax = 1;
+
+        // Check X axis slab
+        if (Math.abs(dx) < 0.0001) {
+            // Line is parallel to Y axis
+            if (lineStart.x < box.minX || lineStart.x > box.maxX) {
+                return false;
+            }
+        } else {
+            const invDx = 1 / dx;
+            let t1 = (box.minX - lineStart.x) * invDx;
+            let t2 = (box.maxX - lineStart.x) * invDx;
+
+            if (t1 > t2) {
+                const temp = t1;
+                t1 = t2;
+                t2 = temp;
+            }
+
+            tMin = Math.max(tMin, t1);
+            tMax = Math.min(tMax, t2);
+
+            if (tMin > tMax) {
+                return false;
+            }
+        }
+
+        // Check Z axis slab
+        if (Math.abs(dz) < 0.0001) {
+            // Line is parallel to X axis
+            if (lineStart.z < box.minZ || lineStart.z > box.maxZ) {
+                return false;
+            }
+        } else {
+            const invDz = 1 / dz;
+            let t1 = (box.minZ - lineStart.z) * invDz;
+            let t2 = (box.maxZ - lineStart.z) * invDz;
+
+            if (t1 > t2) {
+                const temp = t1;
+                t1 = t2;
+                t2 = temp;
+            }
+
+            tMin = Math.max(tMin, t1);
+            tMax = Math.min(tMax, t2);
+
+            if (tMin > tMax) {
+                return false;
+            }
+        }
+
+        return true;
+    },
+
+    /**
      * Check line of sight between two points (respects room walls and doors)
      * @param {number} fromX - Source X position
      * @param {number} fromZ - Source Z position
@@ -754,6 +939,88 @@ const CollisionSystem = {
                 }
 
                 prevRoom = checkRoom;
+            }
+        }
+
+        return true;
+    },
+
+    /**
+     * Enhanced line of sight check that includes obstacles and shelves
+     * @param {number} fromX - Source X position
+     * @param {number} fromZ - Source Z position
+     * @param {number} toX - Target X position
+     * @param {number} toZ - Target Z position
+     * @param {Object} options - Check options
+     * @param {Object} options.gridSystem - Grid system with getRoomAtWorld method
+     * @param {Object} options.roomConfig - Room config {UNIT, DOOR_WIDTH}
+     * @param {Array} options.obstacles - Obstacle meshes to check against
+     * @param {Array} options.shelves - Shelf meshes to check against
+     * @param {number} options.playerRadius - Player collision radius (for margin)
+     * @returns {boolean} True if line of sight exists
+     */
+    hasLineOfSightWithPhysicals(fromX, fromZ, toX, toZ, options) {
+        const {
+            gridSystem,
+            roomConfig,
+            obstacles = null,
+            shelves = null,
+            playerRadius = 1.2
+        } = options;
+
+        // 1. First check basic wall/door LOS
+        if (gridSystem && roomConfig) {
+            if (!this.hasLineOfSight(fromX, fromZ, toX, toZ, gridSystem, roomConfig)) {
+                return false;
+            }
+        }
+
+        const lineStart = { x: fromX, z: fromZ };
+        const lineEnd = { x: toX, z: toZ };
+
+        // 2. Check obstacles: use lineCircle2D for each active obstacle
+        if (obstacles && obstacles.length > 0) {
+            for (const obs of obstacles) {
+                // Skip inactive or hit obstacles
+                if (!obs.userData?.active || obs.userData.hit) continue;
+
+                // Get obstacle collision radius
+                const obsRadius = obs.userData.collisionRadius ||
+                    obs.userData.config?.collisionRadius ||
+                    (obs.userData.width ? obs.userData.width / 2 : 1.5);
+
+                // Add small margin for LOS blocking (half player radius)
+                const blockRadius = obsRadius + playerRadius * 0.5;
+
+                if (this.lineCircle2D(lineStart, lineEnd, obs.position, blockRadius)) {
+                    return false;
+                }
+            }
+        }
+
+        // 3. Check shelves: use lineAABB2D for each shelf
+        if (shelves && shelves.length > 0) {
+            for (const shelf of shelves) {
+                if (!shelf.position) continue;
+
+                // Get shelf dimensions
+                const shelfWidth = shelf.userData?.width || 4;
+                const shelfDepth = shelf.userData?.depth || 2;
+
+                // Create AABB for shelf (with small margin)
+                const halfW = shelfWidth / 2 + playerRadius * 0.25;
+                const halfD = shelfDepth / 2 + playerRadius * 0.25;
+
+                const box = {
+                    minX: shelf.position.x - halfW,
+                    maxX: shelf.position.x + halfW,
+                    minZ: shelf.position.z - halfD,
+                    maxZ: shelf.position.z + halfD
+                };
+
+                if (this.lineAABB2D(lineStart, lineEnd, box)) {
+                    return false;
+                }
             }
         }
 

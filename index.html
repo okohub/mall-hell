@@ -9,7 +9,7 @@
 <body>
     <div id="game-container">
         <div id="ui-layer">
-            <div id="crosshair"><div id="crosshair-dot"></div></div>
+            <div id="crosshair"><div id="crosshair-circle"></div><div id="crosshair-dot"></div></div>
 
             <!-- Tension Indicator (ring around crosshair) -->
             <div id="tension-indicator">
@@ -38,7 +38,7 @@
 
                 <div id="pause-indicator">ESC to Pause</div>
 
-                <div id="controls-hint">WASD Drive | SPACE Fire | Auto-Aim</div>
+                <div id="controls-hint">A/D Dodge | SPACE Fire</div>
             </div>
 
             <div id="health-container">
@@ -63,7 +63,7 @@
                     <div class="title-wrapper">
                         <div class="title">MALL HELL</div>
                     </div>
-                    <div class="version">VERSION 4.0</div>
+                    <div class="version">VERSION 4.1</div>
                     <div class="subtitle">SUPERMARKET MAYHEM</div>
                     <div class="instructions" id="instructions">
                         <div class="control-item">
@@ -99,10 +99,10 @@
                     <p>Explore the mall and cause as much chaos as possible before time runs out!</p>
                     <h3>CONTROLS</h3>
                     <p><span class="key">W/S</span> Drive forward and reverse</p>
-                    <p><span class="key">A/D</span> Turn left and right</p>
+                    <p><span class="key">A/D</span> Dodge left and right to aim</p>
                     <p><span class="key">SPACE</span> Hold to charge your slingshot, release to fire</p>
-                    <h3>SMART AIMING</h3>
-                    <p>Your crosshair automatically tracks the most dangerous target. Focus on timing your shots!</p>
+                    <h3>AIMING</h3>
+                    <p>Line up your crosshair with enemies by dodging left and right. Fire when ready!</p>
                     <h3>SCORING</h3>
                     <p>Hit enemies: +100 points<br>Destroy enemies: +300 points<br>Hit obstacles: +150 points</p>
                     <h3>TIP</h3>
@@ -247,6 +247,7 @@
         let particles = [];
         let shelves = [];
         let ambientLight;
+        let isFrozen = false;
 
         // Player mesh references
         let playerCart, playerChild, slingshotArm;
@@ -364,7 +365,7 @@
         }
 
         function resetGame() {
-            lastShootTime = 0;
+            lastShootTime = 0; isFrozen = false;
             GameSession.reset(); GameSession.setCamera(camera);
             InputSystem.reset(); PlayerSystem.reset();
             WeaponManager.reset(); WeaponManager.equip('slingshot', THREE, MaterialsTheme, camera);
@@ -419,6 +420,7 @@
         }
 
         const togglePause = () => StateSystem.is('PLAYING') ? pauseGame() : StateSystem.is('PAUSED') ? resumeGame() : null;
+        const toggleFreeze = () => { if (StateSystem.is('PLAYING')) { isFrozen = !isFrozen; if (!isFrozen) LoopSystem.resetDelta(); } };
         const updateTimerDisplay = () => UISystem.updateTimerDisplay(GameSession.getTimer(), GameSession.DURATION);
 
         // Spawn all room contents at game start (no pop-in)
@@ -455,7 +457,7 @@
         }
 
         function update(dt) {
-            if (!StateSystem.is('PLAYING')) return;
+            if (!StateSystem.is('PLAYING') || isFrozen) return;
 
             // Update invulnerability
             PlayerSystem.updateInvulnerability();
@@ -482,6 +484,13 @@
                 camera
             });
 
+            // Push player out of any overlapping objects (run multiple times for nested overlaps)
+            for (let i = 0; i < 3; i++) {
+                if (!CollisionSystem.pushOutOfOverlaps(PlayerSystem.position, obstacles, shelves, Player.visual.COLLISION_RADIUS)) break;
+            }
+            playerCart.position.x = PlayerSystem.position.x;
+            playerCart.position.z = PlayerSystem.position.z;
+
             // FPS mode
             playerCart.visible = true;
             if (playerChild) playerChild.visible = false;
@@ -490,7 +499,7 @@
             updateCharging(dt); WeaponManager.animateFPS(dt); updateAmmoDisplay(); updateCurrentRoom();
 
             // Auto-aim
-            const aim = WeaponManager.updateAim({ camera, playerPosition: PlayerSystem.position, enemies, obstacles, collisionSystem: CollisionSystem, gridSystem: mallGrid, roomConfig: Room.structure, boundsMargin: CROSSHAIR_BOUNDS_MARGIN });
+            const aim = WeaponManager.updateAim({ camera, playerPosition: PlayerSystem.position, enemies, obstacles, shelves, collisionSystem: CollisionSystem, gridSystem: mallGrid, roomConfig: Room.structure, playerRadius: Player.visual.COLLISION_RADIUS, boundsMargin: CROSSHAIR_BOUNDS_MARGIN });
             crosshairX = aim.crosshairX; crosshairY = aim.crosshairY; lockedTarget = WeaponManager.getLockedTarget();
 
             // Pickups
@@ -502,7 +511,7 @@
             PickupSystem.cleanupBehind(PlayerSystem.position.z);
 
             // UI updates
-            UISystem.updateCrosshairUI(crosshairX, crosshairY, aim.aimAssistActive);
+            UISystem.updateCrosshairUI(crosshairX, crosshairY, aim.hasTarget);
             UISystem.updateTensionUI(crosshairX, crosshairY, WeaponManager.isCharging(), WeaponManager.getTension(), WeaponManager.getMaxTension());
 
             // Entity updates
@@ -514,7 +523,7 @@
                 baseSpeed: CART_SPEED,
                 isInvulnerable: PlayerSystem.getIsInvulnerable(),
                 onPlayerCollision: () => damagePlayer(Player.health.ENEMY_DAMAGE),
-                collisionCheck: (nX, nZ, oX, oZ) => CollisionSystem.checkWallCollision(nX, nZ, oX, oZ, mallGrid, Room.structure, 1.5),
+                collisionCheck: (nX, nZ, oX, oZ) => CollisionSystem.checkAllCollisions(nX, nZ, oX, oZ, { gridSystem: mallGrid, roomConfig: Room.structure, obstacles, shelves, playerRadius: 1.5 }),
                 hasLineOfSight: (fX, fZ, tX, tZ) => CollisionSystem.hasLineOfSight(fX, fZ, tX, tZ, mallGrid, Room.structure),
                 obstacles,
                 shelves
@@ -526,6 +535,9 @@
             // Collision detection
             CollisionSystem.processProjectileHits(projectiles, enemies, obstacles, {
                 THREE,
+                gridSystem: mallGrid,
+                roomConfig: Room.structure,
+                shelves,
                 onEnemyHit: (enemy, damage, closestPoint, result) => {
                     UISystem.showHitMarker();
                     const hb = enemy.userData.healthBar;
@@ -534,7 +546,8 @@
                     if (result.destroyed) { addScore(result.scoreDestroy, enemy.position); spawnParticles(enemy.position, color, 15); }
                     else { addScore(result.scoreHit, enemy.position); spawnParticles(closestPoint, 0xf39c12, 3); }
                 },
-                onObstacleHit: (obs) => { UISystem.showHitMarker(); addScore(150, obs.position); spawnParticles(obs.position, 0xf1c40f, 10); }
+                onObstacleHit: (obs) => { UISystem.showHitMarker(); addScore(150, obs.position); spawnParticles(obs.position, 0xf1c40f, 10); },
+                onWallHit: (pos) => { spawnParticles(pos, 0x888888, 5); }
             });
 
             // Cleanup inactive objects
@@ -577,6 +590,7 @@
         InputSystem.onActionStart('fire', () => StateSystem.is('PLAYING') && startCharging());
         InputSystem.onActionRelease('fire', () => StateSystem.is('PLAYING') && releaseAndFire());
         InputSystem.onActionStart('pause', togglePause);
+        InputSystem.onActionStart('freeze', toggleFreeze);
         EntitySystem.registerType('enemy', { maxCount: 10, despawnDistance: 20 });
         EntitySystem.registerType('obstacle', { maxCount: 15, despawnDistance: 30 });
         EntitySystem.registerType('projectile', { maxCount: 50, despawnDistance: 20 });

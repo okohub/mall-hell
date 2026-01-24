@@ -21,6 +21,7 @@ const Weapon = {
                 max: 180             // speed at max tension
             },
             damage: 1,
+            range: 120,              // targeting range in units (enemies spawn at 150)
             aimAssist: true
         }
     },
@@ -31,7 +32,7 @@ const Weapon = {
             enabled: true,
             stickyTargeting: true,
             priority: ['enemy', 'obstacle'],
-            maxRange: 100,
+            maxRange: 150,
             inPathThreshold: 4,
             obstacleInPathThreshold: 3,
             scoring: {
