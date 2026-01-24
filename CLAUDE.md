@@ -376,13 +376,15 @@ GAME_OVER → PLAYING (Play Again button)
 
 | Input | Action |
 |-------|--------|
-| W / S | Drive forward/backward |
-| A / D | Dodge cart left/right (also used for aiming) |
+| W / ↑ | Drive forward |
+| S / ↓ | Reverse |
+| A / ← | Turn left (also used for aiming) |
+| D / → | Turn right (also used for aiming) |
 | SPACE (hold) | Charge slingshot |
 | SPACE (release) | Fire projectile |
 | ESC | Pause/Resume game |
 
-**Note:** The crosshair is fixed at screen center (slightly above). Aim by dodging left/right with A/D keys - projectile collision handles hits.
+**Note:** The crosshair is fixed at screen center (slightly above). Aim by turning left/right - projectile collision handles hits.
 
 ## Core Mechanics
 

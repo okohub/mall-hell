@@ -16,7 +16,10 @@ A fast, chaotic first-person browser game where you're a mischievous kid in a sh
 
 | Input | Action |
 |-------|--------|
-| **A / D** | Dodge left/right (also aim) |
+| **W / ↑** | Drive forward |
+| **S / ↓** | Reverse |
+| **A / ←** | Turn left (also aim) |
+| **D / →** | Turn right (also aim) |
 | **SPACE (hold)** | Charge slingshot |
 | **SPACE (release)** | Fire projectile |
 | **ESC** | Pause |
