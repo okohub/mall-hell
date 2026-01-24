@@ -647,5 +647,161 @@ const WeaponManager = {
         if (this.fpsMesh) {
             this.fpsMesh.visible = false;
         }
+    },
+
+    // ==========================================
+    // COMPLETE FIRING PIPELINE
+    // ==========================================
+
+    // Last shot timestamp for cooldown tracking
+    _lastFireTime: 0,
+
+    // References for projectile creation
+    _projectileSystem: null,
+    _entitySystem: null,
+    _THREE: null,
+
+    /**
+     * Set references for projectile creation
+     * @param {Object} refs - { ProjectileSystem, EntitySystem, THREE }
+     */
+    setProjectileRefs(refs) {
+        this._projectileSystem = refs.ProjectileSystem;
+        this._entitySystem = refs.EntitySystem;
+        this._THREE = refs.THREE;
+    },
+
+    /**
+     * Get last fire time
+     * @returns {number}
+     */
+    getLastFireTime() {
+        return this._lastFireTime;
+    },
+
+    /**
+     * Set last fire time
+     * @param {number} time
+     */
+    setLastFireTime(time) {
+        this._lastFireTime = time;
+    },
+
+    /**
+     * Execute complete fire action
+     * Creates projectile and handles all firing logic
+     * @param {Object} options - { camera, crosshairX, crosshairY, projectiles (array), scene, onFire (callback) }
+     * @returns {Object|null} Created projectile or null
+     */
+    executeFire(options) {
+        const { camera, crosshairX, crosshairY, projectiles, scene, onFire } = options;
+        const THREE = this._THREE;
+
+        if (!camera || !THREE) return null;
+
+        const now = Date.now();
+        this._lastFireTime = now;
+
+        // Get fire result from weapon
+        const fireResult = this.currentWeapon ? this.onFireRelease(now) : null;
+        if (!fireResult) return null;
+
+        // Trigger FPS firing animation
+        this.triggerFireAnim();
+
+        // Calculate spawn position and direction
+        const ProjectileSystem = this._projectileSystem || (typeof window !== 'undefined' ? window.ProjectileSystem : null);
+        if (!ProjectileSystem) return null;
+
+        const { spawnPos, direction } = ProjectileSystem.calculateFire(THREE, camera, crosshairX, crosshairY);
+
+        // Apply spread if present (for auto-fire weapons)
+        if (fireResult.spread) {
+            direction.x += fireResult.spread.x;
+            direction.y += fireResult.spread.y;
+            direction.normalize();
+        }
+
+        // Get weapon config for projectile speed
+        const speedMin = this.currentWeapon?.config?.projectile?.speedMin || 60;
+        const speedMax = this.currentWeapon?.config?.projectile?.speedMax || 180;
+
+        // Create projectile
+        const projectile = ProjectileSystem.createMesh(THREE, direction, spawnPos, fireResult.speed, {
+            speedMin,
+            speedMax,
+            fallbackCamera: camera
+        });
+
+        if (projectile) {
+            scene.add(projectile);
+            if (projectiles) {
+                projectiles.push(projectile);
+            }
+        }
+
+        // Fire callback
+        if (onFire) {
+            onFire(fireResult, projectile);
+        }
+
+        return projectile;
+    },
+
+    /**
+     * Handle continuous firing (for auto-fire weapons)
+     * Call this in update loop
+     * @param {number} dt - Delta time
+     * @param {Object} options - Same as executeFire options
+     * @returns {Object|null} Created projectile if auto-fired
+     */
+    handleAutoFire(dt, options) {
+        if (!this.currentWeapon) return null;
+
+        const now = Date.now();
+        const fireResult = this.update(dt, now);
+
+        // For auto-fire weapons, handle fire result from update
+        if (fireResult) {
+            // Use executeFire-like logic but with fireResult already obtained
+            const { camera, crosshairX, crosshairY, projectiles, scene } = options;
+            const THREE = this._THREE;
+
+            if (!camera || !THREE) return null;
+
+            this._lastFireTime = now;
+            this.triggerFireAnim();
+
+            const ProjectileSystem = this._projectileSystem || (typeof window !== 'undefined' ? window.ProjectileSystem : null);
+            if (!ProjectileSystem) return null;
+
+            const { spawnPos, direction } = ProjectileSystem.calculateFire(THREE, camera, crosshairX, crosshairY);
+
+            if (fireResult.spread) {
+                direction.x += fireResult.spread.x;
+                direction.y += fireResult.spread.y;
+                direction.normalize();
+            }
+
+            const speedMin = this.currentWeapon?.config?.projectile?.speedMin || 60;
+            const speedMax = this.currentWeapon?.config?.projectile?.speedMax || 180;
+
+            const projectile = ProjectileSystem.createMesh(THREE, direction, spawnPos, fireResult.speed, {
+                speedMin,
+                speedMax,
+                fallbackCamera: camera
+            });
+
+            if (projectile) {
+                scene.add(projectile);
+                if (projectiles) {
+                    projectiles.push(projectile);
+                }
+            }
+
+            return projectile;
+        }
+
+        return null;
     }
 };

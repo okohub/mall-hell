@@ -133,7 +133,10 @@ mall-hell/
 │   │   ├── input-system.js     # Keyboard/mouse input handling
 │   │   ├── collision-system.js # Collision detection utilities
 │   │   ├── scene-system.js     # Three.js scene management
-│   │   ├── entity-system.js    # Entity lifecycle management
+│   │   ├── entity-system.js    # Entity lifecycle + array management
+│   │   ├── game-session.js     # Game state (score, timer, lifecycle)
+│   │   ├── post-process-system.js # Post-processing (bloom, vignette)
+│   │   ├── test-bridge.js      # Test compatibility (injected during tests only)
 │   │   └── engine.test.js      # Engine tests
 │   │
 │   ├── shared/             # Cross-domain utilities
@@ -181,6 +184,9 @@ mall-hell/
 │   │   ├── enemy-system.js     # Enemy AI, spawning
 │   │   └── enemy.test.js       # Enemy tests
 │   │
+│   ├── particle/           # Particle effects domain
+│   │   └── particle-system.js  # Particle spawning and animation
+│   │
 │   └── environment/        # Environment domain
 │       ├── obstacle.js         # Obstacle types
 │       ├── obstacle-theme.js   # Obstacle colors
@@ -189,6 +195,7 @@ mall-hell/
 │       ├── shelf-theme.js      # Shelf themes
 │       ├── shelf-mesh.js       # Shelf meshes
 │       ├── environment-system.js # Environment management
+│       ├── spawn-system.js     # Room-based enemy/obstacle spawning
 │       └── environment.test.js # Environment tests
 │
 ├── tests/
@@ -297,10 +304,27 @@ InputSystem.init();
 LoopSystem.init(THREE);
 LoopSystem.start();
 
+// Use GameSession for game state
+GameSession.init(180, { playerStartX: 45, camera: camera });
+GameSession.start();
+GameSession.addScore(100, hitPosition);
+GameSession.updateTimer(dt);
+const timeUp = GameSession.getTimer() <= 0;
+GameSession.end(died);
+
+// Use EntitySystem for array management
+EntitySystem.init(scene);
+EntitySystem.registerArray('enemy', { maxCount: 10 }, EnemySystem.createMesh);
+const enemy = EntitySystem.create('enemy', THREE, 'SKELETON', x, z);
+EntitySystem.updateAndCleanup('enemy', EnemySystem.updateSingle, options);
+
 // Use UI module for all UI operations
 UISystem.init();
 UISystem.updateScore(score, true);
 UISystem.showGameOver(score, UI.getScoreRating(score), died);
+
+// TestBridge is injected during UI tests only (not in production)
+// It reads from window.__gameInternals and auto-initializes
 ```
 
 ---

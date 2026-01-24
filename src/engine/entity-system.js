@@ -497,5 +497,171 @@ const EntitySystem = {
      */
     getTypeNames() {
         return Object.keys(this._types);
+    },
+
+    // ==========================================
+    // MANAGED ARRAYS (with factory functions)
+    // ==========================================
+
+    // Managed array configs and factories
+    _arrays: {},
+    _factories: {},
+
+    /**
+     * Register a managed array with a factory function
+     * @param {string} typeName - Array type name (e.g., 'enemy', 'projectile')
+     * @param {Object} config - Configuration { maxCount, despawnDistance, ... }
+     * @param {Function} factoryFn - Factory function to create meshes
+     */
+    registerArray(typeName, config, factoryFn) {
+        // Register the type if not already registered
+        if (!this._types[typeName]) {
+            this.registerType(typeName, config);
+        }
+
+        // Store factory and initialize managed array
+        this._factories[typeName] = factoryFn;
+        this._arrays[typeName] = [];
+    },
+
+    /**
+     * Get managed array by type
+     * @param {string} typeName - Array type name
+     * @returns {Array} The managed array
+     */
+    getArray(typeName) {
+        return this._arrays[typeName] || [];
+    },
+
+    /**
+     * Set managed array (for external array sync)
+     * @param {string} typeName - Array type name
+     * @param {Array} arr - Array to set
+     */
+    setArray(typeName, arr) {
+        this._arrays[typeName] = arr;
+    },
+
+    /**
+     * Create entity using registered factory and add to managed array
+     * @param {string} typeName - Entity type name
+     * @param {Object} THREE - THREE.js library reference
+     * @param {...*} args - Arguments to pass to factory
+     * @returns {Object|null} Created mesh or null
+     */
+    create(typeName, THREE, ...args) {
+        const factory = this._factories[typeName];
+        const config = this._types[typeName];
+
+        if (!factory) {
+            console.warn(`EntitySystem: No factory registered for "${typeName}"`);
+            return null;
+        }
+
+        // Check capacity
+        const arr = this._arrays[typeName] || [];
+        if (config && arr.length >= config.maxCount) {
+            return null;
+        }
+
+        // Create mesh using factory
+        const mesh = factory(THREE, ...args);
+        if (!mesh) return null;
+
+        // Add to scene
+        this._addToScene(mesh, config?.group || typeName + 's');
+
+        // Add to managed array
+        if (!this._arrays[typeName]) {
+            this._arrays[typeName] = [];
+        }
+        this._arrays[typeName].push(mesh);
+
+        return mesh;
+    },
+
+    /**
+     * Update all entities in a managed array and cleanup inactive ones
+     * @param {string} typeName - Entity type name
+     * @param {Function} updateFn - Update function (mesh, options) => void
+     * @param {Object} options - Options to pass to update function
+     * @returns {Array} Filtered array with only active entities
+     */
+    updateAndCleanup(typeName, updateFn, options = {}) {
+        const arr = this._arrays[typeName];
+        if (!arr) return [];
+
+        // Update each entity
+        if (updateFn) {
+            arr.forEach(mesh => updateFn(mesh, options));
+        }
+
+        // Cleanup inactive
+        const cleaned = this.cleanupInactive(arr, this._scene, {
+            checkField: 'active',
+            checkValue: false
+        });
+
+        this._arrays[typeName] = cleaned;
+        return cleaned;
+    },
+
+    /**
+     * Remove an entity from managed array and scene
+     * @param {string} typeName - Entity type name
+     * @param {Object} mesh - Mesh to remove
+     */
+    removeFromArray(typeName, mesh) {
+        const arr = this._arrays[typeName];
+        if (!arr) return;
+
+        const index = arr.indexOf(mesh);
+        if (index !== -1) {
+            arr.splice(index, 1);
+        }
+        this._removeFromScene(mesh);
+    },
+
+    /**
+     * Clear all entities from a managed array
+     * @param {string} typeName - Entity type name
+     */
+    clearArray(typeName) {
+        const arr = this._arrays[typeName];
+        if (!arr) return;
+
+        arr.forEach(mesh => this._removeFromScene(mesh));
+        this._arrays[typeName] = [];
+    },
+
+    /**
+     * Clear all managed arrays
+     */
+    clearAllArrays() {
+        for (const typeName in this._arrays) {
+            this.clearArray(typeName);
+        }
+    },
+
+    /**
+     * Get count for managed array
+     * @param {string} typeName - Entity type name
+     * @returns {number}
+     */
+    getArrayCount(typeName) {
+        const arr = this._arrays[typeName];
+        return arr ? arr.length : 0;
+    },
+
+    /**
+     * Check if managed array is at capacity
+     * @param {string} typeName - Entity type name
+     * @returns {boolean}
+     */
+    isArrayAtCapacity(typeName) {
+        const config = this._types[typeName];
+        const arr = this._arrays[typeName];
+        if (!config || !arr) return true;
+        return arr.length >= config.maxCount;
     }
 };

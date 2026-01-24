@@ -153,6 +153,7 @@
     <script src="./src/engine/loop-system.js"></script>
     <script src="./src/engine/scene-system.js"></script>
     <script src="./src/engine/entity-system.js"></script>
+    <script src="./src/engine/game-session.js"></script>
     <script src="./src/engine/post-process-system.js"></script>
 
     <!-- Room Domain -->
@@ -209,70 +210,23 @@
         // - Environment: Obstacle, ObstacleTheme, ObstacleMesh (as ObstacleVisual), Shelf, ShelfTheme, ShelfMesh, EnvironmentSystem
 
         // ============================================
-        // GAME CONSTANTS - Aliases to Domain Values
+        // GAME CONSTANTS
         // ============================================
-        // Most constants now live in domain files. These are aliases for backward compatibility.
+        // Core constants used in index.html. Domain-specific values accessed via domain modules.
 
-        // Room Constants (from Room domain)
-        const ROOM_UNIT = Room.structure.UNIT;
-        const DOOR_WIDTH = Room.structure.DOOR_WIDTH;
-
-        // Game Duration (game-specific, not in domains yet)
-        const GAME_DURATION = 180;         // 3 minutes
-
-        // Weapon Constants (from Weapon domain)
-        const SLINGSHOT = Weapon.types.SLINGSHOT;
-        const SHOOT_COOLDOWN = SLINGSHOT.cooldown;
-        const TENSION_MIN = SLINGSHOT.minTension;
-        const TENSION_MAX = SLINGSHOT.maxTension;
-        const TENSION_CHARGE_RATE = SLINGSHOT.chargeRate;
-        const PROJECTILE_SPEED_MIN = SLINGSHOT.projectileSpeed.min;
-        const PROJECTILE_SPEED_MAX = SLINGSHOT.projectileSpeed.max;
-
-        // Enemy Constants (from Enemy domain)
-        const ENEMY_HEALTH = Enemy.types.SKELETON.health;
-
-        // Player Movement Constants (from Player domain)
-        const CART_SPEED = Player.movement.SPEED;
-        const CART_TURN_SPEED = Player.movement.TURN_SPEED;
-        const CART_REVERSE_SPEED = Player.movement.REVERSE_SPEED;
-        const CART_ACCELERATION = Player.movement.ACCELERATION;
-        const CART_DECELERATION = Player.movement.DECELERATION;
-        const CART_MAX_SPEED = Player.movement.MAX_SPEED;
-        const CART_FRICTION = Player.movement.FRICTION;
-        const CART_IDLE_DRIFT = Player.movement.IDLE_DRIFT;
-
-        // Cart Visual Constants (from Player domain)
-        const CART_LEAN_ANGLE = Player.visual.LEAN_ANGLE;
-        const CAMERA_ROLL_FACTOR = Player.visual.CAMERA_ROLL_FACTOR;
-
-        // Crosshair Constants (UI-specific, not in domains yet)
         const CROSSHAIR_BOUNDS_MARGIN = 50;
 
-        // Player Health Constants (from Player domain)
+        // Frequently-used aliases for cleaner code
+        const SLINGSHOT = Weapon.types.SLINGSHOT;
+        const SHOOT_COOLDOWN = SLINGSHOT.cooldown;
+        const TENSION_MAX = SLINGSHOT.maxTension;
+        const PROJECTILE_SPEED_MIN = SLINGSHOT.projectileSpeed.min;
+        const PROJECTILE_SPEED_MAX = SLINGSHOT.projectileSpeed.max;
         const PLAYER_MAX_HEALTH = Player.health.MAX;
-        const ENEMY_COLLISION_DAMAGE = Player.health.ENEMY_DAMAGE;
-        const OBSTACLE_COLLISION_DAMAGE = Player.health.OBSTACLE_DAMAGE;
-        const INVULNERABILITY_DURATION = Player.health.INVULNERABILITY_DURATION;
-
-        // Mall themes - alias to RoomTheme for backward compatibility
+        const CART_SPEED = Player.movement.SPEED;
         const MALL_THEMES = RoomTheme.themes;
 
-        // AimingSystem shim - delegates to WeaponManager
-        const AimingSystem = {
-            reset: () => WeaponManager.reset(),
-            getProfileConfig: () => WeaponManager.getAimProfileConfig(),
-            isEnabled: () => WeaponManager.isAimingEnabled(),
-            setLock: (target) => WeaponManager.setLock(target),
-            clearLock: () => WeaponManager.clearLock(),
-            scoreEnemy: (enemy, cameraPos, playerPos, config) => WeaponManager.scoreEnemy(enemy, cameraPos, playerPos),
-            scoreObstacle: (obs, cameraPos, playerPos, config) => WeaponManager.scoreObstacle(obs, cameraPos, playerPos),
-            updateCrosshair: (x, y) => WeaponManager.updateCrosshair(x, y),
-            getCrosshairPosition: () => WeaponManager.getCrosshairPosition(),
-            isAimAssistActive: () => WeaponManager.isAimAssistActive()
-        };
-
-        // ShelfSystem shim - delegates to Shelf for backward compatibility
+        // ShelfSystem shim - delegates to Shelf for RoomSystem compatibility
         const ShelfSystem = {
             getShelfTemplate: (id) => Shelf.getTemplate(id),
             getProductGeometry: (id) => Shelf.getProductType(id),
@@ -286,17 +240,9 @@
         // Mall Grid interface (delegates to RoomSystem)
         const mallGrid = RoomSystem;
 
-        // Legacy compatibility - get theme at world position
-        function getSectionAtZ(z) {
-            const room = mallGrid.getRoomAtWorld(playerPosition.x, z);
-            return room ? room.themeData : MALL_THEMES.ENTRANCE;
-        }
-
-        // Game State (managed by GameState module)
-        let score = 0;
-        let gameTimer = GAME_DURATION;    // Countdown timer (replaces distance)
+        // Game State - only variables that need local tracking
         let lastShootTime = 0;
-        let cameraMode = 'hybrid-fps';    // v3.0 is FPS only
+        const cameraMode = 'hybrid-fps';    // v3.0 is FPS only
 
         // Three.js Setup
         let scene, camera, renderer;
@@ -305,42 +251,10 @@
         let obstacles = [];
         let particles = [];
         let shelves = [];
-        let floorTiles = [];
-        let lights = [];
-        let ambientLight; // Global reference for section-based color changes
-        let currentSection = null; // Track current section for ambient transitions
+        let ambientLight;
 
-        // Helper to get theme at a given position (for compatibility)
-
-        // Player
-        let playerCart;
-        let playerChild; // Child model reference (to hide in FPS)
-        let slingshotArm;
-        let fpsWeapon; // Slingshot with hands visible in FPS mode
-        let fpsHands;  // Hands group for animation
-        let fpsBandL, fpsBandR, fpsPouch, fpsStone; // For pull animation
-        // fpsFireAnim handled by WeaponManager
-
-        // Slingshot Tension State
-        let slingshotTension = 0;        // Current tension (0 to TENSION_MAX)
-        let isChargingSlingshot = false; // Is player holding to charge
-
-        // Player Position & Movement (grid-based maze)
-        // Start at center of ENTRANCE room (grid 1,2): world center = (1*30+15, 2*30+15) = (45, 75)
-        let playerPosition = { x: 45, z: 75 };
-        let playerRotation = 0;                  // Facing direction (radians, 0 = -Z)
-        let playerSpeed = 0;                     // Current forward speed
-        let currentTurnRate = 0;                 // Smooth turning
-        let playerHealth = PLAYER_MAX_HEALTH;
-        let lastDamageTime = 0;
-        let isInvulnerable = false;
-
-        // Cart visual state
-        let currentLeanAngle = 0;
-
-        // Wall bump effect
-        let wallBumpIntensity = 0;       // Current bump animation intensity (0-1)
-        let wallBumpDirection = { x: 0, z: 0 }; // Direction of bump pushback
+        // Player mesh references
+        let playerCart, playerChild, slingshotArm;
 
         // Room tracking
         let currentRoom = null;
@@ -358,468 +272,166 @@
         // Clock handled by GameLoop module
         // Materials library loaded from src/shared/materials-theme.js
 
-        // === SCENE HIERARCHY GROUPS ===
-        const sceneGroups = {
-            environment: null,  // floor, ceiling, walls, shelves
-            gameplay: null,     // player, enemies, obstacles
-            effects: null,      // particles, projectiles
-            lighting: null      // all lights
-        };
-
+        // Scene hierarchy groups
+        const sceneGroups = { environment: null, gameplay: null, effects: null, lighting: null };
         function initSceneGroups() {
-            sceneGroups.environment = new THREE.Group();
-            sceneGroups.environment.name = 'environment';
-            sceneGroups.gameplay = new THREE.Group();
-            sceneGroups.gameplay.name = 'gameplay';
-            sceneGroups.effects = new THREE.Group();
-            sceneGroups.effects.name = 'effects';
-            sceneGroups.lighting = new THREE.Group();
-            sceneGroups.lighting.name = 'lighting';
-
-            scene.add(sceneGroups.environment);
-            scene.add(sceneGroups.gameplay);
-            scene.add(sceneGroups.effects);
-            scene.add(sceneGroups.lighting);
+            ['environment', 'gameplay', 'effects', 'lighting'].forEach(n => {
+                sceneGroups[n] = new THREE.Group(); sceneGroups[n].name = n; scene.add(sceneGroups[n]);
+            });
         }
 
-        // === POST-PROCESSING (disabled - using direct rendering) ===
-        let composer = null;
-        let damageVignetteStrength = 0;
+        // Post-processing state
+        let composer = null, damageVignetteStrength = 0;
 
-        // DOM Elements
+        // DOM Elements (only what's needed - UISystem handles the rest)
         const container = document.getElementById('game-container');
         const scoreElement = document.getElementById('score');
-        const timerDisplay = document.getElementById('timer-display');
-        const timerFill = document.getElementById('timer-fill');
         const hud = document.getElementById('hud');
-        const menuScreen = document.getElementById('menu-screen');
-        const gameoverScreen = document.getElementById('gameover-screen');
-        const finalScoreElement = document.getElementById('final-score');
-        const ratingElement = document.getElementById('rating');
-        const hitMarker = document.getElementById('hit-marker');
-        const cooldownFill = document.getElementById('cooldown-fill');
         const ammoDisplay = document.getElementById('ammo-display');
-        const pauseScreen = document.getElementById('pause-screen');
-        const pauseScoreValue = document.getElementById('pause-score-value');
-        const healthFill = document.getElementById('health-fill');
-        const healthValue = document.getElementById('health-value');
         const healthContainer = document.getElementById('health-container');
-        const damageOverlay = document.getElementById('damage-overlay');
-        const gameoverTitle = document.getElementById('gameover-title');
 
-        // Initialize Three.js
+        // Initialize Three.js using SceneSystem
         function initThree() {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x1a1a2e);
-            scene.fog = new THREE.Fog(0x1a1a2e, 50, 200);
+            SceneSystem.init(THREE, container);
+            scene = SceneSystem.scene; camera = SceneSystem.camera; renderer = SceneSystem.renderer;
+            MaterialsTheme.init(THREE); UISystem.init(); initSceneGroups();
 
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 3, 0);
-            camera.rotation.order = 'YXZ';
-            scene.add(camera); // Required for camera children (FPS weapon) to render
-
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            container.insertBefore(renderer.domElement, container.firstChild);
-
-            // Initialize shared material library
-            MaterialsTheme.init(THREE);
-
-            // Initialize UI system
-            UISystem.init();
-
-            // Initialize scene hierarchy groups
-            initSceneGroups();
-
-            // Lighting - stronger ambient to compensate for removed point lights
-            ambientLight = new THREE.AmbientLight(0xfff8f0, 0.6);
-            scene.add(ambientLight);
-
-            // Main directional light
+            // Lighting
+            ambientLight = new THREE.AmbientLight(0xfff8f0, 0.6); scene.add(ambientLight);
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            dirLight.position.set(10, 20, 10);
-            dirLight.castShadow = true;
-            dirLight.shadow.mapSize.width = 2048;
-            dirLight.shadow.mapSize.height = 2048;
-            dirLight.shadow.camera.near = 0.5;
-            dirLight.shadow.camera.far = 100;
-            dirLight.shadow.camera.left = -30;
-            dirLight.shadow.camera.right = 30;
-            dirLight.shadow.camera.top = 30;
-            dirLight.shadow.camera.bottom = -30;
+            dirLight.position.set(10, 20, 10); dirLight.castShadow = true;
+            Object.assign(dirLight.shadow.mapSize, { width: 2048, height: 2048 });
+            Object.assign(dirLight.shadow.camera, { near: 0.5, far: 100, left: -30, right: 30, top: 30, bottom: -30 });
             scene.add(dirLight);
 
-            // Post-processing disabled (direct rendering used instead)
-
-            // Create supermarket environment
+            // Player and weapons
             createEnvironment();
-
-            // Create player cart using domain mesh
-            const playerCartResult = PlayerMesh.createPlayerCart(THREE);
-            playerCart = playerCartResult.cart;
-            playerChild = playerCartResult.child;
-            slingshotArm = playerCartResult.slingshot;
-            playerCart.position.set(0, 0, -5);
-            scene.add(playerCart);
-
-            // Initialize WeaponManager and register weapons
+            const p = PlayerMesh.createPlayerCart(THREE);
+            playerCart = p.cart; playerChild = p.child; slingshotArm = p.slingshot;
+            playerCart.position.set(0, 0, -5); scene.add(playerCart);
             WeaponManager.init(scene);
-            WeaponManager.register(Slingshot);
-            WeaponManager.register(WaterGun);
-            WeaponManager.register(NerfGun);
+            [Slingshot, WaterGun, NerfGun].forEach(w => WeaponManager.register(w));
             WeaponManager.equip('slingshot', THREE, MaterialsTheme, camera);
-
-            // Get FPS weapon references for backward compat
-            fpsWeapon = WeaponManager.fpsMesh;
-            fpsHands = WeaponManager.fpsRefs?.hands;
-            fpsBandL = WeaponManager.fpsRefs?.bandL;
-            fpsBandR = WeaponManager.fpsRefs?.bandR;
-            fpsPouch = WeaponManager.fpsRefs?.pouch;
-            fpsStone = WeaponManager.fpsRefs?.stone;
-
-            // Initialize pickup system
             PickupSystem.init(scene, THREE);
-
-            window.addEventListener('resize', onWindowResize);
-
-            // Expose for testing
-            window.scene = scene;
-            window.camera = camera;
-            window.renderer = renderer;
         }
 
-        // === POST-PROCESSING SETUP (using PostProcessSystem) ===
         function initPostProcessing() {
-            const result = PostProcessSystem.init(THREE, renderer, scene, camera, {
-                bloomStrength: 0.4,
-                bloomThreshold: 0.8,
-                damageIntensity: 0.0
-            });
-            composer = result.composer;
-            bloomPass = result.bloomPass;
-            vignettePass = result.vignettePass;
-            window.composer = composer;
+            const r = PostProcessSystem.init(THREE, renderer, scene, camera, { bloomStrength: 0.4, bloomThreshold: 0.8, damageIntensity: 0.0 });
+            composer = r.composer; window.composer = composer;
         }
 
         function createEnvironment() {
-            // Create all rooms in the grid using RoomSystem
-            RoomSystem.getAllRooms().forEach(room => {
-                if (room) {
-                    RoomSystem.createRoomMeshes(THREE, room, {
-                        scene: scene,
-                        shelfArray: shelves,
-                        shelfSystem: ShelfSystem
-                    });
-                }
-            });
+            RoomSystem.getAllRooms().forEach(room => room && RoomSystem.createRoomMeshes(THREE, room, { scene, shelfArray: shelves, shelfSystem: ShelfSystem }));
         }
 
         function createEnemyCart(x, z, enemyType = 'SKELETON') {
-            // Use EnemySystem for mesh creation with userData
-            const group = EnemySystem.createMesh(THREE, enemyType, x, z);
-            if (!group) return null;
-
-            scene.add(group);
-            enemies.push(group);
-            return group;
+            const g = EnemySystem.createMesh(THREE, enemyType, x, z);
+            if (g) { scene.add(g); enemies.push(g); }
+            return g;
         }
 
         function createObstacle(x, z, type) {
-            // Use ObstacleVisual for mesh creation
-            const group = ObstacleVisual.createByType(THREE, type);
-            group.position.set(x, 0, z);
-            scene.add(group);
-            obstacles.push(group);
-            return group;
+            const g = ObstacleVisual.createByType(THREE, type);
+            g.position.set(x, 0, z);
+            scene.add(g); obstacles.push(g);
+            return g;
         }
 
         function createProjectile(direction, spawnPos, speed = PROJECTILE_SPEED_MAX) {
-            // Use ProjectileSystem for mesh creation
-            const group = ProjectileSystem.createMesh(THREE, direction, spawnPos, speed, {
-                speedMin: PROJECTILE_SPEED_MIN,
-                speedMax: PROJECTILE_SPEED_MAX,
-                fallbackCamera: camera
-            });
-            scene.add(group);
-            projectiles.push(group);
-            return group;
+            const g = ProjectileSystem.createMesh(THREE, direction, spawnPos, speed, { speedMin: PROJECTILE_SPEED_MIN, speedMax: PROJECTILE_SPEED_MAX, fallbackCamera: camera });
+            scene.add(g); projectiles.push(g);
+            return g;
         }
 
-        // Particle spawning (using ParticleSystem)
-        function spawnParticles(position, color, count) {
-            ParticleSystem.spawn(THREE, position, color, count, particles, scene);
-        }
+        function spawnParticles(pos, color, count) { ParticleSystem.spawn(THREE, pos, color, count, particles, scene); }
 
-        function addScore(points, position) {
-            score += points;
-            UISystem.updateScore(score, true);
-
-            // Convert 3D position to screen position and show popup
-            const screenPos = UISystem.worldToScreen(position, camera);
-            UISystem.showScorePopup(points, screenPos.x, screenPos.y);
-        }
-
-        // Weapon Charging Functions (delegating to WeaponManager)
-        function startCharging() {
-            if (StateSystem.is('PLAYING')) {
-                const now = Date.now();
-                WeaponManager.onFireStart(now);
-
-                // Sync legacy state for backward compatibility
-                isChargingSlingshot = WeaponManager.isCharging();
-                slingshotTension = WeaponManager.getTension();
-            }
-        }
-
-        function updateCharging(dt) {
-            const now = Date.now();
-            const fireResult = WeaponManager.update(dt, now);
-
-            // Sync legacy state
-            slingshotTension = WeaponManager.getTension();
-            isChargingSlingshot = WeaponManager.isCharging();
-
-            // For auto-fire weapons, handle fire result from update
-            if (fireResult) {
-                shoot(fireResult.speed, fireResult);
-            }
-        }
-
-        function cancelCharging() {
-            WeaponManager.cancelAction();
-            isChargingSlingshot = false;
-            slingshotTension = 0;
-        }
-
-        function releaseAndFire() {
-            const now = Date.now();
-            const fireResult = WeaponManager.onFireRelease(now);
-
-            // Sync legacy state
-            isChargingSlingshot = false;
-            slingshotTension = 0;
-
-            if (fireResult) {
-                shoot(fireResult.speed, fireResult);
-            }
-        }
+        const addScore = (pts, pos) => GameSession.addScore(pts, pos);
+        const startCharging = () => StateSystem.is('PLAYING') && WeaponManager.onFireStart(Date.now());
+        const updateCharging = (dt) => { const r = WeaponManager.update(dt, Date.now()); if (r) shoot(r.speed, r); };
+        const cancelCharging = () => WeaponManager.cancelAction();
+        const releaseAndFire = () => { const r = WeaponManager.onFireRelease(Date.now()); if (r) shoot(r.speed, r); };
 
         function shoot(speed = PROJECTILE_SPEED_MAX, fireResult = null) {
-            const now = Date.now();
-            lastShootTime = now;
+            lastShootTime = Date.now();
+            if (cameraMode === 'hybrid-fps') WeaponManager.triggerFireAnim();
 
-            // Trigger FPS firing animation
-            if (cameraMode === 'hybrid-fps') {
-                WeaponManager.triggerFireAnim();
-            }
-
-            // Calculate spawn position and direction using ProjectileSystem
             const { spawnPos, direction } = ProjectileSystem.calculateFire(THREE, camera, crosshairX, crosshairY);
-
-            // Apply spread if present (for auto-fire weapons)
-            if (fireResult && fireResult.spread) {
-                direction.x += fireResult.spread.x;
-                direction.y += fireResult.spread.y;
-                direction.normalize();
-            }
-
+            if (fireResult?.spread) { direction.x += fireResult.spread.x; direction.y += fireResult.spread.y; direction.normalize(); }
             createProjectile(direction, spawnPos, speed, fireResult);
-
-            // Visual feedback - update ammo display
             updateAmmoDisplay();
         }
 
         function updateAmmoDisplay() {
-            const ammoText = WeaponManager.getAmmoDisplay();
-            const isReloading = WeaponManager.isReloading(Date.now());
-
-            if (isReloading) {
-                ammoDisplay.textContent = 'RELOADING...';
-                ammoDisplay.style.borderColor = '#e94560';
-            } else {
-                ammoDisplay.textContent = ammoText || 'READY';
-                ammoDisplay.style.borderColor = '#3498db';
-            }
+            const reloading = WeaponManager.isReloading(Date.now());
+            ammoDisplay.textContent = reloading ? 'RELOADING...' : (WeaponManager.getAmmoDisplay() || 'READY');
+            ammoDisplay.style.borderColor = reloading ? '#e94560' : '#3498db';
         }
 
         function resetGame() {
-            // Reset game state
-            score = 0;
-            gameTimer = GAME_DURATION;
             lastShootTime = 0;
-            scoreElement.textContent = '0';
-            updateTimerDisplay();
-
-            // Reset domain systems
-            InputSystem.reset();
-            PlayerSystem.reset();
-            WeaponManager.reset();
-            WeaponManager.equip('slingshot', THREE, MaterialsTheme, camera);
+            GameSession.reset(); GameSession.setCamera(camera);
+            InputSystem.reset(); PlayerSystem.reset();
+            WeaponManager.reset(); WeaponManager.equip('slingshot', THREE, MaterialsTheme, camera);
             PickupSystem.reset();
-
-            // Update FPS weapon references after re-equip
-            fpsWeapon = WeaponManager.fpsMesh;
-            fpsHands = WeaponManager.fpsRefs?.hands;
-            fpsBandL = WeaponManager.fpsRefs?.bandL;
-            fpsBandR = WeaponManager.fpsRefs?.bandR;
-            fpsPouch = WeaponManager.fpsRefs?.pouch;
-            fpsStone = WeaponManager.fpsRefs?.stone;
-
-            // Sync local variables from PlayerSystem
-            playerPosition = PlayerSystem.getPosition();
-            playerRotation = PlayerSystem.getRotation();
-            playerSpeed = PlayerSystem.getSpeed();
-            currentTurnRate = PlayerSystem.currentTurnRate;
-            currentLeanAngle = PlayerSystem.getLeanAngle();
-            playerHealth = PlayerSystem.getHealth();
-            isInvulnerable = PlayerSystem.getIsInvulnerable();
-
-            // Reset weapon/aim state
-            slingshotTension = 0;
-            isChargingSlingshot = false;
-            crosshairX = window.innerWidth / 2;
-            crosshairY = window.innerHeight / 2;
-            lockedTarget = null;
-
-            // Reset room tracking
-            currentRoom = null;
-            visitedRooms.clear();
-
-            // Reset health UI
-            UISystem.resetHealthBar(PLAYER_MAX_HEALTH);
-
-            // Clear all game objects from scene
-            projectiles.forEach(p => scene.remove(p));
-            enemies.forEach(e => scene.remove(e));
-            obstacles.forEach(o => scene.remove(o));
-            particles.forEach(p => scene.remove(p));
-            projectiles = [];
-            enemies = [];
-            obstacles = [];
-            particles = [];
-
-            // Sync cart and camera from PlayerSystem state
-            playerCart.position.set(playerPosition.x, 0, playerPosition.z);
-            playerCart.rotation.set(0, playerRotation, 0);
-            camera.position.set(playerPosition.x, 2.2, playerPosition.z);
-            camera.rotation.set(-0.12, playerRotation, 0);
+            crosshairX = window.innerWidth / 2; crosshairY = window.innerHeight / 2;
+            lockedTarget = null; currentRoom = null; visitedRooms.clear();
+            scoreElement.textContent = '0'; updateTimerDisplay(); UISystem.resetHealthBar(PLAYER_MAX_HEALTH);
+            [projectiles, enemies, obstacles, particles].forEach(arr => arr.forEach(o => scene.remove(o)));
+            projectiles = []; enemies = []; obstacles = []; particles = [];
+            playerCart.position.set(PlayerSystem.position.x, 0, PlayerSystem.position.z);
+            playerCart.rotation.set(0, PlayerSystem.rotation, 0);
+            camera.position.set(PlayerSystem.position.x, 2.2, PlayerSystem.position.z);
+            camera.rotation.set(-0.12, PlayerSystem.rotation, 0);
         }
 
-        function updateCursor() {
-            UISystem.updateCursor(StateSystem.is('PLAYING'), renderer.domElement);
-        }
+        const updateCursor = () => UISystem.updateCursor(StateSystem.is('PLAYING'), renderer.domElement);
 
         function startGame() {
-            resetGame();
-            StateSystem.forceTransition('PLAYING');
-            UISystem.showGameplay();
-            // Center crosshair on start
-            crosshairX = window.innerWidth / 2;
-            crosshairY = window.innerHeight / 2;
-            updateCursor();
-
-            spawnInitialObjects();
+            resetGame(); GameSession.start(); StateSystem.forceTransition('PLAYING'); UISystem.showGameplay();
+            crosshairX = window.innerWidth / 2; crosshairY = window.innerHeight / 2;
+            updateCursor(); spawnInitialObjects();
         }
 
         function endGame(died = false) {
             StateSystem.forceTransition('GAME_OVER');
-            const rating = UI.getScoreRating(score);
-            UISystem.showGameOver(score, rating, died);
-            updateCursor();
+            const s = GameSession.getScore();
+            UISystem.showGameOver(s, UI.getScoreRating(s), died); updateCursor();
         }
 
         function damagePlayer(amount) {
-            if (!StateSystem.is('PLAYING')) return;
-
-            // Use PlayerSystem for health/invulnerability state
-            const damageApplied = PlayerSystem.damage(amount);
-            if (!damageApplied) return;
-
-            // Sync local variables from PlayerSystem
-            playerHealth = PlayerSystem.getHealth();
-            isInvulnerable = PlayerSystem.getIsInvulnerable();
-
-            // Update UI
-            UISystem.updateHealthBar(playerHealth, PLAYER_MAX_HEALTH);
+            if (!StateSystem.is('PLAYING') || !PlayerSystem.damage(amount)) return;
+            UISystem.updateHealthBar(PlayerSystem.getHealth(), PLAYER_MAX_HEALTH);
             UISystem.showDamageOverlay();
-
-            // Trigger GPU-based damage vignette (scales with damage)
             damageVignetteStrength = Math.min(1.0, damageVignetteStrength + amount / 50);
-
-            // Check for death
-            if (PlayerSystem.isDead()) {
-                endGame(true);
-            }
-        }
-
-        function updateInvulnerability() {
-            // Delegate to PlayerSystem
-            PlayerSystem.updateInvulnerability();
-
-            // Sync local variable
-            isInvulnerable = PlayerSystem.getIsInvulnerable();
+            if (PlayerSystem.isDead()) endGame(true);
         }
 
         function pauseGame() {
             if (!StateSystem.is('PLAYING')) return;
-            StateSystem.forceTransition('PAUSED');
-            cancelCharging(); // Cancel any charging in progress
-            UISystem.showPause(score);
-            updateCursor();
+            StateSystem.forceTransition('PAUSED'); cancelCharging();
+            UISystem.showPause(GameSession.getScore()); updateCursor();
         }
 
         function resumeGame() {
             if (!StateSystem.is('PAUSED')) return;
-            StateSystem.forceTransition('PLAYING');
-            UISystem.hidePause();
-            LoopSystem.resetDelta(); // Reset delta to avoid jump
-            updateCursor();
+            StateSystem.forceTransition('PLAYING'); UISystem.hidePause();
+            LoopSystem.resetDelta(); updateCursor();
         }
 
         function quitToMenu() {
-            StateSystem.forceTransition('MENU');
-            UISystem.showMenu();
-            resetGame();
-            updateCursor();
+            StateSystem.forceTransition('MENU'); UISystem.showMenu(); resetGame(); updateCursor();
         }
 
-        function togglePause() {
-            if (StateSystem.is('PLAYING')) {
-                pauseGame();
-            } else if (StateSystem.is('PAUSED')) {
-                resumeGame();
-            }
-        }
+        const togglePause = () => StateSystem.is('PLAYING') ? pauseGame() : StateSystem.is('PAUSED') ? resumeGame() : null;
+        const spawnInitialObjects = () => updateCurrentRoom();
+        const updateTimerDisplay = () => UISystem.updateTimerDisplay(GameSession.getTimer(), GameSession.DURATION);
 
-        function spawnInitialObjects() {
-            // Room-based spawning - trigger initial room spawn
-            updateCurrentRoom();
-        }
-
-        function spawnObjects() {
-            // Room-based spawning handles this now
-            // Objects spawn when entering new rooms via updateCurrentRoom()
-        }
-
-        // Timer display update
-        function updateTimerDisplay() {
-            UISystem.updateTimerDisplay(gameTimer, GAME_DURATION);
-        }
-
-        // Room tracking and spawning
         function updateCurrentRoom() {
-            const room = mallGrid.getRoomAtWorld(playerPosition.x, playerPosition.z);
+            const room = mallGrid.getRoomAtWorld(PlayerSystem.position.x, PlayerSystem.position.z);
             if (room && room !== currentRoom) {
                 const roomKey = `${room.gridX}_${room.gridZ}`;
                 currentRoom = room;
-
-                // Spawn contents if not visited
-                if (!visitedRooms.has(roomKey)) {
-                    visitedRooms.add(roomKey);
-                    spawnRoomContents(room);
-                }
+                if (!visitedRooms.has(roomKey)) { visitedRooms.add(roomKey); spawnRoomContents(room); }
             }
         }
 
@@ -840,214 +452,65 @@
             if (!StateSystem.is('PLAYING')) return;
 
             // Update invulnerability
-            updateInvulnerability();
+            PlayerSystem.updateInvulnerability();
 
-            // Update game timer
-            gameTimer -= dt;
-            if (gameTimer <= 0) {
-                gameTimer = 0;
-                endGame(false); // Time's up - not died
+            // Update game timer via GameSession
+            if (GameSession.updateTimer(dt)) {
+                endGame(false); // Time's up
                 return;
             }
-            updateTimerDisplay();
 
-            // Update room-based ambient lighting (using RoomSystem)
-            RoomSystem.updateAmbientLighting(ambientLight, playerPosition, mallGrid, THREE);
+            RoomSystem.updateAmbientLighting(ambientLight, PlayerSystem.position, mallGrid, THREE);
+            PlayerSystem.fullUpdate({ keys: InputSystem.keys, dt, collisionCheck: (nX, nZ, oX, oZ) => CollisionSystem.checkWallCollision(nX, nZ, oX, oZ, mallGrid, Room.structure), cart: playerCart, camera });
 
-            // === WASD DRIVING MOVEMENT (using PlayerSystem) ===
-            // Sync PlayerSystem state from local variables
-            PlayerSystem.position.x = playerPosition.x;
-            PlayerSystem.position.z = playerPosition.z;
-            PlayerSystem.rotation = playerRotation;
-            PlayerSystem.speed = playerSpeed;
-            PlayerSystem.currentTurnRate = currentTurnRate;
-            PlayerSystem.currentLeanAngle = currentLeanAngle;
-            PlayerSystem.wallBumpIntensity = wallBumpIntensity;
-            PlayerSystem.wallBumpDirection = wallBumpDirection;
-
-            // Full update (movement, cart, camera)
-            const moveResult = PlayerSystem.fullUpdate({
-                keys: InputSystem.keys,
-                dt: dt,
-                collisionCheck: (newX, newZ, oldX, oldZ) =>
-                    CollisionSystem.checkWallCollision(newX, newZ, oldX, oldZ, mallGrid, Room.structure),
-                cart: playerCart,
-                camera: camera
-            });
-
-            // Sync local variables from PlayerSystem
-            playerPosition.x = moveResult.position.x;
-            playerPosition.z = moveResult.position.z;
-            playerRotation = moveResult.rotation;
-            playerSpeed = moveResult.speed;
-            currentTurnRate = moveResult.currentTurnRate;
-            currentLeanAngle = moveResult.currentLeanAngle;
-            wallBumpIntensity = moveResult.wallBumpIntensity;
-            wallBumpDirection = moveResult.wallBumpDirection;
-
-            // FPS mode: hide child, show hands
+            // FPS mode
             playerCart.visible = true;
             if (playerChild) playerChild.visible = false;
             if (slingshotArm) slingshotArm.visible = false;
-            if (WeaponManager.fpsMesh) {
-                WeaponManager.showFPSWeapon();
-                WeaponManager.updateTransform(currentTurnRate);
-                // Sync local ref in case weapon switched
-                fpsWeapon = WeaponManager.fpsMesh;
-            }
+            if (WeaponManager.fpsMesh) { WeaponManager.showFPSWeapon(); WeaponManager.updateTransform(PlayerSystem.currentTurnRate); }
+            updateCharging(dt); WeaponManager.animateFPS(dt); updateAmmoDisplay(); updateCurrentRoom();
 
-            // Update charging
-            updateCharging(dt);
+            // Auto-aim
+            const aim = WeaponManager.updateAim({ camera, playerPosition: PlayerSystem.position, enemies, obstacles, collisionSystem: CollisionSystem, gridSystem: mallGrid, roomConfig: Room.structure, boundsMargin: CROSSHAIR_BOUNDS_MARGIN });
+            crosshairX = aim.crosshairX; crosshairY = aim.crosshairY; lockedTarget = WeaponManager.getLockedTarget();
 
-            // Animate FPS weapon using WeaponManager
-            WeaponManager.animateFPS(dt);
-
-            // Update ammo display periodically
-            updateAmmoDisplay();
-
-            // Update current room for spawning
-            updateCurrentRoom();
-
-            // Smart Auto-Aim with Sticky Targeting - using WeaponManager
-            const aimResult = WeaponManager.updateAim({
-                camera: camera,
-                playerPosition: playerPosition,
-                enemies: enemies,
-                obstacles: obstacles,
-                collisionSystem: CollisionSystem,
-                gridSystem: mallGrid,
-                roomConfig: Room.structure,
-                boundsMargin: CROSSHAIR_BOUNDS_MARGIN
+            // Pickups
+            PickupSystem.update(dt, { x: PlayerSystem.position.x, y: 0, z: PlayerSystem.position.z }, Date.now()).forEach(p => {
+                const r = PickupSystem.collect(p, WeaponManager, THREE, MaterialsTheme, camera);
+                if (r?.switched) UISystem.showPickupNotification?.(p.config.name);
+                else if (r?.ammoAdded > 0) UISystem.showPickupNotification?.(`+${r.ammoAdded} Ammo`);
             });
+            PickupSystem.cleanupBehind(PlayerSystem.position.z);
 
-            // Update local crosshair state from WeaponManager
-            crosshairX = aimResult.crosshairX;
-            crosshairY = aimResult.crosshairY;
-            lockedTarget = WeaponManager.getLockedTarget();
+            // UI updates
+            UISystem.updateCrosshairUI(crosshairX, crosshairY, aim.aimAssistActive);
+            UISystem.updateTensionUI(crosshairX, crosshairY, WeaponManager.isCharging(), WeaponManager.getTension(), TENSION_MAX);
 
-            // Update and collect pickups
-            const collectedPickups = PickupSystem.update(dt, {
-                x: playerPosition.x,
-                y: 0,
-                z: playerPosition.z
-            }, Date.now());
-
-            // Handle collected pickups
-            collectedPickups.forEach(pickup => {
-                const result = PickupSystem.collect(pickup, WeaponManager, THREE, MaterialsTheme, camera);
-                if (result) {
-                    if (result.switched) {
-                        // Update FPS weapon references after switch
-                        fpsWeapon = WeaponManager.fpsMesh;
-                        fpsHands = WeaponManager.fpsRefs?.hands;
-                        fpsBandL = WeaponManager.fpsRefs?.bandL;
-                        fpsBandR = WeaponManager.fpsRefs?.bandR;
-                        fpsPouch = WeaponManager.fpsRefs?.pouch;
-                        fpsStone = WeaponManager.fpsRefs?.stone;
-                        // Show pickup notification
-                        UISystem.showPickupNotification?.(pickup.config.name);
-                    } else if (result.ammoAdded > 0) {
-                        // Show ammo pickup notification
-                        UISystem.showPickupNotification?.(`+${result.ammoAdded} Ammo`);
-                    }
-                }
-            });
-
-            // Cleanup pickups behind player
-            PickupSystem.cleanupBehind(playerPosition.z);
-
-            // Update crosshair and tension UI
-            UISystem.updateCrosshairUI(crosshairX, crosshairY, aimResult.aimAssistActive);
-            UISystem.updateTensionUI(crosshairX, crosshairY, isChargingSlingshot, slingshotTension, TENSION_MAX);
-
-            // Spawn new objects (room-based)
-            spawnObjects();
-
-            // Update projectiles using ProjectileSystem
-            ProjectileSystem.updateMeshArray(projectiles, {
-                dt: dt,
-                cameraPosition: camera.position
-            });
-
-            // Update enemies using EnemySystem
-            EnemySystem.updateAll(enemies, {
-                playerPosition: playerPosition,
-                playerCart: playerCart,
-                dt: dt,
-                baseSpeed: CART_SPEED,
-                isInvulnerable: isInvulnerable,
-                onPlayerCollision: () => damagePlayer(ENEMY_COLLISION_DAMAGE)
-            });
-
-            // Update obstacles using EnvironmentSystem
-            EnvironmentSystem.updateObstaclesArray(obstacles, {
-                playerCart: playerCart,
-                dt: dt,
-                isInvulnerable: isInvulnerable,
-                onPlayerCollision: () => damagePlayer(OBSTACLE_COLLISION_DAMAGE)
-            });
-
-            // Update particles (using ParticleSystem)
+            // Entity updates
+            ProjectileSystem.updateMeshArray(projectiles, { dt, cameraPosition: camera.position });
+            EnemySystem.updateAll(enemies, { playerPosition: PlayerSystem.position, playerCart, dt, baseSpeed: CART_SPEED, isInvulnerable: PlayerSystem.getIsInvulnerable(), onPlayerCollision: () => damagePlayer(Player.health.ENEMY_DAMAGE) });
+            EnvironmentSystem.updateObstaclesArray(obstacles, { playerCart, dt, isInvulnerable: PlayerSystem.getIsInvulnerable(), onPlayerCollision: () => damagePlayer(Player.health.OBSTACLE_DAMAGE) });
             ParticleSystem.updateAll(particles, dt, { gravity: 15, fadeRate: 2 });
 
-            // Collision detection with improved accuracy (using CollisionSystem)
+            // Collision detection
             CollisionSystem.processProjectileHits(projectiles, enemies, obstacles, {
                 THREE,
                 onEnemyHit: (enemy, damage, closestPoint, result) => {
                     UISystem.showHitMarker();
-
-                    // Update health bar using EnemySystem helper
-                    const healthPercent = EnemySystem.getHealthPercent(enemy);
-                    const healthBarGroup = enemy.userData.healthBar;
-                    if (healthBarGroup && typeof EnemyVisual !== 'undefined') {
-                        EnemyVisual.updateHealthBar(healthBarGroup, healthPercent);
-                    } else {
-                        // Fallback for legacy health bar
-                        const healthBar = enemy.getObjectByName('healthBar');
-                        if (healthBar) {
-                            healthBar.scale.x = healthPercent;
-                            healthBar.position.x = -(1 - healthBar.scale.x);
-                        }
-                    }
-
-                    // Use score values from EnemySystem result
-                    const config = enemy.userData.config || ENEMY_TYPES.CART;
-                    const visualColor = config.visual?.bodyColor || 0xe94560;
-                    if (result.destroyed) {
-                        addScore(result.scoreDestroy, enemy.position);
-                        spawnParticles(enemy.position, visualColor, 15);
-                    } else {
-                        addScore(result.scoreHit, enemy.position);
-                        spawnParticles(closestPoint, 0xf39c12, 3);
-                    }
+                    const hb = enemy.userData.healthBar;
+                    if (hb && typeof EnemyVisual !== 'undefined') EnemyVisual.updateHealthBar(hb, EnemySystem.getHealthPercent(enemy));
+                    const color = (enemy.userData.config || ENEMY_TYPES.CART).visual?.bodyColor || 0xe94560;
+                    if (result.destroyed) { addScore(result.scoreDestroy, enemy.position); spawnParticles(enemy.position, color, 15); }
+                    else { addScore(result.scoreHit, enemy.position); spawnParticles(closestPoint, 0xf39c12, 3); }
                 },
-                onObstacleHit: (obs, closestPoint) => {
-                    UISystem.showHitMarker();
-                    addScore(150, obs.position);
-                    spawnParticles(obs.position, 0xf1c40f, 10);
-                }
+                onObstacleHit: (obs) => { UISystem.showHitMarker(); addScore(150, obs.position); spawnParticles(obs.position, 0xf1c40f, 10); }
             });
 
-            // Clean up inactive objects (using EntitySystem)
-            const cleaned = EntitySystem.cleanupAllInactive({
-                projectiles, enemies, obstacles, particles
-            }, scene);
-            projectiles = cleaned.projectiles;
-            enemies = cleaned.enemies;
-            obstacles = cleaned.obstacles;
-            particles = cleaned.particles;
-
+            // Cleanup inactive objects
+            const c = EntitySystem.cleanupAllInactive({ projectiles, enemies, obstacles, particles }, scene);
+            projectiles = c.projectiles; enemies = c.enemies; obstacles = c.obstacles; particles = c.particles;
             updateCooldownIndicator();
         }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            if (composer) composer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        // Game loop handled by GameLoop module (configured in initialization)
 
         // Event Listeners
         document.getElementById('start-btn').addEventListener('click', startGame);
@@ -1058,248 +521,78 @@
         // How to Play modal
         const howToPlayModal = document.getElementById('how-to-play-modal');
         const modalCloseBtn = document.getElementById('modal-close');
+        const closeModal = (e) => { e.preventDefault(); howToPlayModal.classList.remove('visible'); };
+        document.getElementById('how-to-play-btn').addEventListener('click', (e) => { e.preventDefault(); howToPlayModal.classList.add('visible'); });
+        modalCloseBtn.addEventListener('click', closeModal);
+        modalCloseBtn.addEventListener('touchend', closeModal);
+        howToPlayModal.addEventListener('click', (e) => e.target === howToPlayModal && closeModal(e));
+        document.addEventListener('keydown', (e) => e.key === 'Escape' && howToPlayModal.classList.contains('visible') && (closeModal(e), e.stopPropagation()), true);
 
-        document.getElementById('how-to-play-btn').addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            howToPlayModal.classList.add('visible');
-        });
+        // Legacy aliases
+        const WEAPON_TYPES = Weapon.types, PROJECTILE_TYPES = Projectile.types, ENEMY_TYPES = Enemy.types, AIM_PROFILES = Weapon.aimProfiles;
 
-        modalCloseBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            howToPlayModal.classList.remove('visible');
-        });
-
-        // Also handle touch for mobile
-        modalCloseBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            howToPlayModal.classList.remove('visible');
-        });
-
-        // Close on backdrop click
-        howToPlayModal.addEventListener('click', (e) => {
-            if (e.target === howToPlayModal) {
-                howToPlayModal.classList.remove('visible');
-            }
-        });
-
-        // Close on ESC key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && howToPlayModal.classList.contains('visible')) {
-                howToPlayModal.classList.remove('visible');
-                e.stopPropagation();
-            }
-        }, true);
-
-        // Keyboard controls handled by Input module (initialized above)
-        // WASD movement, Space (fire), and ESC (pause) are all handled via Input callbacks
-
-        // Expose game state and functions for testing
-        Object.defineProperty(window, 'gameState', {
-            get: () => StateSystem.get(),
-            set: (v) => { StateSystem.forceTransition(v); }
-        });
-        Object.defineProperty(window, 'score', {
-            get: () => score,
-            set: (v) => { score = v; }
-        });
-        Object.defineProperty(window, 'gameTimer', {
-            get: () => gameTimer,
-            set: (v) => { gameTimer = v; }
-        });
-        // Legacy compatibility - distance now returns timer-based progress
-        Object.defineProperty(window, 'distance', {
-            get: () => (GAME_DURATION - gameTimer) * (CART_SPEED / 3),
-            set: (v) => { }
-        });
-        // playerX returns offset from starting position for legacy test compatibility
-        // (v2 tests expected lateral strafe bounded to ±10)
-        const PLAYER_START_X = 45; // Center of ENTRANCE room
-        Object.defineProperty(window, 'playerX', {
-            get: () => playerPosition.x - PLAYER_START_X,
-            set: (v) => { playerPosition.x = v + PLAYER_START_X; }
-        });
-        Object.defineProperty(window, 'playerPosition', {
-            get: () => playerPosition,
-            set: (v) => { playerPosition = v; }
-        });
-        Object.defineProperty(window, 'playerRotation', {
-            get: () => playerRotation,
-            set: (v) => { playerRotation = v; }
-        });
-        Object.defineProperty(window, 'playerHealth', {
-            get: () => playerHealth,
-            set: (v) => { playerHealth = v; }
-        });
-        Object.defineProperty(window, 'health', {
-            get: () => playerHealth,
-            set: (v) => { playerHealth = v; }
-        });
-        window.startGame = startGame;
-        window.pauseGame = pauseGame;
-        window.resumeGame = resumeGame;
-        window.endGame = endGame;
-        window.damagePlayer = damagePlayer;
-        window.takeDamage = damagePlayer;
-        window.keys = InputSystem.keys;
-        window.enemies = enemies;
-        window.obstacles = obstacles;
-
-        // Expose 3D objects for testing
-        Object.defineProperty(window, 'fpsWeapon', {
-            get: () => fpsWeapon
-        });
-        Object.defineProperty(window, 'playerChild', {
-            get: () => playerChild
-        });
-        Object.defineProperty(window, 'playerCart', {
-            get: () => playerCart
-        });
-
-        // Expose slingshot tension for testing
-        Object.defineProperty(window, 'slingshotTension', {
-            get: () => slingshotTension,
-            set: (v) => { slingshotTension = v; }
-        });
-        Object.defineProperty(window, 'isChargingSlingshot', {
-            get: () => isChargingSlingshot,
-            set: (v) => { isChargingSlingshot = v; }
-        });
-        window.startCharging = startCharging;
-        window.releaseAndFire = releaseAndFire;
-        window.cancelCharging = cancelCharging;
-        // Aliases for test compatibility
-        window.startFiring = startCharging;
-        window.stopFiring = releaseAndFire;
-        Object.defineProperty(window, 'isFiring', {
-            get: () => isChargingSlingshot
-        });
-        window.resetGame = resetGame;
-        // Manual update function for test compatibility (RAF may not run in backgrounded iframes)
-        window.manualUpdate = (dt = 0.016) => update(dt);
-        // Wall bump effect exposure for testing
-        Object.defineProperty(window, 'wallBumpIntensity', {
-            get: () => wallBumpIntensity,
-            set: (v) => { wallBumpIntensity = v; }
-        });
-        window.triggerWallBump = (intensity, dirX, dirZ) => {
-            wallBumpIntensity = intensity;
-            wallBumpDirection = { x: dirX, z: dirZ };
-        };
-        Object.defineProperty(window, 'cameraMode', {
-            get: () => cameraMode,
-            set: (v) => { cameraMode = v; }
-        });
-        // Expose lastShootTime for test to reset cooldown
-        Object.defineProperty(window, 'lastShootTime', {
-            get: () => lastShootTime,
-            set: (v) => { lastShootTime = v; }
-        });
-        Object.defineProperty(window, 'camera', {
-            get: () => camera
-        });
-        Object.defineProperty(window, 'projectiles', {
-            get: () => projectiles
-        });
-
-        // Expose domain objects for testing
-        // Engine domain
-        window.Engine = Engine;
-        window.CollisionSystem = CollisionSystem;
-        window.InputSystem = InputSystem;
-        window.StateSystem = StateSystem;
-        window.LoopSystem = LoopSystem;
-        window.SceneSystem = SceneSystem;
-        window.EntitySystem = EntitySystem;
-
-        // Weapon domain
-        window.Weapon = Weapon;
-        window.WeaponManager = WeaponManager;
-        window.Slingshot = Slingshot;
-        window.WaterGun = WaterGun;
-        window.NerfGun = NerfGun;
-        window.WeaponPickup = WeaponPickup;
-        window.PickupSystem = PickupSystem;
-
-        // Projectile domain
-        window.Projectile = Projectile;
-        window.ProjectileVisual = ProjectileVisual;
-        window.ProjectileSystem = ProjectileSystem;
-
-        // Enemy domain
-        window.Enemy = Enemy;
-        window.EnemyVisual = EnemyVisual;
-        window.EnemySystem = EnemySystem;
-
-        // Room domain
-        window.Room = Room;
-        window.RoomTheme = RoomTheme;
-        window.RoomMesh = RoomMesh;
-        window.RoomSystem = RoomSystem;
-
-        // Player domain
-        window.Player = Player;
-        window.PlayerTheme = PlayerTheme;
-        window.PlayerMesh = PlayerMesh;
-        window.PlayerSystem = PlayerSystem;
-
-        // Environment domain
-        window.Obstacle = Obstacle;
-        window.ObstacleVisual = ObstacleVisual;
-        window.Shelf = Shelf;
-        window.ShelfVisual = ShelfVisual;
-        window.EnvironmentSystem = EnvironmentSystem;
-
-        // Legacy aliases for backward compatibility with existing game code
-        const WEAPON_TYPES = Weapon.types;
-        const PROJECTILE_TYPES = Projectile.types;
-        const ENEMY_TYPES = Enemy.types;
-        const AIM_PROFILES = Weapon.aimProfiles;
-
-        // Initialize and start
+        // Initialize systems
         initThree();
-
-        // Initialize engine systems
         StateSystem.init('MENU');
         LoopSystem.init(THREE);
-
-        // Configure game loop callbacks
         LoopSystem.setUpdateCallback(update);
         LoopSystem.setRenderCallback((dt) => {
-            // Decay and apply damage vignette to post-processing
             damageVignetteStrength *= 0.95;
             PostProcessSystem.setDamageIntensity(damageVignetteStrength);
-
-            // Render with post-processing
-            if (composer) {
-                composer.render(dt);
-            } else {
-                renderer.render(scene, camera);
-            }
+            composer ? composer.render(dt) : renderer.render(scene, camera);
         });
-
         InputSystem.init();
         EntitySystem.init(scene);
-
-        // Register Input action callbacks
-        InputSystem.onActionStart('fire', () => {
-            if (StateSystem.is('PLAYING')) startCharging();
-        });
-        InputSystem.onActionRelease('fire', () => {
-            if (StateSystem.is('PLAYING')) releaseAndFire();
-        });
+        InputSystem.onActionStart('fire', () => StateSystem.is('PLAYING') && startCharging());
+        InputSystem.onActionRelease('fire', () => StateSystem.is('PLAYING') && releaseAndFire());
         InputSystem.onActionStart('pause', togglePause);
-
-        // Register entity types with EntityManager
         EntitySystem.registerType('enemy', { maxCount: 10, despawnDistance: 20 });
         EntitySystem.registerType('obstacle', { maxCount: 15, despawnDistance: 30 });
         EntitySystem.registerType('projectile', { maxCount: 50, despawnDistance: 20 });
         EntitySystem.registerType('particle', { maxCount: 100, despawnDistance: 50 });
-
-        // Initialize domain systems
-        // WeaponManager already initialized in initScene()
         EnemySystem.init(Enemy, scene);
+        GameSession.init({ camera });
+
+        // Expose internals for test framework (TestBridge injected only during tests)
+        window.__gameInternals = {
+            // Game state - delegate to GameSession
+            getScore: () => GameSession.getScore(),
+            setScore: (v) => GameSession.setScore(v),
+            getGameTimer: () => GameSession.getTimer(),
+            setGameTimer: (v) => GameSession.setTimer(v),
+            // Player state - delegate to PlayerSystem
+            getPlayerPosition: () => PlayerSystem.position,
+            setPlayerPosition: (v) => { PlayerSystem.position = v; },
+            getPlayerRotation: () => PlayerSystem.rotation,
+            setPlayerRotation: (v) => { PlayerSystem.rotation = v; },
+            getPlayerHealth: () => PlayerSystem.health,
+            setPlayerHealth: (v) => { PlayerSystem.health = v; },
+            getWallBumpIntensity: () => PlayerSystem.wallBumpIntensity,
+            setWallBumpIntensity: (v) => { PlayerSystem.wallBumpIntensity = v; },
+            // Weapon state - delegate to WeaponManager
+            getSlingshotTension: () => WeaponManager.getTension(),
+            setSlingshotTension: (v) => WeaponManager.setTension?.(v),
+            getIsChargingSlingshot: () => WeaponManager.isCharging(),
+            setIsChargingSlingshot: (v) => v ? WeaponManager.onFireStart(Date.now()) : WeaponManager.cancelAction(),
+            getLastShootTime: () => lastShootTime,
+            setLastShootTime: (v) => { lastShootTime = v; },
+            getCameraMode: () => cameraMode,
+            setCameraMode: () => {},  // Read-only in v3
+            getFpsWeapon: () => WeaponManager.fpsMesh,
+            getProjectiles: () => projectiles,
+            getEnemies: () => enemies,
+            getObstacles: () => obstacles,
+            // Functions
+            startGame, pauseGame, resumeGame, endGame, resetGame, damagePlayer,
+            startCharging, releaseAndFire, cancelCharging,
+            manualUpdate: (dt = 0.016) => update(dt),
+            triggerWallBump: (intensity, dirX, dirZ) => {
+                PlayerSystem.wallBumpIntensity = intensity;
+                PlayerSystem.wallBumpDirection = { x: dirX, z: dirZ };
+            },
+            // Object references
+            scene, camera, renderer, playerCart, playerChild
+        };
 
         updateCursor();
 

@@ -18,9 +18,44 @@ class UITestRunner {
         const frame = document.getElementById('game-frame');
         this.gameWindow = frame.contentWindow;
         this.gameDocument = frame.contentDocument;
+
+        // Inject TestBridge for test compatibility
+        await this.injectTestBridge();
+
         this.log('Game loaded successfully', 'success');
         this.renderTests();
         this.startStateMonitor();
+    }
+
+    async injectTestBridge() {
+        // Wait for __gameInternals to be ready
+        let attempts = 0;
+        while (!this.gameWindow.__gameInternals && attempts < 50) {
+            await this.wait(100);
+            attempts++;
+        }
+
+        if (!this.gameWindow.__gameInternals) {
+            this.log('Warning: __gameInternals not found after waiting', 'warn');
+            return;
+        }
+
+        // Create and inject TestBridge script
+        // Path is relative to the iframe's document (index.html in root)
+        const script = this.gameDocument.createElement('script');
+        script.src = './src/engine/test-bridge.js';
+
+        return new Promise((resolve) => {
+            script.onload = () => {
+                this.log('TestBridge injected successfully', 'info');
+                resolve();
+            };
+            script.onerror = () => {
+                this.log('Failed to inject TestBridge', 'error');
+                resolve();
+            };
+            this.gameDocument.head.appendChild(script);
+        });
     }
 
     log(message, type = 'info') {
