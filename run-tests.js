@@ -639,9 +639,14 @@ function saveResults(data) {
 // ENTRY POINT
 // ============================================
 
-if (UNIT_ONLY) {
+// Domain filter implies unit-only (domains are for unit tests)
+const implicitUnitOnly = UNIT_DOMAINS.length > 0;
+// Group filter implies UI-only (groups are for UI tests)
+const implicitUIOnly = TEST_GROUPS.length > 0;
+
+if (UNIT_ONLY || implicitUnitOnly) {
     runUnitTestsOnly().catch(console.error);
-} else if (UI_ONLY) {
+} else if (UI_ONLY || implicitUIOnly) {
     runUITestsOnly().catch(console.error);
 } else {
     runAllTests().catch(console.error);

@@ -233,6 +233,363 @@
         });
     });
 
+    // ==========================================
+    // ENEMY AI - WALL COLLISION TESTS
+    // ==========================================
+
+    test.describe('Enemy System - Wall Collision', () => {
+        test.beforeEach(() => {
+            EnemySystem.init(Enemy, null);
+            EnemySystem.maxEnemies = 10;
+        });
+
+        test.it('should stop at wall when collision check blocks X', () => {
+            const e = EnemySystem.spawn('SKELETON', 5, -10, null);
+            const initialX = e.position.x;
+            const playerPos = { x: 20, y: 0, z: -10 }; // Player to the right
+
+            // Collision check that blocks X movement
+            const collisionCheck = (nX, nZ, oX, oZ) => ({
+                blocked: true,
+                blockedX: true,
+                blockedZ: false
+            });
+
+            EnemySystem.updateBehavior(e, playerPos, 1, 10, { collisionCheck });
+
+            // X should not change (blocked)
+            test.assertEqual(e.position.x, initialX);
+        });
+
+        test.it('should stop at wall when collision check blocks Z', () => {
+            const e = EnemySystem.spawn('SKELETON', 0, -10, null);
+            const initialZ = e.position.z;
+            const playerPos = { x: 0, y: 0, z: -50 }; // Player ahead
+
+            // Collision check that blocks Z movement
+            const collisionCheck = (nX, nZ, oX, oZ) => ({
+                blocked: true,
+                blockedX: false,
+                blockedZ: true
+            });
+
+            EnemySystem.updateBehavior(e, playerPos, 1, 10, { collisionCheck });
+
+            // Z should not change (blocked)
+            test.assertEqual(e.position.z, initialZ);
+        });
+
+        test.it('should move freely when collision check allows', () => {
+            const e = EnemySystem.spawn('SKELETON', 5, -10, null);
+            const initialX = e.position.x;
+            const playerPos = { x: 0, y: 0, z: 0 };
+
+            // Collision check that allows movement
+            const collisionCheck = () => ({
+                blocked: false,
+                blockedX: false,
+                blockedZ: false
+            });
+
+            EnemySystem.updateBehavior(e, playerPos, 1, 10, { collisionCheck });
+
+            // Should move towards player
+            test.assertTrue(e.position.x !== initialX);
+        });
+
+        test.it('should reverse drift direction when hitting wall', () => {
+            const e = EnemySystem.spawn('SKELETON', 0, -10, null);
+            e.driftSpeed = 5; // Positive drift
+            e.driftTimer = 0;
+
+            const collisionCheck = () => ({
+                blocked: true,
+                blockedX: true,
+                blockedZ: false
+            });
+
+            EnemySystem.updateBehavior(e, { x: 0, y: 0, z: 0 }, 0.1, 10, { collisionCheck });
+
+            // Drift should reverse
+            test.assertEqual(e.driftSpeed, -5);
+        });
+    });
+
+    // ==========================================
+    // ENEMY AI - LINE OF SIGHT TESTS
+    // ==========================================
+
+    test.describe('Enemy System - Line of Sight', () => {
+        test.beforeEach(() => {
+            EnemySystem.init(Enemy, null);
+            EnemySystem.maxEnemies = 10;
+        });
+
+        test.it('should chase when has line of sight', () => {
+            const e = EnemySystem.spawn('SKELETON', 10, -10, null);
+            const initialX = e.position.x;
+            const playerPos = { x: 0, y: 0, z: 0 };
+
+            // LOS check returns true
+            const hasLineOfSight = () => true;
+
+            EnemySystem.updateBehavior(e, playerPos, 1, 10, { hasLineOfSight });
+
+            // Should move towards player
+            test.assertTrue(e.position.x < initialX);
+        });
+
+        test.it('should NOT chase directly when no line of sight', () => {
+            const e = EnemySystem.spawn('SKELETON', 10, -10, null);
+            e.lastSeenPlayerPos = null;
+            e.lostSightTimer = 10; // Lost sight for a while
+            const initialPos = { x: e.position.x, z: e.position.z };
+            const playerPos = { x: 0, y: 0, z: 0 };
+
+            // LOS check returns false
+            const hasLineOfSight = () => false;
+
+            EnemySystem.updateBehavior(e, playerPos, 0.1, 10, { hasLineOfSight });
+
+            // Should NOT move directly towards player (wander instead)
+            // Movement should be much slower (wander speed is 15% of base)
+            const distMoved = Math.sqrt(
+                Math.pow(e.position.x - initialPos.x, 2) +
+                Math.pow(e.position.z - initialPos.z, 2)
+            );
+            test.assertTrue(distMoved < 1); // Wander is slow
+        });
+
+        test.it('should track last seen player position', () => {
+            const e = EnemySystem.spawn('SKELETON', 10, -10, null);
+            const playerPos = { x: 5, y: 0, z: -5 };
+
+            // LOS check returns true
+            const hasLineOfSight = () => true;
+
+            EnemySystem.updateBehavior(e, playerPos, 0.1, 10, { hasLineOfSight });
+
+            // Should remember last seen position
+            test.assertTrue(e.lastSeenPlayerPos !== undefined);
+            test.assertEqual(e.lastSeenPlayerPos.x, 5);
+            test.assertEqual(e.lastSeenPlayerPos.z, -5);
+        });
+
+        test.it('should reset lost sight timer when sees player', () => {
+            const e = EnemySystem.spawn('SKELETON', 10, -10, null);
+            e.lostSightTimer = 5;
+            const playerPos = { x: 0, y: 0, z: 0 };
+
+            // LOS check returns true
+            const hasLineOfSight = () => true;
+
+            EnemySystem.updateBehavior(e, playerPos, 0.1, 10, { hasLineOfSight });
+
+            // Lost sight timer should reset
+            test.assertEqual(e.lostSightTimer, 0);
+        });
+
+        test.it('should increment lost sight timer when cannot see player', () => {
+            const e = EnemySystem.spawn('SKELETON', 10, -10, null);
+            e.lostSightTimer = 0;
+            e.lastSeenPlayerPos = null;
+            const playerPos = { x: 0, y: 0, z: 0 };
+
+            // LOS check returns false
+            const hasLineOfSight = () => false;
+
+            EnemySystem.updateBehavior(e, playerPos, 0.5, 10, { hasLineOfSight });
+
+            // Lost sight timer should increase
+            test.assertTrue(e.lostSightTimer > 0);
+        });
+    });
+
+    // ==========================================
+    // ENEMY AI - ENVIRONMENT COLLISION TESTS
+    // ==========================================
+
+    test.describe('Enemy System - Environment Collision', () => {
+        test.beforeEach(() => {
+            EnemySystem.init(Enemy, null);
+            EnemySystem.maxEnemies = 10;
+        });
+
+        test.it('should push apart overlapping enemies', () => {
+            // Create mock enemy mesh objects
+            const enemy1 = {
+                position: { x: 0, y: 0, z: 0 },
+                userData: {
+                    active: true,
+                    config: Enemy.get('SKELETON')
+                }
+            };
+            const enemy2 = {
+                position: { x: 1, y: 0, z: 0 }, // Overlapping (within 2.5 + 2.5 = 5)
+                userData: {
+                    active: true,
+                    config: Enemy.get('SKELETON')
+                }
+            };
+
+            EnemySystem._resolveEnvironmentCollisions(enemy1, [enemy1, enemy2], null, null);
+
+            // Enemies should be pushed apart
+            test.assertTrue(enemy1.position.x < 0);
+        });
+
+        test.it('should push enemy away from obstacle', () => {
+            const enemy = {
+                position: { x: 0, y: 0, z: 0 },
+                userData: {
+                    active: true,
+                    config: Enemy.get('SKELETON')
+                }
+            };
+            const obstacle = {
+                position: { x: 2, y: 0, z: 0 },
+                userData: {
+                    active: true,
+                    hit: false,
+                    collisionRadius: 1.5
+                }
+            };
+
+            EnemySystem._resolveEnvironmentCollisions(enemy, [enemy], [obstacle], null);
+
+            // Enemy should be pushed away from obstacle
+            test.assertTrue(enemy.position.x < 0);
+        });
+
+        test.it('should ignore inactive obstacles', () => {
+            const enemy = {
+                position: { x: 0, y: 0, z: 0 },
+                userData: {
+                    active: true,
+                    config: Enemy.get('SKELETON')
+                }
+            };
+            const obstacle = {
+                position: { x: 1, y: 0, z: 0 },
+                userData: {
+                    active: false, // Inactive
+                    hit: false,
+                    collisionRadius: 1.5
+                }
+            };
+
+            const initialX = enemy.position.x;
+            EnemySystem._resolveEnvironmentCollisions(enemy, [enemy], [obstacle], null);
+
+            // Enemy should not be pushed (obstacle inactive)
+            test.assertEqual(enemy.position.x, initialX);
+        });
+
+        test.it('should ignore hit obstacles', () => {
+            const enemy = {
+                position: { x: 0, y: 0, z: 0 },
+                userData: {
+                    active: true,
+                    config: Enemy.get('SKELETON')
+                }
+            };
+            const obstacle = {
+                position: { x: 1, y: 0, z: 0 },
+                userData: {
+                    active: true,
+                    hit: true, // Already hit
+                    collisionRadius: 1.5
+                }
+            };
+
+            const initialX = enemy.position.x;
+            EnemySystem._resolveEnvironmentCollisions(enemy, [enemy], [obstacle], null);
+
+            // Enemy should not be pushed (obstacle already hit)
+            test.assertEqual(enemy.position.x, initialX);
+        });
+
+        test.it('should push enemy away from shelf', () => {
+            const enemy = {
+                position: { x: 0, y: 0, z: 0 },
+                userData: {
+                    active: true,
+                    config: Enemy.get('SKELETON')
+                }
+            };
+            const shelf = {
+                position: { x: 2, y: 0, z: 0 },
+                userData: {
+                    width: 4,
+                    depth: 2
+                }
+            };
+
+            EnemySystem._resolveEnvironmentCollisions(enemy, [enemy], null, [shelf]);
+
+            // Enemy should be pushed away from shelf
+            test.assertTrue(enemy.position.x < 0);
+        });
+    });
+
+    // ==========================================
+    // ENEMY COLLISION RADIUS TESTS
+    // ==========================================
+
+    test.describe('Enemy System - Collision Radii', () => {
+        test.it('should have collision radius in skeleton config', () => {
+            const config = Enemy.get('SKELETON');
+            test.assertTrue(config.collisionRadius !== undefined);
+            test.assertEqual(config.collisionRadius, 2.5);
+        });
+
+        test.it('should use config collision radius for enemy-enemy collision', () => {
+            // Two enemies at distance of 4 (within 2.5 + 2.5 = 5)
+            const enemy1 = {
+                position: { x: 0, y: 0, z: 0 },
+                userData: {
+                    active: true,
+                    config: { collisionRadius: 2.5 }
+                }
+            };
+            const enemy2 = {
+                position: { x: 4, y: 0, z: 0 },
+                userData: {
+                    active: true,
+                    config: { collisionRadius: 2.5 }
+                }
+            };
+
+            EnemySystem._resolveEnvironmentCollisions(enemy1, [enemy1, enemy2], null, null);
+
+            // Should be pushed apart (distance 4 < minDist 5)
+            test.assertTrue(enemy1.position.x < 0);
+        });
+
+        test.it('should not collide when enemies are far apart', () => {
+            const enemy1 = {
+                position: { x: 0, y: 0, z: 0 },
+                userData: {
+                    active: true,
+                    config: { collisionRadius: 2.5 }
+                }
+            };
+            const enemy2 = {
+                position: { x: 10, y: 0, z: 0 }, // Far apart
+                userData: {
+                    active: true,
+                    config: { collisionRadius: 2.5 }
+                }
+            };
+
+            const initialX = enemy1.position.x;
+            EnemySystem._resolveEnvironmentCollisions(enemy1, [enemy1, enemy2], null, null);
+
+            // Should not be pushed (distance 10 > minDist 5)
+            test.assertEqual(enemy1.position.x, initialX);
+        });
+    });
+
     test.describe('Enemy System - Cleanup', () => {
         test.beforeEach(() => {
             EnemySystem.init(Enemy, null);
