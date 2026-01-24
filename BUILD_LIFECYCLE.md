@@ -129,16 +129,30 @@ This document defines the complete build and release lifecycle for Mall Hell. Al
 
 Before making ANY code change, verify:
 
+### Automated Tests (REQUIRED)
+
+```bash
+# Run domain-specific tests if you changed a domain
+bun run-tests.js --domain=<domain>   # e.g., --domain=weapon
+
+# Run UI tests if you changed UI or gameplay
+bun run test:ui
+
+# Run all tests only when explicitly requested
+bun run test
+```
+
 ### Mandatory Checks
 
 ```
-[ ] 1. File opens in browser without errors
-[ ] 2. Console shows no errors on load
-[ ] 3. Console shows no game-related warnings
-[ ] 4. Game starts when Start button clicked
-[ ] 5. Projectiles fire on left-click
-[ ] 6. ESC pauses the game
-[ ] 7. Score increases on hits
+[ ] 1. Domain tests pass: bun run-tests.js --domain=<affected>
+[ ] 2. UI tests pass (if applicable): bun run test:ui
+[ ] 3. File opens in browser without errors
+[ ] 4. Console shows no errors on load
+[ ] 5. Game starts when Start button clicked
+[ ] 6. Projectiles fire on SPACE release
+[ ] 7. ESC pauses the game
+[ ] 8. Score increases on hits
 ```
 
 ### Verification Commands (Browser Console)
@@ -147,8 +161,12 @@ Before making ANY code change, verify:
 // Check for errors
 console.error.length === 0
 
-// Verify game state exists
-typeof gameState !== 'undefined'
+// Verify game state system loaded
+typeof GameState !== 'undefined'
+
+// Verify domain systems loaded
+typeof WeaponSystem !== 'undefined'
+typeof EnemySystem !== 'undefined'
 
 // Verify Three.js loaded
 typeof THREE !== 'undefined'
@@ -162,11 +180,12 @@ typeof THREE !== 'undefined'
 ```
 [ ] Code change is isolated and minimal
 [ ] No unrelated changes included
-[ ] Comments added for complex logic
-[ ] Variable names are descriptive
+[ ] Domain pattern followed (data → theme → mesh → system)
+[ ] Constants added to <domain>.js, not hardcoded
+[ ] UI changes use UI module, not direct DOM manipulation
 [ ] No console.log statements left in (except errors)
 [ ] Tested in at least one browser
-[ ] All 7 mandatory checks passed
+[ ] All mandatory checks passed
 ```
 
 ---
@@ -176,23 +195,40 @@ typeof THREE !== 'undefined'
 ### Step 1: Planning
 
 1. Review CLAUDE.md for relevant requirements
-2. Identify affected acceptance criteria
-3. Determine scope of changes
-4. Identify potential risks
+2. Identify which domain(s) will be affected
+3. Read existing domain files to understand patterns
+4. Determine scope of changes
+5. Identify potential risks
 
 ### Step 2: Implementation
 
-1. Create backup of current `index.html`
-2. Make incremental changes
-3. Test after each significant change
-4. Keep changes focused on single feature
+Follow the domain-driven architecture:
+
+1. **Add constants** to `src/<domain>/<domain>.js`
+2. **Add visual styling** to `src/<domain>/<domain>-theme.js`
+3. **Add mesh creation** to `src/<domain>/<domain>-mesh.js`
+4. **Add logic/state** to `src/<domain>/<domain>-system.js`
+5. **Add tests** to `src/<domain>/<domain>.test.js`
+6. **Update index.html** only for orchestration (if needed)
+
+**Key rules:**
+- Use `Materials` library for shared materials
+- Use `UI` module for all UI operations
+- Pass THREE.js as parameter to mesh functions
+- Keep state in system files, not index.html
 
 ### Step 3: Self-Testing
 
-1. Run all pre-commit checks
-2. Test the specific feature thoroughly
-3. Test related features for regression
-4. Verify no new console errors
+```bash
+# Run domain tests first
+bun run-tests.js --domain=<affected-domain>
+
+# Run UI tests if UI changed
+bun run test:ui
+
+# Check latest results
+cat .test-output/latest.json | jq '.summary'
+```
 
 ### Step 4: Validation
 
@@ -218,8 +254,9 @@ Execute the following test sequence:
 ### Step 5: Documentation
 
 1. Note what was changed
-2. Update any relevant comments in code
-3. If feature changes CLAUDE.md requirements, flag for review
+2. Update domain file comments if needed
+3. If feature changes CLAUDE.md requirements, update it
+4. If new domain created, add to CLAUDE.md file structure
 
 ---
 
@@ -448,14 +485,17 @@ Maintain these backups:
 ```
 Before coding:
 [ ] Review CLAUDE.md requirements
-[ ] Backup current version
+[ ] Identify affected domain(s)
+[ ] Read domain files to understand patterns
 
 While coding:
-[ ] Test incrementally
+[ ] Follow domain pattern (data → theme → mesh → system)
+[ ] Add tests as you go
 [ ] Check console for errors
 
 After coding:
-[ ] Run pre-commit checks
+[ ] Run domain tests: bun run-tests.js --domain=<name>
+[ ] Run UI tests if needed: bun run test:ui
 [ ] Quick Smoke Test
 [ ] Commit/save changes
 ```
@@ -463,11 +503,26 @@ After coding:
 ### Test Sequence Summary
 
 ```
-1. Pre-Commit Checks (2 min)
-2. Quick Smoke Test (30 sec)
-3. Full Playthrough Test (5 min)
-4. Stress Test (5 min) - for releases only
+1. Domain Tests: bun run-tests.js --domain=<name>
+2. UI Tests (if applicable): bun run test:ui
+3. Quick Smoke Test (30 sec)
+4. Full Playthrough Test (5 min)
+5. Stress Test (5 min) - for releases only
 ```
+
+### Domain Quick Reference
+
+| Domain | Files | Purpose |
+|--------|-------|---------|
+| engine | game-state, game-loop, input, collision | Core systems |
+| shared | materials.js | Shared Three.js materials |
+| ui | ui.js | HUD, menus, score display |
+| room | room, room-theme, room-mesh, room-system | Level/room management |
+| player | player, player-theme, player-mesh, player-system | Player cart |
+| weapon | weapon, weapon-theme, weapon-mesh, weapon-system | Slingshot |
+| projectile | projectile-* | Slingshot stones |
+| enemy | enemy-* | Enemy carts |
+| environment | obstacle-*, shelf-*, environment-system | Obstacles, shelves |
 
 ### Emergency Contacts
 
@@ -484,3 +539,4 @@ If critical issue found:
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | Initial | Document created |
+| 2.0 | 2026-01-24 | Updated for DDD architecture, added domain quick reference |

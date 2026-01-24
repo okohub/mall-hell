@@ -37,6 +37,9 @@ Before claiming any feature is "done", I must confirm:
 [ ] AC verified: YES
 ```
 
+### Related Documents
+- **BUILD_LIFECYCLE.md** - Build stages, quality gates, release checklist, rollback procedures
+
 ---
 
 ## Test Commands
@@ -115,62 +118,148 @@ The codebase follows a domain-driven architecture where each domain is self-cont
 
 ```
 mall-hell/
-├── index.html              # Main game file
+├── index.html              # Main game file (orchestration, game loop)
 ├── CLAUDE.md               # Project definition (this file)
+├── BUILD_LIFECYCLE.md      # Build and release procedures
 ├── README.md               # Player documentation
 ├── package.json            # Dependencies & scripts
 ├── run-tests.js            # Test runner
 │
 ├── src/
+│   ├── engine/             # Core engine systems
+│   │   ├── engine.js           # Engine constants
+│   │   ├── game-state.js       # State machine (MENU, PLAYING, PAUSED, GAME_OVER)
+│   │   ├── game-loop.js        # RAF loop, delta time
+│   │   ├── input.js            # Keyboard/mouse input handling
+│   │   ├── collision.js        # Collision detection utilities
+│   │   ├── scene-manager.js    # Three.js scene management
+│   │   ├── entity-manager.js   # Entity lifecycle management
+│   │   └── engine.test.js      # Engine tests
+│   │
+│   ├── shared/             # Cross-domain utilities
+│   │   └── materials.js        # Shared Three.js materials library
+│   │
+│   ├── ui/                 # User interface
+│   │   └── ui.js               # HUD, menus, popups, health bar
+│   │
+│   ├── room/               # Room/level domain
+│   │   ├── room.js             # Room data, grid constants
+│   │   ├── room-theme.js       # Room visual themes
+│   │   ├── room-mesh.js        # Room mesh creation
+│   │   ├── room-system.js      # Room management
+│   │   └── room.test.js        # Room tests
+│   │
+│   ├── player/             # Player domain
+│   │   ├── player.js           # Player constants (movement, health)
+│   │   ├── player-theme.js     # Player visual themes
+│   │   ├── player-mesh.js      # Player cart mesh creation
+│   │   ├── player-system.js    # Player state management
+│   │   └── player.test.js      # Player tests
+│   │
 │   ├── weapon/             # Weapon domain
-│   │   ├── weapon.js           # Data definitions (types, configs)
-│   │   ├── weapon-visual.js    # Mesh creation (THREE.js)
-│   │   ├── weapon-system.js    # Orchestrator (state, logic)
-│   │   └── weapon.test.js      # Domain tests
+│   │   ├── weapon.js           # Weapon data (types, configs)
+│   │   ├── weapon-theme.js     # Weapon colors/materials
+│   │   ├── weapon-mesh.js      # FPS weapon, slingshot meshes
+│   │   ├── weapon-system.js    # Charging, firing, aiming
+│   │   └── weapon.test.js      # Weapon tests
 │   │
 │   ├── projectile/         # Projectile domain
-│   │   ├── projectile.js
-│   │   ├── projectile-visual.js
-│   │   ├── projectile-system.js
-│   │   └── projectile.test.js
+│   │   ├── projectile.js       # Projectile constants
+│   │   ├── projectile-theme.js # Projectile visuals
+│   │   ├── projectile-mesh.js  # Projectile mesh creation
+│   │   ├── projectile-system.js# Projectile management
+│   │   └── projectile.test.js  # Projectile tests
 │   │
 │   ├── enemy/              # Enemy domain
-│   │   ├── enemy.js
-│   │   ├── enemy-visual.js
-│   │   ├── enemy-system.js
-│   │   └── enemy.test.js
+│   │   ├── enemy.js            # Enemy types, behaviors
+│   │   ├── enemy-theme.js      # Enemy visual themes
+│   │   ├── enemy-mesh.js       # Enemy cart meshes
+│   │   ├── enemy-system.js     # Enemy AI, spawning
+│   │   └── enemy.test.js       # Enemy tests
 │   │
 │   └── environment/        # Environment domain
-│       ├── obstacle.js
-│       ├── obstacle-visual.js
-│       ├── shelf.js
-│       ├── shelf-visual.js
-│       ├── environment-system.js
-│       └── environment.test.js
+│       ├── obstacle.js         # Obstacle types
+│       ├── obstacle-theme.js   # Obstacle colors
+│       ├── obstacle-mesh.js    # Obstacle meshes
+│       ├── shelf.js            # Shelf data
+│       ├── shelf-theme.js      # Shelf themes
+│       ├── shelf-mesh.js       # Shelf meshes
+│       ├── environment-system.js # Environment management
+│       └── environment.test.js # Environment tests
 │
 ├── tests/
 │   ├── unit-tests.html     # Unit test runner (loads domain tests)
 │   └── ui-tests.html       # UI/integration tests
 │
-└── .test-output/           # Test results
+└── .test-output/           # Test results (gitignored)
 ```
 
 ### Domain Structure Pattern
 
-Each domain follows this pattern:
+Each domain follows this file naming pattern:
 
 | File | Purpose |
 |------|---------|
-| `<domain>.js` | Pure data definitions (no dependencies) |
-| `<domain>-visual.js` | THREE.js mesh creation (receives THREE as parameter) |
+| `<domain>.js` | Pure data definitions, constants, configs (no dependencies) |
+| `<domain>-theme.js` | Colors, materials, visual styling |
+| `<domain>-mesh.js` | THREE.js mesh/geometry creation |
 | `<domain>-system.js` | Orchestrator: state management, logic, coordination |
 | `<domain>.test.js` | Domain-specific unit tests |
 
-**Key principles:**
-- **Zero cross-file dependencies** - Each file is self-contained
-- **No imports** - Files use global scope or receive dependencies as parameters
-- **Separation of concerns** - Data, visuals, and logic are separate
-- **Testable** - Each component can be tested in isolation
+### Key Principles
+
+1. **Zero cross-file dependencies** - Each file is self-contained
+2. **No imports/exports** - Files use global scope (browser-compatible)
+3. **Dependency injection** - THREE.js and Materials passed as parameters
+4. **Separation of concerns** - Data, theme, mesh, and logic are separate
+5. **Testable in isolation** - Each component can be tested independently
+
+### Adding New Features
+
+**To add a new domain:**
+1. Create directory `src/<domain>/`
+2. Create files following the pattern above
+3. Add `<script>` tags to `index.html` (order matters: data → theme → mesh → system)
+4. Add tests to `src/<domain>/<domain>.test.js`
+5. Register test file in `tests/unit-tests.html`
+
+**To extend an existing domain:**
+1. Add constants to `<domain>.js`
+2. Add visual styling to `<domain>-theme.js`
+3. Add mesh creation to `<domain>-mesh.js`
+4. Add logic/state to `<domain>-system.js`
+5. Add tests to `<domain>.test.js`
+
+### Script Loading Order
+
+In `index.html`, scripts must be loaded in this order:
+1. Three.js (CDN)
+2. `src/shared/materials.js` - shared materials
+3. `src/ui/ui.js` - UI utilities
+4. `src/engine/*` - core systems
+5. Domain files (for each domain: data → theme → mesh → system)
+
+### Using Domain Modules
+
+```javascript
+// Access constants from domain data files
+const speed = Player.movement.SPEED;
+const roomSize = Room.structure.UNIT;
+
+// Create meshes using domain mesh files
+const playerCart = PlayerMesh.createPlayerCart(THREE, Materials);
+const fpsWeapon = WeaponMesh.createFPSWeapon(THREE, Materials);
+
+// Use domain systems for state management
+WeaponSystem.init(Weapon);
+WeaponSystem.startCharge();
+const result = WeaponSystem.fire(Date.now());
+
+// Use UI module for all UI operations
+UI.init();
+UI.updateScore(score, true);
+UI.showGameOver(score, rating, died);
+```
 
 ---
 
@@ -387,6 +476,7 @@ Objects are removed when:
 
 ## Development Notes
 
+### Technical Implementation
 - All 3D models are procedurally generated using Three.js primitives
 - Canvas textures used for signs and floor tiles
 - Keyboard-based crosshair aiming (arrow keys)
@@ -396,3 +486,42 @@ Objects are removed when:
 - Delta time used for frame-rate independent movement
 - Objects stored in arrays, filtered each frame for cleanup
 - Puppeteer-based automated testing
+
+### Agent Guidelines
+
+**Before making changes:**
+1. Read this file (CLAUDE.md) for requirements
+2. Identify which domain(s) will be affected
+3. Read the relevant domain files to understand existing patterns
+4. Check `.test-output/latest.json` for current test status
+
+**When implementing features:**
+1. Follow the domain pattern (data → theme → mesh → system)
+2. Add constants to `<domain>.js`, not hardcoded in functions
+3. Use `Materials` library for shared materials
+4. Use `UI` module for all UI operations
+5. Use domain systems (e.g., `WeaponSystem`, `EnemySystem`) for state
+
+**When writing tests:**
+1. Add unit tests to `src/<domain>/<domain>.test.js`
+2. Add UI tests to `tests/ui-tests.html` if UI is affected
+3. Run domain-specific tests first: `bun run-tests.js --domain=<name>`
+4. Only run full suite when explicitly requested
+
+**Code style:**
+- No ES6 imports/exports (use global scope)
+- Pass THREE.js as parameter, don't assume global
+- Use descriptive function names (e.g., `createPlayerCart`, not `makeCart`)
+- Keep mesh creation in `-mesh.js` files
+- Keep state management in `-system.js` files
+
+### File Ownership
+
+| File/Directory | Owner | Purpose |
+|----------------|-------|---------|
+| `index.html` | Game orchestration | Main game loop, collision handling, spawning |
+| `src/engine/` | Core systems | State machine, input, game loop |
+| `src/shared/` | Shared utilities | Materials, common helpers |
+| `src/ui/` | User interface | All HUD and menu operations |
+| `src/<domain>/` | Domain logic | Self-contained domain implementation |
+| `tests/` | Test runners | Unit and UI test execution |
