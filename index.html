@@ -485,7 +485,7 @@
             });
 
             // Push player out of any overlapping objects (run multiple times for nested overlaps)
-            for (let i = 0; i < 3; i++) {
+            for (let i = 0; i < 5; i++) {
                 if (!CollisionSystem.pushOutOfOverlaps(PlayerSystem.position, obstacles, shelves, Player.visual.COLLISION_RADIUS)) break;
             }
             playerCart.position.x = PlayerSystem.position.x;

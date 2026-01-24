@@ -49,7 +49,7 @@ const Obstacle = {
             name: 'Barrel',
             shape: 'cylinder',
             scoreHit: 150,
-            collisionRadius: 1,
+            collisionRadius: 0.7,  // Closer to visual radius (0.6)
             fallSpeed: 4,
             health: 1,
             size: { r: 0.6, h: 1.5 },

@@ -430,21 +430,47 @@ const CollisionSystem = {
                 (obs.userData.width ? obs.userData.width / 2 : 1.5);
 
             const minDist = playerRadius + obsRadius;
+            const obsX = obs.position.x;
+            const obsZ = obs.position.z;
 
-            // Check X movement
-            const dxNew = newX - obs.position.x;
-            const dzOld = oldZ - obs.position.z;
-            const distXNew = Math.sqrt(dxNew * dxNew + dzOld * dzOld);
-            if (distXNew < minDist) {
-                result.blockedX = true;
-            }
+            // Check current distance from obstacle
+            const dxOld = oldX - obsX;
+            const dzOld = oldZ - obsZ;
+            const oldDist = Math.sqrt(dxOld * dxOld + dzOld * dzOld);
 
-            // Check Z movement
-            const dxOld = oldX - obs.position.x;
-            const dzNew = newZ - obs.position.z;
-            const distZNew = Math.sqrt(dxOld * dxOld + dzNew * dzNew);
-            if (distZNew < minDist) {
-                result.blockedZ = true;
+            // Check new distance from obstacle
+            const dxNew = newX - obsX;
+            const dzNew = newZ - obsZ;
+            const newDist = Math.sqrt(dxNew * dxNew + dzNew * dzNew);
+
+            // Only block if we're moving INTO the obstacle (getting closer while inside collision zone)
+            if (newDist < minDist) {
+                // We would be inside collision zone at new position
+                // Only block the axis that's moving toward the obstacle center
+
+                // Check if X movement is toward obstacle
+                const movingTowardX = Math.abs(dxNew) < Math.abs(dxOld);
+                // Check if Z movement is toward obstacle
+                const movingTowardZ = Math.abs(dzNew) < Math.abs(dzOld);
+
+                // Only block axes that are moving toward the obstacle
+                if (movingTowardX && Math.abs(dxNew) < minDist * 0.9) {
+                    result.blockedX = true;
+                }
+                if (movingTowardZ && Math.abs(dzNew) < minDist * 0.9) {
+                    result.blockedZ = true;
+                }
+
+                // If already very close (stuck), allow sliding by only blocking one axis
+                if (oldDist < minDist * 0.8 && result.blockedX && result.blockedZ) {
+                    // Allow movement along the tangent (perpendicular to obstacle direction)
+                    // Unblock the axis that's more tangential
+                    if (Math.abs(dxOld) > Math.abs(dzOld)) {
+                        result.blockedZ = false; // More X-aligned, allow Z movement
+                    } else {
+                        result.blockedX = false; // More Z-aligned, allow X movement
+                    }
+                }
             }
         }
 
