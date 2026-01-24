@@ -8,11 +8,27 @@ const EnemySystem = {
     // Active enemies
     enemies: [],
 
-    // Configuration
-    maxEnemies: 10,
-    spawnChance: 0.015,      // Per frame spawn chance
-    spawnDistance: 150,       // Distance ahead of camera to spawn
-    despawnDistance: 20,      // Distance behind camera to despawn
+    // Configuration (use Enemy.system defaults if available)
+    get maxEnemies() { return (typeof Enemy !== 'undefined' && Enemy.system) ? Enemy.system.MAX_ENEMIES : 10; },
+    get spawnChance() { return (typeof Enemy !== 'undefined' && Enemy.system) ? Enemy.system.SPAWN_CHANCE : 0.015; },
+    get spawnDistance() { return (typeof Enemy !== 'undefined' && Enemy.system) ? Enemy.system.SPAWN_DISTANCE : 150; },
+    get despawnDistance() { return (typeof Enemy !== 'undefined' && Enemy.system) ? Enemy.system.DESPAWN_DISTANCE : 60; },
+    get collisionDistance() { return (typeof Enemy !== 'undefined' && Enemy.system) ? Enemy.system.COLLISION_DISTANCE : 3.5; },
+
+    // Behavior defaults (use Enemy.behaviorDefaults if available)
+    get chaseMinDistance() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.CHASE_MIN_DISTANCE : 3; },
+    get lostSightTimeout() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.LOST_SIGHT_TIMEOUT : 2; },
+    get lostSightSpeed() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.LOST_SIGHT_SPEED : 0.5; },
+    get wanderInterval() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.WANDER_INTERVAL : 2; },
+    get wanderSpeed() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.WANDER_SPEED : 0.15; },
+    get patrolSpeed() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.PATROL_SPEED : 0.2; },
+    get homeReturnSpeed() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.HOME_RETURN_SPEED : 0.25; },
+    get homeRadius() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.HOME_RADIUS : 8; },
+    get searchLastSeenChance() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.SEARCH_LAST_SEEN_CHANCE : 0.4; },
+
+    // Effect constants (use Enemy.effects if available)
+    get hitFlashInitial() { return (typeof Enemy !== 'undefined' && Enemy.effects) ? Enemy.effects.HIT_FLASH_INITIAL : 1; },
+    get hitFlashDecay() { return (typeof Enemy !== 'undefined' && Enemy.effects) ? Enemy.effects.HIT_FLASH_DECAY : 5; },
 
     // References
     enemyData: null,
@@ -111,7 +127,8 @@ const EnemySystem = {
         if (!data.active) return null;
 
         data.health -= amount;
-        data.hitFlash = 1;
+        const effects = (typeof Enemy !== 'undefined' && Enemy.effects) ? Enemy.effects : { HIT_FLASH_INITIAL: 1 };
+        data.hitFlash = effects.HIT_FLASH_INITIAL;
 
         const destroyed = data.health <= 0;
 
@@ -174,9 +191,9 @@ const EnemySystem = {
                 if (canSeePlayer) {
                     // Can see player - chase directly
                     this._behaviorChase({ position, config }, playerPos, dt, baseSpeed);
-                } else if (data.lastSeenPlayerPos && data.lostSightTimer < 2) {
+                } else if (data.lastSeenPlayerPos && data.lostSightTimer < this.lostSightTimeout) {
                     // Lost sight recently - move to last known position
-                    this._behaviorChase({ position, config }, data.lastSeenPlayerPos, dt, baseSpeed * 0.5);
+                    this._behaviorChase({ position, config }, data.lastSeenPlayerPos, dt, baseSpeed * this.lostSightSpeed);
                 } else {
                     // No LOS for a while - wander in room
                     this._behaviorWander(enemy, data, dt, baseSpeed);
@@ -238,7 +255,7 @@ const EnemySystem = {
         };
         const dist = Math.sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
 
-        if (dist > 3) {
+        if (dist > this.chaseMinDistance) {
             const nx = toTarget.x / dist;
             const nz = toTarget.z / dist;
             const speed = baseSpeed * enemy.config.speed;
@@ -248,14 +265,45 @@ const EnemySystem = {
     },
 
     /**
-     * Wander behavior - random movement within room (when can't see player)
+     * Wander behavior - smart movement when can't see player
+     * Priorities: 1) Return home if too far, 2) Search last seen position, 3) Random wander
      */
     _behaviorWander(enemy, data, dt, baseSpeed) {
         const position = enemy.position;
 
-        // Initialize or update wander direction periodically
+        // Get spawn position (home) - from userData or data
+        const home = data.spawnPosition || enemy.userData?.spawnPosition || position;
+
+        // Calculate distance from home
+        const dxHome = position.x - home.x;
+        const dzHome = position.z - home.z;
+        const distFromHome = Math.sqrt(dxHome * dxHome + dzHome * dzHome);
+
+        // Priority 1: Return home if too far
+        if (distFromHome > this.homeRadius) {
+            const nx = -dxHome / distFromHome;
+            const nz = -dzHome / distFromHome;
+            const speed = baseSpeed * this.homeReturnSpeed;
+            position.x += nx * speed * dt;
+            position.z += nz * speed * dt;
+            return;
+        }
+
+        // Priority 2: Occasionally move towards last seen player position
+        if (data.lastSeenPlayerPos && Math.random() < this.searchLastSeenChance * dt) {
+            const dx = data.lastSeenPlayerPos.x - position.x;
+            const dz = data.lastSeenPlayerPos.z - position.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist > 2) {
+                data.wanderDirX = dx / dist;
+                data.wanderDirZ = dz / dist;
+                data.wanderTimer = 0;
+            }
+        }
+
+        // Priority 3: Random wander (change direction periodically)
         data.wanderTimer = (data.wanderTimer || 0) + dt;
-        if (!data.wanderDirX || !data.wanderDirZ || data.wanderTimer > 2) {
+        if (!data.wanderDirX || !data.wanderDirZ || data.wanderTimer > this.wanderInterval) {
             data.wanderTimer = 0;
             const angle = Math.random() * Math.PI * 2;
             data.wanderDirX = Math.cos(angle);
@@ -263,7 +311,7 @@ const EnemySystem = {
         }
 
         // Move slowly in wander direction
-        const wanderSpeed = baseSpeed * 0.15;
+        const wanderSpeed = baseSpeed * this.wanderSpeed;
         position.x += data.wanderDirX * wanderSpeed * dt;
         position.z += data.wanderDirZ * wanderSpeed * dt;
     },
@@ -273,7 +321,7 @@ const EnemySystem = {
      */
     _behaviorPatrol(enemy, playerPos, dt, baseSpeed) {
         const dir = Math.sin(enemy.patrolTimer) > 0 ? 1 : -1;
-        enemy.position.x += dir * baseSpeed * 0.2 * dt;
+        enemy.position.x += dir * baseSpeed * this.patrolSpeed * dt;
     },
 
     /**
@@ -292,7 +340,7 @@ const EnemySystem = {
 
             // Update hit flash
             if (enemy.hitFlash > 0) {
-                enemy.hitFlash -= dt * 5;
+                enemy.hitFlash -= dt * this.hitFlashDecay;
                 if (enemy.hitFlash < 0) enemy.hitFlash = 0;
 
                 if (enemy.mesh && typeof EnemyVisual !== 'undefined') {
@@ -402,6 +450,9 @@ const EnemySystem = {
 
         // Position the enemy
         group.position.set(x, 0, z);
+
+        // Remember spawn position (home) for AI
+        group.userData.spawnPosition = { x, z };
 
         return group;
     },
@@ -526,8 +577,8 @@ const EnemySystem = {
      * @param {Function} options.hasLineOfSight - LOS check function(fromX, fromZ, toX, toZ)
      * @param {Array} options.obstacles - Obstacle meshes for collision
      * @param {Array} options.shelves - Shelf meshes for collision
-     * @param {number} options.despawnDistance - Distance to despawn (default 60)
-     * @param {number} options.collisionDistance - Collision distance (default 3.5)
+     * @param {number} options.despawnDistance - Distance to despawn (uses Enemy.system.DESPAWN_DISTANCE)
+     * @param {number} options.collisionDistance - Collision distance (uses Enemy.system.COLLISION_DISTANCE)
      */
     updateAll(enemies, options) {
         const {
@@ -541,8 +592,8 @@ const EnemySystem = {
             hasLineOfSight = null,
             obstacles = null,
             shelves = null,
-            despawnDistance = 60,
-            collisionDistance = 3.5
+            despawnDistance = this.despawnDistance,
+            collisionDistance = this.collisionDistance
         } = options;
 
         enemies.forEach(enemy => {
@@ -577,7 +628,7 @@ const EnemySystem = {
 
             // Hit flash
             if (enemy.userData.hitFlash > 0) {
-                enemy.userData.hitFlash -= dt * 5;
+                enemy.userData.hitFlash -= dt * this.hitFlashDecay;
                 if (enemy.userData.hitFlash < 0) enemy.userData.hitFlash = 0;
 
                 if (typeof EnemyVisual !== 'undefined' && enemy.userData.cart) {

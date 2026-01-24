@@ -72,7 +72,10 @@ const PlayerSystem = {
             DECELERATION: 20,
             MAX_SPEED: 10,
             FRICTION: 8,
-            IDLE_DRIFT: 0.5
+            IDLE_DRIFT: 0.5,
+            TURN_SMOOTH: 8,
+            FRICTION_MULTIPLIER: 0.5,
+            COLLISION_SPEED_REDUCTION: 0.3
         };
     },
 
@@ -82,9 +85,15 @@ const PlayerSystem = {
     getVisualConfig() {
         return this.playerData ? this.playerData.visual : {
             LEAN_ANGLE: 0.15,
+            LEAN_SMOOTH: 8,
             CAMERA_ROLL_FACTOR: 0.1,
             CAMERA_HEIGHT: 2.2,
-            COLLISION_RADIUS: 1.2
+            CAMERA_ROTATION_X: -0.12,
+            COLLISION_RADIUS: 1.2,
+            WALL_BUMP_DECAY: 0.85,
+            CAMERA_BUMP_OFFSET: 0.3,
+            CAMERA_BUMP_SHAKE: 0.1,
+            CAMERA_BUMP_ROTATION: 0.05
         };
     },
 
@@ -97,7 +106,7 @@ const PlayerSystem = {
     updateTurning(turnLeft, turnRight, dt) {
         const config = this.getMovementConfig();
         const targetTurnRate = (turnLeft ? 1 : 0) - (turnRight ? 1 : 0);
-        this.currentTurnRate += (targetTurnRate * config.TURN_SPEED - this.currentTurnRate) * 8 * dt;
+        this.currentTurnRate += (targetTurnRate * config.TURN_SPEED - this.currentTurnRate) * config.TURN_SMOOTH * dt;
         this.rotation += this.currentTurnRate * dt;
     },
 
@@ -120,7 +129,7 @@ const PlayerSystem = {
                 this.speed = Math.max(config.IDLE_DRIFT, this.speed - config.FRICTION * dt);
             } else if (this.speed < config.IDLE_DRIFT) {
                 // Accelerate towards idle drift speed
-                this.speed = Math.min(config.IDLE_DRIFT, this.speed + config.FRICTION * 0.5 * dt);
+                this.speed = Math.min(config.IDLE_DRIFT, this.speed + config.FRICTION * config.FRICTION_MULTIPLIER * dt);
             }
         }
 
@@ -169,7 +178,7 @@ const PlayerSystem = {
                 z: collision.blockedZ ? -Math.sign(velocity.z) : 0
             };
             // Reduce speed on impact
-            this.speed *= 0.3;
+            this.speed *= config.COLLISION_SPEED_REDUCTION;
         }
 
         // Apply position changes based on collision
@@ -181,7 +190,8 @@ const PlayerSystem = {
      * Update wall bump decay
      */
     updateWallBump() {
-        this.wallBumpIntensity *= 0.85;
+        const visual = this.getVisualConfig();
+        this.wallBumpIntensity *= visual.WALL_BUMP_DECAY;
         if (this.wallBumpIntensity < 0.01) this.wallBumpIntensity = 0;
     },
 
@@ -192,7 +202,7 @@ const PlayerSystem = {
     updateLean(dt) {
         const config = this.getVisualConfig();
         const targetLeanAngle = -this.currentTurnRate * config.LEAN_ANGLE;
-        this.currentLeanAngle += (targetLeanAngle - this.currentLeanAngle) * 8 * dt;
+        this.currentLeanAngle += (targetLeanAngle - this.currentLeanAngle) * config.LEAN_SMOOTH * dt;
     },
 
     /**
@@ -230,15 +240,15 @@ const PlayerSystem = {
      */
     getCameraState() {
         const config = this.getVisualConfig();
-        const bumpOffsetX = this.wallBumpDirection.x * this.wallBumpIntensity * 0.3;
-        const bumpOffsetZ = this.wallBumpDirection.z * this.wallBumpIntensity * 0.3;
-        const bumpShake = this.wallBumpIntensity * (Math.random() - 0.5) * 0.1;
+        const bumpOffsetX = this.wallBumpDirection.x * this.wallBumpIntensity * config.CAMERA_BUMP_OFFSET;
+        const bumpOffsetZ = this.wallBumpDirection.z * this.wallBumpIntensity * config.CAMERA_BUMP_OFFSET;
+        const bumpShake = this.wallBumpIntensity * (Math.random() - 0.5) * config.CAMERA_BUMP_SHAKE;
 
         return {
             x: this.position.x + bumpOffsetX,
             y: config.CAMERA_HEIGHT + bumpShake,
             z: this.position.z + bumpOffsetZ,
-            rotationX: -0.12 + this.wallBumpIntensity * 0.05,
+            rotationX: config.CAMERA_ROTATION_X + this.wallBumpIntensity * config.CAMERA_BUMP_ROTATION,
             rotationY: this.rotation,
             rotationZ: this.currentLeanAngle * config.CAMERA_ROLL_FACTOR * 0.5 + bumpShake * 2
         };

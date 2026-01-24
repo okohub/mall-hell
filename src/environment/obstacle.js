@@ -5,6 +5,29 @@
 // Defines what obstacles ARE, not how they behave
 
 const Obstacle = {
+    // System-wide constants
+    system: {
+        MAX_OBSTACLES: 15,
+        SPAWN_CHANCE: 0.02,           // Per frame spawn chance
+        SPAWN_DISTANCE: 150,          // Distance ahead to spawn
+        DESPAWN_DISTANCE: 60,         // Distance to despawn
+        CENTER_DISPLAY_CHANCE: 0.7,   // Chance to spawn center display
+    },
+
+    // Falling animation constants
+    falling: {
+        ACCELERATION: 5,              // Fall speed acceleration
+        SPEED_MULTIPLIER: 0.5,        // Fall position multiplier
+        MAX_ANGLE: Math.PI / 2        // Max fall angle (90 degrees)
+    },
+
+    // Collision constants
+    collision: {
+        DEFAULT_WIDTH: 2,             // Default obstacle width
+        HIT_RADIUS_FACTOR: 0.6,       // Multiply width for hit radius
+        PLAYER_BUFFER: 1.5            // Additional buffer for player collision
+    },
+
     // Obstacle type definitions
     types: {
         STACK: {

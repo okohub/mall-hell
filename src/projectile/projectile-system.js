@@ -8,9 +8,73 @@ const ProjectileSystem = {
     // Active projectiles
     projectiles: [],
 
-    // Configuration
-    maxProjectiles: 50,
-    despawnDistance: 200,
+    // Configuration (use Projectile.system if available)
+    get maxProjectiles() {
+        return (typeof Projectile !== 'undefined' && Projectile.system)
+            ? Projectile.system.MAX_PROJECTILES : 50;
+    },
+    get despawnDistance() {
+        return (typeof Projectile !== 'undefined' && Projectile.system)
+            ? Projectile.system.DESPAWN_DISTANCE : 200;
+    },
+    get boundsX() {
+        return (typeof Projectile !== 'undefined' && Projectile.system)
+            ? Projectile.system.BOUNDS_X : 50;
+    },
+    get boundsYMin() {
+        return (typeof Projectile !== 'undefined' && Projectile.system)
+            ? Projectile.system.BOUNDS_Y_MIN : -5;
+    },
+    get boundsYMax() {
+        return (typeof Projectile !== 'undefined' && Projectile.system)
+            ? Projectile.system.BOUNDS_Y_MAX : 20;
+    },
+    get defaultLifetime() {
+        return (typeof Projectile !== 'undefined' && Projectile.system)
+            ? Projectile.system.DEFAULT_LIFETIME : 5000;
+    },
+    get spawnForwardOffset() {
+        return (typeof Projectile !== 'undefined' && Projectile.system)
+            ? Projectile.system.SPAWN_FORWARD_OFFSET : 0.5;
+    },
+    get spawnDownOffset() {
+        return (typeof Projectile !== 'undefined' && Projectile.system)
+            ? Projectile.system.SPAWN_DOWN_OFFSET : 0.3;
+    },
+    get farPointDistance() {
+        return (typeof Projectile !== 'undefined' && Projectile.system)
+            ? Projectile.system.FAR_POINT_DISTANCE : 100;
+    },
+    get updateMaxDistance() {
+        return (typeof Projectile !== 'undefined' && Projectile.system)
+            ? Projectile.system.UPDATE_MAX_DISTANCE : 150;
+    },
+    get updateMinY() {
+        return (typeof Projectile !== 'undefined' && Projectile.system)
+            ? Projectile.system.UPDATE_MIN_Y : 0;
+    },
+    get updateMaxY() {
+        return (typeof Projectile !== 'undefined' && Projectile.system)
+            ? Projectile.system.UPDATE_MAX_Y : 15;
+    },
+
+    // Visual config
+    get sizeScaleBase() {
+        return (typeof Projectile !== 'undefined' && Projectile.visual)
+            ? Projectile.visual.SIZE_SCALE_BASE : 0.8;
+    },
+    get sizeScalePower() {
+        return (typeof Projectile !== 'undefined' && Projectile.visual)
+            ? Projectile.visual.SIZE_SCALE_POWER : 0.4;
+    },
+    get glowOpacityBase() {
+        return (typeof Projectile !== 'undefined' && Projectile.visual)
+            ? Projectile.visual.GLOW_OPACITY_BASE : 0.2;
+    },
+    get glowOpacityPower() {
+        return (typeof Projectile !== 'undefined' && Projectile.visual)
+            ? Projectile.visual.GLOW_OPACITY_POWER : 0.3;
+    },
 
     // References
     projectileData: null,
@@ -140,12 +204,12 @@ const ProjectileSystem = {
                 : 0;
 
             const age = Date.now() - p.createdAt;
-            const outOfBounds = Math.abs(p.position.x) > 50 ||
-                               p.position.y < -5 ||
-                               p.position.y > 20 ||
+            const outOfBounds = Math.abs(p.position.x) > this.boundsX ||
+                               p.position.y < this.boundsYMin ||
+                               p.position.y > this.boundsYMax ||
                                distFromCamera > this.despawnDistance;
 
-            if (outOfBounds || age > (p.config.lifetime || 5000)) {
+            if (outOfBounds || age > (p.config.lifetime || this.defaultLifetime)) {
                 this.despawn(p);
             } else {
                 moved.push(p);
@@ -237,7 +301,7 @@ const ProjectileSystem = {
         const emissiveMax = projConfig.emissiveIntensity?.max || 0.6;
 
         // Stone/ball projectile - size scales slightly with power
-        const sizeScale = 0.8 + (speed / speedMax) * 0.4;
+        const sizeScale = this.sizeScaleBase + (speed / speedMax) * this.sizeScalePower;
         const stoneGeo = new THREE.SphereGeometry(baseSize * sizeScale, 12, 12);
         const stoneMat = new THREE.MeshStandardMaterial({
             color: baseColor,
@@ -254,7 +318,7 @@ const ProjectileSystem = {
             const glowMat = new THREE.MeshBasicMaterial({
                 color: glowColor,
                 transparent: true,
-                opacity: 0.2 + (speed / speedMax) * 0.3
+                opacity: this.glowOpacityBase + (speed / speedMax) * this.glowOpacityPower
             });
             const glow = new THREE.Mesh(glowGeo, glowMat);
             group.add(glow);
@@ -294,7 +358,7 @@ const ProjectileSystem = {
      * @returns {THREE.Vector3} Spawn position
      */
     calculateSpawnPosition(THREE, camera, options = {}) {
-        const { forwardOffset = 0.5, downOffset = 0.3 } = options;
+        const { forwardOffset = this.spawnForwardOffset, downOffset = this.spawnDownOffset } = options;
 
         const spawnPos = camera.position.clone();
         const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
@@ -324,7 +388,7 @@ const ProjectileSystem = {
 
         // Calculate far point where crosshair is aiming
         const farPoint = new THREE.Vector3();
-        farPoint.copy(raycaster.ray.direction).multiplyScalar(100).add(raycaster.ray.origin);
+        farPoint.copy(raycaster.ray.direction).multiplyScalar(this.farPointDistance).add(raycaster.ray.origin);
 
         // Direction from spawn position to far point
         const direction = new THREE.Vector3();
@@ -354,17 +418,17 @@ const ProjectileSystem = {
      * @param {Object} options - Update options
      * @param {number} options.dt - Delta time in seconds
      * @param {THREE.Vector3} options.cameraPosition - Camera position for distance check
-     * @param {number} options.maxDistance - Max distance from camera (default: 150)
-     * @param {number} options.minY - Min Y position (default: 0)
-     * @param {number} options.maxY - Max Y position (default: 15)
+     * @param {number} options.maxDistance - Max distance from camera
+     * @param {number} options.minY - Min Y position
+     * @param {number} options.maxY - Max Y position
      */
     updateMeshArray(projectiles, options = {}) {
         const {
             dt,
             cameraPosition,
-            maxDistance = 150,
-            minY = 0,
-            maxY = 15
+            maxDistance = this.updateMaxDistance,
+            minY = this.updateMinY,
+            maxY = this.updateMaxY
         } = options;
 
         projectiles.forEach(proj => {

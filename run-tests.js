@@ -26,6 +26,64 @@ if (!fs.existsSync(TEST_OUTPUT_DIR)) {
 
 const args = process.argv.slice(2);
 
+// Valid flags
+const VALID_FLAGS = [
+    '--unit', '-u',
+    '--ui', '-i',
+    '--quiet', '-q',
+    '--failed', '-f',
+    '--list', '-l',
+    '--only',
+    '--test',
+    '--group',
+    '--domain',
+    '--help', '-h'
+];
+
+// Check for unrecognized flags
+for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg.startsWith('-')) {
+        // Extract flag name (before = if present)
+        const flagName = arg.split('=')[0];
+        if (!VALID_FLAGS.includes(flagName)) {
+            console.error(`\n❌ Unrecognized flag: ${arg}`);
+            console.error('\nValid flags:');
+            console.error('  --unit, -u        Run only unit tests');
+            console.error('  --ui, -i          Run only UI tests');
+            console.error('  --quiet, -q       Minimal output');
+            console.error('  --failed, -f      Re-run failed tests from last run');
+            console.error('  --list, -l        List previous test runs');
+            console.error('  --test=<name>     Run specific test by name');
+            console.error('  --group=<name>    Run specific test group');
+            console.error('  --domain=<name>   Run tests for specific domain');
+            console.error('  --help, -h        Show this help');
+            process.exit(1);
+        }
+    }
+}
+
+// Show help
+if (args.includes('--help') || args.includes('-h')) {
+    console.log('\nMall Hell Test Runner\n');
+    console.log('Usage: bun run-tests.js [options]');
+    console.log('\nOptions:');
+    console.log('  --unit, -u        Run only unit tests');
+    console.log('  --ui, -i          Run only UI tests');
+    console.log('  --quiet, -q       Minimal output');
+    console.log('  --failed, -f      Re-run failed tests from last run');
+    console.log('  --list, -l        List previous test runs');
+    console.log('  --test=<name>     Run specific test by name');
+    console.log('  --group=<name>    Run specific test group');
+    console.log('  --domain=<name>   Run tests for specific domain');
+    console.log('  --help, -h        Show this help');
+    console.log('\nExamples:');
+    console.log('  bun run-tests.js --domain=enemy');
+    console.log('  bun run-tests.js --failed');
+    console.log('  bun run-tests.js --test="should spawn skeleton"');
+    process.exit(0);
+}
+
 // Test mode flags
 const UNIT_ONLY = args.includes('--unit') || args.includes('-u');
 const UI_ONLY = args.includes('--ui') || args.includes('-i');

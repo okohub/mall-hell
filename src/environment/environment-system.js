@@ -9,11 +9,55 @@ const EnvironmentSystem = {
     obstacles: [],
     shelves: [],
 
-    // Configuration
-    maxObstacles: 15,
-    obstacleSpawnChance: 0.02,
-    obstacleSpawnDistance: 150,
-    obstacleDespawnDistance: 30,
+    // Configuration (use Obstacle.system if available)
+    get maxObstacles() {
+        return (typeof Obstacle !== 'undefined' && Obstacle.system)
+            ? Obstacle.system.MAX_OBSTACLES : 15;
+    },
+    get obstacleSpawnChance() {
+        return (typeof Obstacle !== 'undefined' && Obstacle.system)
+            ? Obstacle.system.SPAWN_CHANCE : 0.02;
+    },
+    get obstacleSpawnDistance() {
+        return (typeof Obstacle !== 'undefined' && Obstacle.system)
+            ? Obstacle.system.SPAWN_DISTANCE : 150;
+    },
+    get obstacleDespawnDistance() {
+        return (typeof Obstacle !== 'undefined' && Obstacle.system)
+            ? Obstacle.system.DESPAWN_DISTANCE : 60;
+    },
+    get centerDisplayChance() {
+        return (typeof Obstacle !== 'undefined' && Obstacle.system)
+            ? Obstacle.system.CENTER_DISPLAY_CHANCE : 0.7;
+    },
+
+    // Falling animation config
+    get fallAcceleration() {
+        return (typeof Obstacle !== 'undefined' && Obstacle.falling)
+            ? Obstacle.falling.ACCELERATION : 5;
+    },
+    get fallSpeedMultiplier() {
+        return (typeof Obstacle !== 'undefined' && Obstacle.falling)
+            ? Obstacle.falling.SPEED_MULTIPLIER : 0.5;
+    },
+    get fallMaxAngle() {
+        return (typeof Obstacle !== 'undefined' && Obstacle.falling)
+            ? Obstacle.falling.MAX_ANGLE : Math.PI / 2;
+    },
+
+    // Collision config
+    get defaultObstacleWidth() {
+        return (typeof Obstacle !== 'undefined' && Obstacle.collision)
+            ? Obstacle.collision.DEFAULT_WIDTH : 2;
+    },
+    get hitRadiusFactor() {
+        return (typeof Obstacle !== 'undefined' && Obstacle.collision)
+            ? Obstacle.collision.HIT_RADIUS_FACTOR : 0.6;
+    },
+    get playerCollisionBuffer() {
+        return (typeof Obstacle !== 'undefined' && Obstacle.collision)
+            ? Obstacle.collision.PLAYER_BUFFER : 1.5;
+    },
 
     // References
     obstacleData: null,
@@ -252,7 +296,7 @@ const EnvironmentSystem = {
      */
     createCenterDisplays(startZ, endZ, spacing, THREE, productColors) {
         for (let z = startZ; z > endZ; z -= spacing) {
-            if (Math.random() > 0.3) { // 70% chance
+            if (Math.random() < this.centerDisplayChance) {
                 this.createShelf('FLOOR_ISLAND', { x: 0, y: 0, z: z }, 0, THREE, productColors);
             }
         }
@@ -300,7 +344,7 @@ const EnvironmentSystem = {
      * @param {number} options.dt - Delta time
      * @param {boolean} options.isInvulnerable - Whether player is invulnerable
      * @param {Function} options.onPlayerCollision - Callback when obstacle hits player
-     * @param {number} options.despawnDistance - Distance to despawn (default 60)
+     * @param {number} options.despawnDistance - Distance to despawn
      */
     updateObstaclesArray(obstacles, options) {
         const {
@@ -308,7 +352,7 @@ const EnvironmentSystem = {
             dt,
             isInvulnerable = false,
             onPlayerCollision = null,
-            despawnDistance = 60
+            despawnDistance = this.obstacleDespawnDistance
         } = options;
 
         obstacles.forEach(obs => {
@@ -316,12 +360,12 @@ const EnvironmentSystem = {
 
             // Falling animation
             if (obs.userData.hit) {
-                obs.userData.fallSpeed += 5 * dt;
+                obs.userData.fallSpeed += this.fallAcceleration * dt;
                 obs.userData.fallAngle += obs.userData.fallSpeed * dt;
                 obs.rotation.x = obs.userData.fallAngle;
-                obs.position.y -= obs.userData.fallSpeed * dt * 0.5;
+                obs.position.y -= obs.userData.fallSpeed * dt * this.fallSpeedMultiplier;
 
-                if (obs.userData.fallAngle > Math.PI / 2) {
+                if (obs.userData.fallAngle > this.fallMaxAngle) {
                     obs.userData.active = false;
                 }
             }
@@ -339,8 +383,8 @@ const EnvironmentSystem = {
                         Math.pow(obs.position.x - playerCart.position.x, 2) +
                         Math.pow(obs.position.z - playerCart.position.z, 2)
                     );
-                    const hitDist = (obs.userData.width || 2) * 0.6;
-                    if (cartDist < hitDist + 1.5 && onPlayerCollision) {
+                    const hitDist = (obs.userData.width || this.defaultObstacleWidth) * this.hitRadiusFactor;
+                    if (cartDist < hitDist + this.playerCollisionBuffer && onPlayerCollision) {
                         onPlayerCollision(obs);
                         obs.userData.hit = true; // Knock it over
                     }

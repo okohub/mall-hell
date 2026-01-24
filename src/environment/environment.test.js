@@ -154,11 +154,12 @@
         });
 
         test.it('should limit max obstacles', () => {
-            EnvironmentSystem.maxObstacles = 3;
-            for (let i = 0; i < 5; i++) {
+            // maxObstacles is now from config (15 by default)
+            const maxObstacles = EnvironmentSystem.maxObstacles;
+            for (let i = 0; i < maxObstacles + 5; i++) {
                 EnvironmentSystem.spawnObstacle('STACK', i, -10 * i, null);
             }
-            test.assertEqual(EnvironmentSystem.getObstacleCount(), 3);
+            test.assertEqual(EnvironmentSystem.getObstacleCount(), maxObstacles);
         });
 
         test.it('should hit obstacle and return score', () => {

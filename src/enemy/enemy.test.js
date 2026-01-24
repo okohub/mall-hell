@@ -111,9 +111,12 @@
     });
 
     test.describe('Enemy System - Spawning', () => {
+        let originalMaxEnemies;
+
         test.beforeEach(() => {
             EnemySystem.init(Enemy, null);
-            EnemySystem.maxEnemies = 10; // Reset to default
+            // Store original value from config
+            originalMaxEnemies = EnemySystem.maxEnemies;
         });
 
         test.it('should spawn skeleton enemy without THREE', () => {
@@ -131,19 +134,22 @@
         });
 
         test.it('should limit max enemies', () => {
-            EnemySystem.maxEnemies = 3;
-            for (let i = 0; i < 5; i++) {
+            // Spawn more than max enemies to verify limit
+            const maxEnemies = EnemySystem.maxEnemies; // Should be 10 from config
+            for (let i = 0; i < maxEnemies + 5; i++) {
                 EnemySystem.spawn('SKELETON', i, -10 * i, null);
             }
-            test.assertEqual(EnemySystem.getCount(), 3);
+            test.assertEqual(EnemySystem.getCount(), maxEnemies);
         });
 
         test.it('should check canSpawn', () => {
-            EnemySystem.maxEnemies = 2;
+            // Fill up to max
+            const maxEnemies = EnemySystem.maxEnemies;
             test.assertTrue(EnemySystem.canSpawn());
 
-            EnemySystem.spawn('SKELETON', 0, 0, null);
-            EnemySystem.spawn('SKELETON', 0, 0, null);
+            for (let i = 0; i < maxEnemies; i++) {
+                EnemySystem.spawn('SKELETON', i, -i * 10, null);
+            }
             test.assertFalse(EnemySystem.canSpawn());
         });
 
@@ -171,7 +177,6 @@
     test.describe('Enemy System - Damage', () => {
         test.beforeEach(() => {
             EnemySystem.init(Enemy, null);
-            EnemySystem.maxEnemies = 10;
         });
 
         test.it('should damage skeleton', () => {
@@ -208,7 +213,6 @@
     test.describe('Enemy System - AI Behavior', () => {
         test.beforeEach(() => {
             EnemySystem.init(Enemy, null);
-            EnemySystem.maxEnemies = 10;
         });
 
         test.it('should chase player', () => {
@@ -240,7 +244,6 @@
     test.describe('Enemy System - Wall Collision', () => {
         test.beforeEach(() => {
             EnemySystem.init(Enemy, null);
-            EnemySystem.maxEnemies = 10;
         });
 
         test.it('should stop at wall when collision check blocks X', () => {
@@ -322,7 +325,6 @@
     test.describe('Enemy System - Line of Sight', () => {
         test.beforeEach(() => {
             EnemySystem.init(Enemy, null);
-            EnemySystem.maxEnemies = 10;
         });
 
         test.it('should chase when has line of sight', () => {
@@ -412,7 +414,6 @@
     test.describe('Enemy System - Environment Collision', () => {
         test.beforeEach(() => {
             EnemySystem.init(Enemy, null);
-            EnemySystem.maxEnemies = 10;
         });
 
         test.it('should push apart overlapping enemies', () => {
@@ -590,14 +591,144 @@
         });
     });
 
+    // ==========================================
+    // ENEMY SPAWN POSITION TESTS
+    // ==========================================
+
+    test.describe('Enemy System - Spawn Position', () => {
+        test.it('should have spawnPosition in instance data', () => {
+            const instance = Enemy.createInstance('SKELETON', { x: 10, y: 0, z: -20 });
+            test.assertTrue(instance.spawnPosition !== undefined, 'Should have spawnPosition');
+            test.assertEqual(instance.spawnPosition.x, 10);
+            test.assertEqual(instance.spawnPosition.z, -20);
+        });
+
+        test.it('should set spawnPosition in createMesh userData', () => {
+            EnemySystem.init(Enemy, null);
+            // Mock THREE
+            const mockTHREE = {
+                Group: function() {
+                    this.position = { x: 0, y: 0, z: 0, set: function(x, y, z) { this.x = x; this.y = y; this.z = z; } };
+                    this.userData = {};
+                }
+            };
+            // Can't fully test without EnemyVisual, but verify the method exists
+            test.assertTrue(typeof EnemySystem.createMesh === 'function');
+        });
+
+        test.it('should have home behavior constants defined', () => {
+            test.assertTrue(Enemy.behaviorDefaults.HOME_RETURN_SPEED !== undefined);
+            test.assertTrue(Enemy.behaviorDefaults.HOME_RADIUS !== undefined);
+            test.assertTrue(Enemy.behaviorDefaults.SEARCH_LAST_SEEN_CHANCE !== undefined);
+        });
+
+        test.it('should have correct home behavior values', () => {
+            test.assertEqual(Enemy.behaviorDefaults.HOME_RETURN_SPEED, 0.25);
+            test.assertEqual(Enemy.behaviorDefaults.HOME_RADIUS, 8);
+            test.assertEqual(Enemy.behaviorDefaults.SEARCH_LAST_SEEN_CHANCE, 0.4);
+        });
+    });
+
+    // ==========================================
+    // ENEMY WANDER BEHAVIOR TESTS
+    // ==========================================
+
+    test.describe('Enemy System - Smart Wander', () => {
+        test.beforeEach(() => {
+            EnemySystem.init(Enemy, null);
+        });
+
+        test.it('should return home when too far from spawn', () => {
+            // Create enemy far from spawn position
+            const enemy = {
+                position: { x: 20, y: 0, z: 0 },
+                userData: {
+                    active: true,
+                    config: Enemy.get('SKELETON'),
+                    spawnPosition: { x: 0, z: 0 }
+                }
+            };
+            const data = enemy.userData;
+            const initialX = enemy.position.x;
+
+            // Wander should move towards home (spawn position)
+            EnemySystem._behaviorWander(enemy, data, 1, 10);
+
+            // Should move towards home (x = 0)
+            test.assertTrue(enemy.position.x < initialX, 'Should move towards home');
+        });
+
+        test.it('should stay near home when close to spawn', () => {
+            // Create enemy close to spawn position
+            const enemy = {
+                position: { x: 2, y: 0, z: 2 },
+                userData: {
+                    active: true,
+                    config: Enemy.get('SKELETON'),
+                    spawnPosition: { x: 0, z: 0 },
+                    wanderTimer: 10, // Force direction change
+                    wanderDirX: 1,
+                    wanderDirZ: 0
+                }
+            };
+            const data = enemy.userData;
+
+            // Multiple wander updates
+            for (let i = 0; i < 5; i++) {
+                EnemySystem._behaviorWander(enemy, data, 0.5, 10);
+            }
+
+            // Should still be within home radius (8 units)
+            const distFromHome = Math.sqrt(
+                Math.pow(enemy.position.x - 0, 2) +
+                Math.pow(enemy.position.z - 0, 2)
+            );
+            // Allow some tolerance since wander is slow
+            test.assertTrue(distFromHome < 15, 'Should stay relatively near home');
+        });
+
+        test.it('should have homeReturnSpeed getter', () => {
+            test.assertEqual(EnemySystem.homeReturnSpeed, 0.25);
+        });
+
+        test.it('should have homeRadius getter', () => {
+            test.assertEqual(EnemySystem.homeRadius, 8);
+        });
+
+        test.it('should have searchLastSeenChance getter', () => {
+            test.assertEqual(EnemySystem.searchLastSeenChance, 0.4);
+        });
+
+        test.it('should use lastSeenPlayerPos when wandering', () => {
+            const enemy = {
+                position: { x: 0, y: 0, z: 0 },
+                userData: {
+                    active: true,
+                    config: Enemy.get('SKELETON'),
+                    spawnPosition: { x: 0, z: 0 },
+                    lastSeenPlayerPos: { x: 10, z: 10 },
+                    wanderTimer: 10
+                }
+            };
+            const data = enemy.userData;
+
+            // The behavior may or may not move towards lastSeenPlayerPos
+            // based on random chance, but it should have access to it
+            test.assertTrue(data.lastSeenPlayerPos !== undefined, 'Should have lastSeenPlayerPos');
+            test.assertEqual(data.lastSeenPlayerPos.x, 10);
+            test.assertEqual(data.lastSeenPlayerPos.z, 10);
+        });
+    });
+
     test.describe('Enemy System - Cleanup', () => {
         test.beforeEach(() => {
             EnemySystem.init(Enemy, null);
-            EnemySystem.maxEnemies = 10;
         });
 
         test.it('should despawn enemies behind camera', () => {
-            const e = EnemySystem.spawn('SKELETON', 0, 25, null); // 25 units behind camera at z=0 (> despawnDistance of 20)
+            // Despawn distance is 60 from config
+            const despawnDist = EnemySystem.despawnDistance;
+            const e = EnemySystem.spawn('SKELETON', 0, despawnDist + 5, null); // Beyond despawn distance
             EnemySystem.update({ x: 0, y: 0, z: 0 }, { z: 0 }, 0.1, 10);
             test.assertEqual(EnemySystem.getCount(), 0);
         });

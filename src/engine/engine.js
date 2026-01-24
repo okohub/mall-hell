@@ -88,6 +88,28 @@ const Engine = {
             obstacleBehindDistance: 30
         },
 
+        // Collision detection constants
+        collision: {
+            // Quick distance check thresholds (squared values for efficiency)
+            enemyQuickCheckDist: 100,        // 10 units squared - skip enemies farther than this
+            obstacleQuickCheckDist: 64,      // 8 units squared - skip obstacles farther than this
+
+            // Hitbox configuration
+            enemyHitboxYOffset: 1.2,         // Y offset for enemy hitbox center
+            enemyHitRadius: 2.5,             // Radius for projectile-enemy hits
+            obstacleHitYFactor: 0.4,         // Multiply obstacle height for hitbox Y center
+            obstacleHitRadiusFactor: 0.8,    // Multiply obstacle width for hit radius
+
+            // Default hit radius (when not specified)
+            defaultHitRadius: 2,
+            defaultObstacleHeight: 2,
+            defaultObstacleWidth: 2,
+
+            // Line of sight
+            losRayStepSize: 2,               // Step size for ray march LOS check
+            losDoorTolerance: 1              // Extra width tolerance for door checks
+        },
+
         // Spawn limits
         spawn: {
             maxEnemies: 10,

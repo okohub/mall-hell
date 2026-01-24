@@ -118,6 +118,7 @@ mall-hell/
 
 ## Version History
 
+- **v4.0** - Smart enemy AI (home-return behavior), config-driven architecture, improved collision system
 - **v3.3** - Skeleton enemy with creepy backwards-facing joker skull, fixed movement AI
 - **v3.2** - Domain-driven architecture, separated test commands
 - **v3.1** - Menu redesign, aim-assist improvements, enhanced test suite

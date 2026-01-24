@@ -98,11 +98,12 @@
         });
 
         test.it('should limit max projectiles', () => {
-            ProjectileSystem.maxProjectiles = 3;
-            for (let i = 0; i < 5; i++) {
+            // maxProjectiles is now from config (50 by default)
+            const maxProjectiles = ProjectileSystem.maxProjectiles;
+            for (let i = 0; i < maxProjectiles + 5; i++) {
                 ProjectileSystem.spawn('stone', { x: i, y: 0, z: 0 }, { x: 0, y: 0, z: -1 }, 100, 1, 1, null);
             }
-            test.assertEqual(ProjectileSystem.getCount(), 3);
+            test.assertEqual(ProjectileSystem.getCount(), maxProjectiles);
         });
     });
 

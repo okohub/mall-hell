@@ -53,14 +53,14 @@
         }
     );
 
-    runner.addTest('menu-version', 'Menu Screen', 'Version shows v3.3',
+    runner.addTest('menu-version', 'Menu Screen', 'Version shows v4.0',
         'Verifies menu shows correct version',
         async () => {
             runner.resetGame();
             await runner.wait(100);
             const version = runner.getElement('.version');
-            if (!version || !version.textContent.includes('3.3')) {
-                throw new Error('Version should show v3.3');
+            if (!version || !version.textContent.includes('4.0')) {
+                throw new Error('Version should show v4.0');
             }
         }
     );

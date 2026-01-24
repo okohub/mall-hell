@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mall Hell v3.0</title>
+    <title>Mall Hell</title>
     <link rel="stylesheet" href="./src/styles/main.css">
 </head>
 <body>
@@ -63,7 +63,7 @@
                     <div class="title-wrapper">
                         <div class="title">MALL HELL</div>
                     </div>
-                    <div class="version">VERSION 3.3</div>
+                    <div class="version">VERSION 4.0</div>
                     <div class="subtitle">SUPERMARKET MAYHEM</div>
                     <div class="instructions" id="instructions">
                         <div class="control-item">
@@ -467,7 +467,20 @@
             }
 
             RoomSystem.updateAmbientLighting(ambientLight, PlayerSystem.position, mallGrid, THREE);
-            PlayerSystem.fullUpdate({ keys: InputSystem.keys, dt, collisionCheck: (nX, nZ, oX, oZ) => CollisionSystem.checkWallCollision(nX, nZ, oX, oZ, mallGrid, Room.structure), cart: playerCart, camera });
+            // Player movement with collision against walls, obstacles, and shelves
+            PlayerSystem.fullUpdate({
+                keys: InputSystem.keys,
+                dt,
+                collisionCheck: (nX, nZ, oX, oZ) => CollisionSystem.checkAllCollisions(nX, nZ, oX, oZ, {
+                    gridSystem: mallGrid,
+                    roomConfig: Room.structure,
+                    obstacles,
+                    shelves,
+                    playerRadius: Player.visual.COLLISION_RADIUS
+                }),
+                cart: playerCart,
+                camera
+            });
 
             // FPS mode
             playerCart.visible = true;
@@ -506,7 +519,8 @@
                 obstacles,
                 shelves
             });
-            EnvironmentSystem.updateObstaclesArray(obstacles, { playerCart, dt, isInvulnerable: PlayerSystem.getIsInvulnerable(), onPlayerCollision: () => damagePlayer(Player.health.OBSTACLE_DAMAGE) });
+            // Update obstacles (no damage - player collides via movement check above)
+            EnvironmentSystem.updateObstaclesArray(obstacles, { playerCart, dt });
             ParticleSystem.updateAll(particles, dt, { gravity: 15, fadeRate: 2 });
 
             // Collision detection

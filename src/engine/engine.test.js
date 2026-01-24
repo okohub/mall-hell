@@ -140,6 +140,120 @@
             test.assertEqual(hit !== null, true, 'Should hit');
             test.assertCloseTo(hit.t, 0.4, 0.1, 'Hit at ~40% along path');
         });
+
+        test.it('should check obstacle collision - blocked', () => {
+            const obstacles = [{
+                position: { x: 5, y: 0, z: 0 },
+                userData: { active: true, hit: false, collisionRadius: 2 }
+            }];
+            // Moving towards obstacle
+            const result = CollisionSystem.checkObstacleCollision(4, 0, 0, 0, obstacles, 1.5);
+            test.assertTrue(result.blockedX, 'Should block X movement towards obstacle');
+        });
+
+        test.it('should check obstacle collision - not blocked when far', () => {
+            const obstacles = [{
+                position: { x: 20, y: 0, z: 0 },
+                userData: { active: true, hit: false, collisionRadius: 2 }
+            }];
+            const result = CollisionSystem.checkObstacleCollision(5, 0, 0, 0, obstacles, 1.5);
+            test.assertFalse(result.blocked, 'Should not block when far from obstacle');
+        });
+
+        test.it('should ignore inactive obstacles', () => {
+            const obstacles = [{
+                position: { x: 2, y: 0, z: 0 },
+                userData: { active: false, hit: false, collisionRadius: 2 }
+            }];
+            const result = CollisionSystem.checkObstacleCollision(2, 0, 0, 0, obstacles, 1.5);
+            test.assertFalse(result.blocked, 'Should ignore inactive obstacles');
+        });
+
+        test.it('should ignore hit obstacles', () => {
+            const obstacles = [{
+                position: { x: 2, y: 0, z: 0 },
+                userData: { active: true, hit: true, collisionRadius: 2 }
+            }];
+            const result = CollisionSystem.checkObstacleCollision(2, 0, 0, 0, obstacles, 1.5);
+            test.assertFalse(result.blocked, 'Should ignore hit obstacles');
+        });
+
+        test.it('should check shelf collision - blocked', () => {
+            const shelves = [{
+                position: { x: 5, y: 0, z: 0 },
+                userData: { width: 4, depth: 2 }
+            }];
+            // Moving into shelf area
+            const result = CollisionSystem.checkShelfCollision(4, 0, 0, 0, shelves, 1.2);
+            test.assertTrue(result.blockedX, 'Should block X movement into shelf');
+        });
+
+        test.it('should check shelf collision - not blocked when outside', () => {
+            const shelves = [{
+                position: { x: 20, y: 0, z: 0 },
+                userData: { width: 4, depth: 2 }
+            }];
+            const result = CollisionSystem.checkShelfCollision(5, 0, 0, 0, shelves, 1.2);
+            test.assertFalse(result.blocked, 'Should not block when outside shelf');
+        });
+
+        test.it('should check all collisions combined', () => {
+            const obstacles = [{
+                position: { x: 5, y: 0, z: 0 },
+                userData: { active: true, hit: false, collisionRadius: 2 }
+            }];
+            const shelves = [{
+                position: { x: 0, y: 0, z: 10 },
+                userData: { width: 4, depth: 2 }
+            }];
+            // Mock grid system that allows movement
+            const mockGrid = {
+                getRoomAtWorld: () => ({
+                    gridX: 0, gridZ: 0,
+                    doors: ['north', 'south', 'east', 'west']
+                })
+            };
+            const mockRoomConfig = { UNIT: 30, DOOR_WIDTH: 6 };
+
+            // Test obstacle blocking
+            const result1 = CollisionSystem.checkAllCollisions(4, 0, 0, 0, {
+                gridSystem: mockGrid,
+                roomConfig: mockRoomConfig,
+                obstacles,
+                shelves,
+                playerRadius: 1.5
+            });
+            test.assertTrue(result1.blockedX, 'Should be blocked by obstacle');
+
+            // Test shelf blocking
+            const result2 = CollisionSystem.checkAllCollisions(0, 9, 0, 0, {
+                gridSystem: mockGrid,
+                roomConfig: mockRoomConfig,
+                obstacles,
+                shelves,
+                playerRadius: 1.2
+            });
+            test.assertTrue(result2.blockedZ, 'Should be blocked by shelf');
+        });
+
+        test.it('should handle null obstacles and shelves in checkAllCollisions', () => {
+            const mockGrid = {
+                getRoomAtWorld: () => ({
+                    gridX: 0, gridZ: 0,
+                    doors: ['north', 'south', 'east', 'west']
+                })
+            };
+            const mockRoomConfig = { UNIT: 30, DOOR_WIDTH: 6 };
+
+            const result = CollisionSystem.checkAllCollisions(5, 5, 0, 0, {
+                gridSystem: mockGrid,
+                roomConfig: mockRoomConfig,
+                obstacles: null,
+                shelves: null,
+                playerRadius: 1.2
+            });
+            test.assertFalse(result.blocked, 'Should not crash with null arrays');
+        });
     });
 
     // ==========================================

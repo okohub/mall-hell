@@ -5,6 +5,24 @@
 // No dependencies - works with plain position objects.
 
 const CollisionSystem = {
+    // Config getters (use Engine.defaults.collision if available)
+    get config() {
+        return (typeof Engine !== 'undefined' && Engine.defaults && Engine.defaults.collision)
+            ? Engine.defaults.collision
+            : {
+                enemyQuickCheckDist: 100,
+                obstacleQuickCheckDist: 64,
+                enemyHitboxYOffset: 1.2,
+                enemyHitRadius: 2.5,
+                obstacleHitYFactor: 0.4,
+                obstacleHitRadiusFactor: 0.8,
+                defaultHitRadius: 2,
+                defaultObstacleHeight: 2,
+                defaultObstacleWidth: 2,
+                losRayStepSize: 2,
+                losDoorTolerance: 1
+            };
+    },
     // ==========================================
     // DISTANCE-BASED COLLISION
     // ==========================================
@@ -389,6 +407,145 @@ const CollisionSystem = {
     },
 
     /**
+     * Check collision with obstacles for player movement
+     * @param {number} newX - New X position
+     * @param {number} newZ - New Z position
+     * @param {number} oldX - Previous X position
+     * @param {number} oldZ - Previous Z position
+     * @param {Array} obstacles - Array of obstacle meshes
+     * @param {number} playerRadius - Player collision radius
+     * @returns {Object} Result {blocked, blockedX, blockedZ}
+     */
+    checkObstacleCollision(newX, newZ, oldX, oldZ, obstacles, playerRadius = 1.2) {
+        const result = { blocked: false, blockedX: false, blockedZ: false };
+
+        if (!obstacles || obstacles.length === 0) return result;
+
+        for (const obs of obstacles) {
+            if (!obs.userData.active || obs.userData.hit) continue;
+
+            // Get obstacle collision radius
+            const obsRadius = obs.userData.collisionRadius ||
+                obs.userData.config?.collisionRadius ||
+                (obs.userData.width ? obs.userData.width / 2 : 1.5);
+
+            const minDist = playerRadius + obsRadius;
+
+            // Check X movement
+            const dxNew = newX - obs.position.x;
+            const dzOld = oldZ - obs.position.z;
+            const distXNew = Math.sqrt(dxNew * dxNew + dzOld * dzOld);
+            if (distXNew < minDist) {
+                result.blockedX = true;
+            }
+
+            // Check Z movement
+            const dxOld = oldX - obs.position.x;
+            const dzNew = newZ - obs.position.z;
+            const distZNew = Math.sqrt(dxOld * dxOld + dzNew * dzNew);
+            if (distZNew < minDist) {
+                result.blockedZ = true;
+            }
+        }
+
+        result.blocked = result.blockedX || result.blockedZ;
+        return result;
+    },
+
+    /**
+     * Check collision with shelves for player movement
+     * @param {number} newX - New X position
+     * @param {number} newZ - New Z position
+     * @param {number} oldX - Previous X position
+     * @param {number} oldZ - Previous Z position
+     * @param {Array} shelves - Array of shelf meshes
+     * @param {number} playerRadius - Player collision radius
+     * @returns {Object} Result {blocked, blockedX, blockedZ}
+     */
+    checkShelfCollision(newX, newZ, oldX, oldZ, shelves, playerRadius = 1.2) {
+        const result = { blocked: false, blockedX: false, blockedZ: false };
+
+        if (!shelves || shelves.length === 0) return result;
+
+        for (const shelf of shelves) {
+            if (!shelf.position) continue;
+
+            // Get shelf dimensions
+            const shelfWidth = shelf.userData?.width || 4;
+            const shelfDepth = shelf.userData?.depth || 2;
+            const halfW = shelfWidth / 2 + playerRadius;
+            const halfD = shelfDepth / 2 + playerRadius;
+
+            // Check if new X position would collide
+            const dxNew = newX - shelf.position.x;
+            const dzOld = oldZ - shelf.position.z;
+            if (Math.abs(dxNew) < halfW && Math.abs(dzOld) < halfD) {
+                result.blockedX = true;
+            }
+
+            // Check if new Z position would collide
+            const dxOld = oldX - shelf.position.x;
+            const dzNew = newZ - shelf.position.z;
+            if (Math.abs(dxOld) < halfW && Math.abs(dzNew) < halfD) {
+                result.blockedZ = true;
+            }
+        }
+
+        result.blocked = result.blockedX || result.blockedZ;
+        return result;
+    },
+
+    /**
+     * Combined collision check for walls, obstacles, and shelves
+     * @param {number} newX - New X position
+     * @param {number} newZ - New Z position
+     * @param {number} oldX - Previous X position
+     * @param {number} oldZ - Previous Z position
+     * @param {Object} options - Collision options
+     * @param {Object} options.gridSystem - Grid system for wall collision
+     * @param {Object} options.roomConfig - Room config {UNIT, DOOR_WIDTH}
+     * @param {Array} options.obstacles - Obstacle meshes
+     * @param {Array} options.shelves - Shelf meshes
+     * @param {number} options.playerRadius - Player collision radius
+     * @returns {Object} Result {blocked, blockedX, blockedZ}
+     */
+    checkAllCollisions(newX, newZ, oldX, oldZ, options) {
+        const {
+            gridSystem,
+            roomConfig,
+            obstacles = null,
+            shelves = null,
+            playerRadius = 1.2
+        } = options;
+
+        const result = { blocked: false, blockedX: false, blockedZ: false };
+
+        // Check wall collision
+        if (gridSystem && roomConfig) {
+            const wallResult = this.checkWallCollision(newX, newZ, oldX, oldZ, gridSystem, roomConfig, playerRadius);
+            if (wallResult.blockedX) result.blockedX = true;
+            if (wallResult.blockedZ) result.blockedZ = true;
+        }
+
+        // Check obstacle collision
+        if (obstacles) {
+            const obsResult = this.checkObstacleCollision(newX, newZ, oldX, oldZ, obstacles, playerRadius);
+            if (obsResult.blockedX) result.blockedX = true;
+            if (obsResult.blockedZ) result.blockedZ = true;
+        }
+
+        // Check shelf collision
+        if (shelves) {
+            const shelfResult = this.checkShelfCollision(newX, newZ, oldX, oldZ, shelves, playerRadius);
+            if (shelfResult.blockedX) result.blockedX = true;
+            if (shelfResult.blockedZ) result.blockedZ = true;
+        }
+
+        result.blocked = result.blockedX || result.blockedZ;
+        return result;
+    },
+
+    /**
      * Get wall direction between two adjacent rooms
      * @param {Object} fromRoom - Source room {gridX, gridZ}
      * @param {Object} toRoom - Target room {gridX, gridZ}
@@ -443,6 +600,7 @@ const CollisionSystem = {
             }
 
             // Check enemy collisions with early exit and optimized vectors
+            const cfg = this.config;
             for (let i = 0; i < enemies.length && proj.userData.active; i++) {
                 const enemy = enemies[i];
                 if (!enemy.userData.active) continue;
@@ -450,20 +608,20 @@ const CollisionSystem = {
                 // Quick distance check first (cheaper than full calculation)
                 const dx = enemy.position.x - currPos.x;
                 const dz = enemy.position.z - currPos.z;
-                if (dx * dx + dz * dz > 100) continue;  // Skip if > 10 units away
+                if (dx * dx + dz * dz > cfg.enemyQuickCheckDist) continue;
 
                 // Enemy hitbox center
                 const enemyCenter = enemy.position.clone();
-                enemyCenter.y += 1.2;
+                enemyCenter.y += cfg.enemyHitboxYOffset;
 
-                const hitRadius = 2.5;
+                const hitRadius = cfg.enemyHitRadius;
                 const toEnemy = enemyCenter.sub(prevPos);  // Reuse enemyCenter vector
 
                 if (projLen > 0) {
                     const dot = toEnemy.dot(projDir);
                     const clampedDot = Math.max(0, Math.min(projLen, dot));
                     const closestPoint = prevPos.clone().addScaledVector(projDir, clampedDot);
-                    enemyCenter.copy(enemy.position).y += 1.2;  // Restore for distance check
+                    enemyCenter.copy(enemy.position).y += cfg.enemyHitboxYOffset;  // Restore for distance check
                     const dist = closestPoint.distanceTo(enemyCenter);
 
                     if (dist < hitRadius) {
@@ -488,13 +646,15 @@ const CollisionSystem = {
                 if (!obs.userData.active || obs.userData.hit) continue;
 
                 // Quick distance check
-                const dx = obs.position.x - currPos.x;
-                const dz = obs.position.z - currPos.z;
-                if (dx * dx + dz * dz > 64) continue;  // Skip if > 8 units away
+                const obsDx = obs.position.x - currPos.x;
+                const obsDz = obs.position.z - currPos.z;
+                if (obsDx * obsDx + obsDz * obsDz > cfg.obstacleQuickCheckDist) continue;
 
+                const obsHeight = obs.userData.height || cfg.defaultObstacleHeight;
+                const obsWidth = obs.userData.width || cfg.defaultObstacleWidth;
                 const obsCenter = obs.position.clone();
-                obsCenter.y += (obs.userData.height || 2) * 0.4;
-                const hitRadius = (obs.userData.width || 2) * 0.8;
+                obsCenter.y += obsHeight * cfg.obstacleHitYFactor;
+                const obsHitRadius = obsWidth * cfg.obstacleHitRadiusFactor;
 
                 const toObs = obsCenter.sub(prevPos);
 
@@ -502,10 +662,10 @@ const CollisionSystem = {
                     const dot = toObs.dot(projDir);
                     const clampedDot = Math.max(0, Math.min(projLen, dot));
                     const closestPoint = prevPos.clone().addScaledVector(projDir, clampedDot);
-                    obsCenter.copy(obs.position).y += (obs.userData.height || 2) * 0.4;
+                    obsCenter.copy(obs.position).y += obsHeight * cfg.obstacleHitYFactor;
                     const dist = closestPoint.distanceTo(obsCenter);
 
-                    if (dist < hitRadius) {
+                    if (dist < obsHitRadius) {
                         proj.userData.active = false;
                         obs.userData.hit = true;
 
@@ -552,8 +712,8 @@ const CollisionSystem = {
         const dz = toZ - fromZ;
         const dist = Math.sqrt(dx * dx + dz * dz);
 
-        // Step size - check every 2 units
-        const stepSize = 2;
+        // Step size for ray march
+        const stepSize = this.config.losRayStepSize;
         const steps = Math.ceil(dist / stepSize);
 
         let prevRoom = fromRoom;
@@ -579,7 +739,7 @@ const CollisionSystem = {
                 // Check if we're actually going through the door opening
                 const doorCenterX = prevRoom.gridX * ROOM_UNIT + ROOM_UNIT / 2;
                 const doorCenterZ = prevRoom.gridZ * ROOM_UNIT + ROOM_UNIT / 2;
-                const doorHalf = DOOR_WIDTH / 2 + 1; // Slightly wider for tolerance
+                const doorHalf = DOOR_WIDTH / 2 + this.config.losDoorTolerance; // Slightly wider for tolerance
 
                 if (wallDir === 'east' || wallDir === 'west') {
                     // Horizontal door - check Z alignment

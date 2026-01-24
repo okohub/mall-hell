@@ -332,7 +332,7 @@ UISystem.showGameOver(score, UI.getScoreRating(score), died);
 ## Overview
 
 **Title:** Mall Hell
-**Version:** 3.3
+**Version:** 4.0
 **Platform:** Desktop Browser
 **Tech Stack:** HTML5, CSS3, JavaScript, Three.js (r128)
 **Delivery:** Single `index.html` file with domain modules in `src/`
@@ -573,6 +573,12 @@ Objects are removed when:
 2. Add UI tests to `tests/ui-tests.html` if UI is affected
 3. Run domain-specific tests first: `bun run-tests.js --domain=<name>`
 4. Only run full suite when explicitly requested
+
+**Critical testing patterns:**
+- **NEVER reference specific implementations directly in tests** - use managers/systems instead
+- Example: To reset weapon cooldown, use `WeaponManager.currentWeapon.state.lastFireTime = 0`, NOT `Slingshot.state.lastFireTime = 0`
+- This ensures tests remain weapon-agnostic and work with any equipped weapon
+- Same principle applies to other domains: use `EntitySystem`, `StateSystem`, etc. rather than specific instances
 
 **Code style:**
 - No ES6 imports/exports (use global scope)

@@ -126,8 +126,8 @@
             await runner.wait(500);
 
             runner.gameWindow.lastShootTime = 0;
-            if (runner.gameWindow.WeaponSystem) {
-                runner.gameWindow.WeaponSystem.lastFireTime = 0;
+            if (runner.gameWindow.WeaponManager?.currentWeapon?.state) {
+                runner.gameWindow.WeaponManager.currentWeapon.state.lastFireTime = 0;
             }
 
             const initialTension = runner.gameWindow.slingshotTension || 0;
@@ -216,8 +216,8 @@
             }
 
             runner.gameWindow.lastShootTime = 0;
-            if (runner.gameWindow.WeaponSystem) {
-                runner.gameWindow.WeaponSystem.lastFireTime = 0;
+            if (runner.gameWindow.WeaponManager?.currentWeapon?.state) {
+                runner.gameWindow.WeaponManager.currentWeapon.state.lastFireTime = 0;
             }
 
             const initialProjectiles = runner.gameWindow.projectiles?.length || 0;

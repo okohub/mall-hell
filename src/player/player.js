@@ -14,15 +14,24 @@ const Player = {
         DECELERATION: 20,      // Speed loss per second (braking)
         MAX_SPEED: 10,         // Maximum speed
         FRICTION: 8,           // Natural slowdown when not pressing W/S
-        IDLE_DRIFT: 0.5        // Small forward drift when idle (cart on slope)
+        IDLE_DRIFT: 0.5,       // Small forward drift when idle (cart on slope)
+        TURN_SMOOTH: 8,        // Turn rate interpolation factor
+        FRICTION_MULTIPLIER: 0.5,  // Friction speed reduction factor
+        COLLISION_SPEED_REDUCTION: 0.3  // Speed reduction on wall collision
     },
 
     // Visual constants
     visual: {
         LEAN_ANGLE: 0.15,      // Lean when turning
+        LEAN_SMOOTH: 8,        // Lean interpolation factor
         CAMERA_ROLL_FACTOR: 0.1,
         CAMERA_HEIGHT: 2.2,
-        COLLISION_RADIUS: 1.2  // Player collision radius for wall detection
+        CAMERA_ROTATION_X: -0.12,  // Base camera pitch (slight downward tilt)
+        COLLISION_RADIUS: 1.2,     // Player collision radius for wall detection
+        WALL_BUMP_DECAY: 0.85,     // Wall bump effect decay per frame
+        CAMERA_BUMP_OFFSET: 0.3,   // Camera bump X/Z offset scale
+        CAMERA_BUMP_SHAKE: 0.1,    // Camera bump shake scale
+        CAMERA_BUMP_ROTATION: 0.05 // Camera bump rotation influence
     },
 
     // Health constants
