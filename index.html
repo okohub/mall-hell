@@ -63,7 +63,7 @@
                     <div class="title-wrapper">
                         <div class="title">MALL HELL</div>
                     </div>
-                    <div class="version">VERSION 3.2</div>
+                    <div class="version">VERSION 3.3</div>
                     <div class="subtitle">SUPERMARKET MAYHEM</div>
                     <div class="instructions" id="instructions">
                         <div class="control-item">
@@ -1932,78 +1932,18 @@
             scene.add(playerCart);
         }
 
-        function createEnemyCart(x, z, enemyType = 'CART') {
-            const group = new THREE.Group();
-
+        function createEnemyCart(x, z, enemyType = 'SKELETON') {
             // Get config from ENEMY_TYPES registry
             const config = ENEMY_TYPES[enemyType] || ENEMY_TYPES.CART;
-            const visual = config.visual || { bodyColor: 0xe94560, wireColor: 0xc0392b, size: { w: 2, h: 1.5, d: 2.5 } };
 
-            // Set userData using EnemySystem helper
-            group.userData = EnemySystem.createEnemyData(enemyType);
+            // Use EnemyVisual to create the mesh (handles both CART and SKELETON)
+            const group = EnemyVisual.createEnemy(THREE, config);
 
-            // Cart body - use visual config
-            const cartGeo = new THREE.BoxGeometry(visual.size.w, visual.size.h, visual.size.d);
-            const cartMat = new THREE.MeshStandardMaterial({ color: visual.bodyColor });
-            const cart = new THREE.Mesh(cartGeo, cartMat);
-            cart.position.y = 1;
-            cart.castShadow = true;
-            group.add(cart);
+            // Set userData using EnemySystem helper (includes health, damage, etc.)
+            const enemyData = EnemySystem.createEnemyData(enemyType);
+            Object.assign(group.userData, enemyData);
 
-            // Wire mesh effect - use visual config
-            const wireGeo = new THREE.EdgesGeometry(cartGeo);
-            const wireMat = new THREE.LineBasicMaterial({ color: visual.wireColor || 0xc0392b });
-            const wire = new THREE.LineSegments(wireGeo, wireMat);
-            wire.position.y = 1;
-            group.add(wire);
-
-            // Wheels
-            const wheelGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.15, 16);
-            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-            [[-0.7, 0.25, -1], [0.7, 0.25, -1], [-0.7, 0.25, 1], [0.7, 0.25, 1]].forEach(pos => {
-                const wheel = new THREE.Mesh(wheelGeo, wheelMat);
-                wheel.rotation.z = Math.PI / 2;
-                wheel.position.set(...pos);
-                group.add(wheel);
-            });
-
-            // Evil face
-            const eyeGeo = new THREE.SphereGeometry(0.15, 8, 8);
-            const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffff00, emissiveIntensity: 0.5 });
-            const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-            eyeL.position.set(-0.4, 1.3, -1.3);
-            group.add(eyeL);
-            const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-            eyeR.position.set(0.4, 1.3, -1.3);
-            group.add(eyeR);
-
-            // Pupils
-            const pupilGeo = new THREE.SphereGeometry(0.08, 8, 8);
-            const pupilMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
-            const pupilL = new THREE.Mesh(pupilGeo, pupilMat);
-            pupilL.position.set(-0.4, 1.3, -1.42);
-            group.add(pupilL);
-            const pupilR = new THREE.Mesh(pupilGeo, pupilMat);
-            pupilR.position.set(0.4, 1.3, -1.42);
-            group.add(pupilR);
-
-            // Health bar
-            const healthBarBg = new THREE.Mesh(
-                new THREE.BoxGeometry(2, 0.2, 0.1),
-                new THREE.MeshBasicMaterial({ color: 0x333333 })
-            );
-            healthBarBg.position.set(0, 2.5, 0);
-            healthBarBg.name = 'healthBarBg';
-            group.add(healthBarBg);
-
-            const healthBar = new THREE.Mesh(
-                new THREE.BoxGeometry(2, 0.18, 0.12),
-                new THREE.MeshBasicMaterial({ color: 0x2ecc71 })
-            );
-            healthBar.position.set(0, 2.5, 0);
-            healthBar.name = 'healthBar';
-            group.add(healthBar);
-
+            // Position and add to scene
             group.position.set(x, 0, z);
             scene.add(group);
             enemies.push(group);
@@ -2753,12 +2693,12 @@
                 return null; // No valid position found
             }
 
-            // Spawn 2-3 enemies with collision checking
+            // Spawn 2-3 skeleton enemies with collision checking
             const numEnemies = 2 + Math.floor(Math.random() * 2);
             for (let i = 0; i < numEnemies; i++) {
                 const pos = findValidPosition(4); // Enemies need more space
                 if (pos) {
-                    createEnemyCart(pos.x, pos.z);
+                    createEnemyCart(pos.x, pos.z, 'SKELETON');
                     spawnedPositions.push(pos);
                 }
             }
@@ -3218,14 +3158,34 @@
                 );
                 enemy.rotation.y = lookDir;
 
+                // Animate eyes (track player)
+                if (typeof EnemyVisual !== 'undefined' && enemy.userData.cart) {
+                    EnemyVisual.animateEyes(enemy.userData.cart, playerPosition);
+                }
+
+                // Animate skeleton walking (pushing cart with effort)
+                if (typeof EnemyVisual !== 'undefined' && enemy.userData.skeleton) {
+                    const walkSpeed = enemy.userData.config?.walkSpeed || 3.5;
+                    enemy.userData.walkTimer = (enemy.userData.walkTimer || 0) + dt * walkSpeed;
+                    EnemyVisual.animateSkeletonWalk(enemy.userData.cart, enemy.userData.walkTimer, walkSpeed);
+                }
+
                 // Hit flash
                 if (enemy.userData.hitFlash > 0) {
                     enemy.userData.hitFlash -= dt * 5;
-                    enemy.children.forEach(child => {
-                        if (child.material && child.material.emissive) {
-                            child.material.emissiveIntensity = enemy.userData.hitFlash;
-                        }
-                    });
+                    if (enemy.userData.hitFlash < 0) enemy.userData.hitFlash = 0;
+
+                    // Use EnemyVisual for hit flash if available
+                    if (typeof EnemyVisual !== 'undefined' && enemy.userData.cart) {
+                        EnemyVisual.applyHitFlash(enemy.userData.cart, enemy.userData.hitFlash);
+                    } else {
+                        // Fallback for legacy enemies
+                        enemy.children.forEach(child => {
+                            if (child.material && child.material.emissive) {
+                                child.material.emissiveIntensity = enemy.userData.hitFlash;
+                            }
+                        });
+                    }
                 }
 
                 // Remove if too far from player (outside current room area)
@@ -3337,11 +3297,17 @@
                                 showHitMarker();
 
                                 // Update health bar using EnemySystem helper
-                                const healthBar = enemy.getObjectByName('healthBar');
-                                if (healthBar) {
-                                    const healthPercent = EnemySystem.getHealthPercent(enemy);
-                                    healthBar.scale.x = healthPercent;
-                                    healthBar.position.x = -(1 - healthBar.scale.x);
+                                const healthPercent = EnemySystem.getHealthPercent(enemy);
+                                const healthBarGroup = enemy.userData.healthBar;
+                                if (healthBarGroup && typeof EnemyVisual !== 'undefined') {
+                                    EnemyVisual.updateHealthBar(healthBarGroup, healthPercent);
+                                } else {
+                                    // Fallback for legacy health bar
+                                    const healthBar = enemy.getObjectByName('healthBar');
+                                    if (healthBar) {
+                                        healthBar.scale.x = healthPercent;
+                                        healthBar.position.x = -(1 - healthBar.scale.x);
+                                    }
                                 }
 
                                 // Use score values from EnemySystem result
@@ -3696,6 +3662,11 @@
 
         // Initialize and start
         initThree();
+
+        // Initialize domain systems
+        WeaponSystem.init(Weapon);
+        EnemySystem.init(Enemy, scene);
+
         updateCursor();
 
         // Set initial UI state (MENU)

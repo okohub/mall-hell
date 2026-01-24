@@ -1,6 +1,6 @@
 {
   "name": "mall-hell",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "A chaotic first-person browser game",
   "main": "index.html",
   "directories": {
@@ -11,6 +11,8 @@
     "test:unit": "bun run-tests.js --unit",
     "test:ui": "bun run-tests.js --ui",
     "test:quick": "bun run-tests.js --unit -q",
+    "test:failed": "bun run-tests.js --failed",
+    "test:list": "bun run-tests.js --list",
     "serve": "bun x serve . -p 3000",
     "open": "open index.html"
   },
@@ -18,7 +20,6 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "pngjs": "^7.0.0",
     "puppeteer": "^24.36.0"
   }
 }

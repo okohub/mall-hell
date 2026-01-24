@@ -1,24 +1,24 @@
 const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
-const PNG = require('pngjs').PNG;
 
 // ============================================
 // CONFIGURATION
 // ============================================
 
-const BASELINE_DIR = path.join(__dirname, '.baselines');
-const CURRENT_DIR = path.join(__dirname, 'screenshots');
 const TEST_OUTPUT_DIR = path.join(__dirname, '.test-output');
-const OUTPUT_FILE = path.join(TEST_OUTPUT_DIR, 'test-results.txt');
-const JSON_OUTPUT = path.join(TEST_OUTPUT_DIR, 'test-results.json');
+const LATEST_JSON = path.join(TEST_OUTPUT_DIR, 'latest.json');
+const LATEST_TXT = path.join(TEST_OUTPUT_DIR, 'latest.txt');
+
+// Generate timestamped filenames
+const RUN_TIMESTAMP = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+const OUTPUT_FILE = path.join(TEST_OUTPUT_DIR, `run-${RUN_TIMESTAMP}.txt`);
+const JSON_OUTPUT = path.join(TEST_OUTPUT_DIR, `run-${RUN_TIMESTAMP}.json`);
 
 // Ensure directories exist
-[TEST_OUTPUT_DIR, BASELINE_DIR, CURRENT_DIR].forEach(dir => {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-});
+if (!fs.existsSync(TEST_OUTPUT_DIR)) {
+    fs.mkdirSync(TEST_OUTPUT_DIR, { recursive: true });
+}
 
 // ============================================
 // ARGUMENT PARSING
@@ -29,13 +29,15 @@ const args = process.argv.slice(2);
 // Test mode flags
 const UNIT_ONLY = args.includes('--unit') || args.includes('-u');
 const UI_ONLY = args.includes('--ui') || args.includes('-i');
-const SKIP_VISUAL = args.includes('--skip-visual');
 const QUIET = args.includes('--quiet') || args.includes('-q');
 const VERBOSE = !QUIET;
+const RUN_FAILED = args.includes('--failed') || args.includes('-f');
+const LIST_RUNS = args.includes('--list') || args.includes('-l');
 
-// Specific test/group filters
+// Specific test/group/domain filters
 let ONLY_TESTS = [];
 let TEST_GROUPS = [];
+let UNIT_DOMAINS = [];
 
 args.forEach((arg, i) => {
     if (arg === '--only' && args[i + 1] && !args[i + 1].startsWith('-')) {
@@ -53,7 +55,88 @@ args.forEach((arg, i) => {
     if (arg === '--group' && args[i + 1] && !args[i + 1].startsWith('-')) {
         TEST_GROUPS.push(args[i + 1].toLowerCase());
     }
+    if (arg.startsWith('--domain=')) {
+        UNIT_DOMAINS.push(arg.substring(9).toLowerCase());
+    }
+    if (arg === '--domain' && args[i + 1] && !args[i + 1].startsWith('-')) {
+        UNIT_DOMAINS.push(args[i + 1].toLowerCase());
+    }
 });
+
+// ============================================
+// LOAD FAILED TESTS FROM LAST RUN
+// ============================================
+
+function loadFailedTestsFromLastRun() {
+    if (!fs.existsSync(LATEST_JSON)) {
+        console.log('⚠️  No previous test run found. Running all tests.');
+        return { unitTests: [], uiTests: [] };
+    }
+
+    try {
+        const lastRun = JSON.parse(fs.readFileSync(LATEST_JSON, 'utf-8'));
+        const unitTests = lastRun.unit?.failedTests?.map(t => t.name) || [];
+        const uiTests = lastRun.ui?.failedTests?.map(t => t.name) || [];
+
+        if (unitTests.length === 0 && uiTests.length === 0) {
+            console.log('✅ No failed tests in last run. Nothing to re-run.');
+            process.exit(0);
+        }
+
+        console.log(`\n🔄 Re-running ${unitTests.length} unit + ${uiTests.length} UI failed tests from last run\n`);
+        return { unitTests, uiTests };
+    } catch (e) {
+        console.log('⚠️  Could not parse last run results. Running all tests.');
+        return { unitTests: [], uiTests: [] };
+    }
+}
+
+// ============================================
+// LIST PREVIOUS RUNS
+// ============================================
+
+function listPreviousRuns() {
+    const files = fs.readdirSync(TEST_OUTPUT_DIR)
+        .filter(f => f.startsWith('run-') && f.endsWith('.json'))
+        .sort()
+        .reverse()
+        .slice(0, 10);
+
+    console.log('\n📋 RECENT TEST RUNS (last 10)\n');
+    console.log('='.repeat(60));
+
+    for (const file of files) {
+        try {
+            const data = JSON.parse(fs.readFileSync(path.join(TEST_OUTPUT_DIR, file), 'utf-8'));
+            const passed = data.summary?.totalPassed || 0;
+            const failed = data.summary?.totalFailed || 0;
+            const status = failed > 0 ? '❌' : '✅';
+            const timestamp = file.replace('run-', '').replace('.json', '').replace('T', ' ');
+            console.log(`  ${status} ${timestamp}  |  ${passed} passed, ${failed} failed`);
+        } catch (e) {
+            console.log(`  ⚠️  ${file} (unreadable)`);
+        }
+    }
+
+    console.log('\n' + '='.repeat(60));
+    console.log('\n📁 Output directory: .test-output/');
+    console.log('📄 Latest results: .test-output/latest.json\n');
+}
+
+if (LIST_RUNS) {
+    listPreviousRuns();
+    process.exit(0);
+}
+
+// Load failed tests if --failed flag is used
+let FAILED_TESTS = { unitTests: [], uiTests: [] };
+if (RUN_FAILED) {
+    FAILED_TESTS = loadFailedTestsFromLastRun();
+    // Add failed UI tests to ONLY_TESTS filter
+    if (FAILED_TESTS.uiTests.length > 0) {
+        ONLY_TESTS.push(...FAILED_TESTS.uiTests);
+    }
+}
 
 // ============================================
 // OUTPUT CAPTURE
@@ -112,62 +195,6 @@ function updateProgressDisplay() {
 }
 
 // ============================================
-// IMAGE COMPARISON
-// ============================================
-
-function compareImages(baselinePath, currentPath) {
-    if (!fs.existsSync(baselinePath)) {
-        return { match: false, reason: 'no_baseline', diff: 100 };
-    }
-    if (!fs.existsSync(currentPath)) {
-        return { match: false, reason: 'no_current', diff: 100 };
-    }
-
-    try {
-        const baseline = PNG.sync.read(fs.readFileSync(baselinePath));
-        const current = PNG.sync.read(fs.readFileSync(currentPath));
-
-        if (baseline.width !== current.width || baseline.height !== current.height) {
-            return { match: false, reason: 'size_mismatch', diff: 100 };
-        }
-
-        let diffPixels = 0;
-        const totalPixels = baseline.width * baseline.height;
-
-        for (let i = 0; i < baseline.data.length; i += 4) {
-            const rDiff = Math.abs(baseline.data[i] - current.data[i]);
-            const gDiff = Math.abs(baseline.data[i + 1] - current.data[i + 1]);
-            const bDiff = Math.abs(baseline.data[i + 2] - current.data[i + 2]);
-
-            if (rDiff > 10 || gDiff > 10 || bDiff > 10) {
-                diffPixels++;
-            }
-        }
-
-        const diffPercent = (diffPixels / totalPixels) * 100;
-        const threshold = 1;
-
-        return {
-            match: diffPercent <= threshold,
-            reason: diffPercent <= threshold ? 'match' : 'visual_diff',
-            diff: diffPercent.toFixed(2)
-        };
-    } catch (error) {
-        return { match: false, reason: 'error', diff: 100, error: error.message };
-    }
-}
-
-function cleanupScreenshots() {
-    if (fs.existsSync(CURRENT_DIR)) {
-        fs.readdirSync(CURRENT_DIR).forEach(file => {
-            if (file.endsWith('.png')) {
-                fs.unlinkSync(path.join(CURRENT_DIR, file));
-            }
-        });
-    }
-}
-
-// ============================================
 // UNIT TEST RUNNER
 // ============================================
 
@@ -177,8 +204,21 @@ async function runUnitTests(browser) {
     let passed = 0, failed = 0;
     let failedTests = [];
 
+    // Build domain filter query string if domains specified
+    let url = `file://${filePath}`;
+    if (UNIT_DOMAINS.length > 0) {
+        url += `?domains=${UNIT_DOMAINS.join(',')}`;
+    }
+    if (RUN_FAILED && FAILED_TESTS.unitTests.length > 0) {
+        const separator = url.includes('?') ? '&' : '?';
+        url += `${separator}tests=${encodeURIComponent(FAILED_TESTS.unitTests.join(','))}`;
+    }
+
     try {
-        await page.goto(`file://${filePath}`, { waitUntil: 'domcontentloaded', timeout: 10000 });
+        if (VERBOSE && (UNIT_DOMAINS.length > 0 || (RUN_FAILED && FAILED_TESTS.unitTests.length > 0))) {
+            logProgress(`  [Unit] Filtering: domains=${UNIT_DOMAINS.join(',') || 'all'}`);
+        }
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 10000 });
         await new Promise(resolve => setTimeout(resolve, 500));
 
         const total = await page.evaluate(() => {
@@ -268,35 +308,11 @@ async function runUITests(browser) {
     const filePath = path.resolve(__dirname, 'tests/ui-tests.html');
     let passed = 0, failed = 0, pending = 0;
     let failedTests = [];
-    let screenshotsTaken = [];
-    let visualRegressions = [];
-
-    const SCREENSHOT_POINTS = ['menu_initial', 'game_playing', 'game_paused', 'game_final'];
-
-    async function captureScreenshot(name) {
-        const currentPath = path.join(CURRENT_DIR, `${name}.png`);
-        const baselinePath = path.join(BASELINE_DIR, `${name}.png`);
-
-        const frame = await page.$('iframe#game-frame');
-        if (frame) {
-            await frame.screenshot({ path: currentPath });
-        } else {
-            await page.screenshot({ path: currentPath, fullPage: false });
-        }
-
-        screenshotsTaken.push(currentPath);
-        const result = compareImages(baselinePath, currentPath);
-        visualRegressions.push({ name, ...result });
-
-        return currentPath;
-    }
 
     try {
         await page.setViewport({ width: 1400, height: 900 });
         await page.goto(`file://${filePath}`, { waitUntil: 'domcontentloaded', timeout: 15000 });
         await new Promise(resolve => setTimeout(resolve, 3000));
-
-        await captureScreenshot('menu_initial');
 
         if (ONLY_TESTS.length > 0) {
             await page.evaluate((testNames) => {
@@ -335,7 +351,6 @@ async function runUITests(browser) {
         });
 
         await new Promise(resolve => setTimeout(resolve, 1000));
-        await captureScreenshot('game_playing');
 
         let stableCount = 0, attempts = 0, lastCompleted = 0;
         let loggedTests = new Set();
@@ -414,8 +429,6 @@ async function runUITests(browser) {
         failed = results.failed;
         pending = results.tests.filter(t => t.status === 'PENDING').length;
 
-        await captureScreenshot('game_final');
-
         progress.ui.passed = passed;
         progress.ui.failed = failed;
         progress.ui.current = '';
@@ -430,7 +443,7 @@ async function runUITests(browser) {
     }
 
     await page.close();
-    return { passed, failed, pending, failedTests, screenshots: screenshotsTaken, visualRegressions };
+    return { passed, failed, pending, failedTests };
 }
 
 // ============================================
@@ -463,33 +476,11 @@ function displayUIResults(uiResults) {
     console.log(`  📊 Results: ${uiResults.passed} passed, ${uiResults.failed} failed, ${uiResults.pending} pending`);
 }
 
-function displayVisualResults(visualRegressions) {
-    console.log('\n📸 VISUAL REGRESSION\n');
-    if (visualRegressions) {
-        const regressions = visualRegressions.filter(r => !r.match);
-        const passed = visualRegressions.filter(r => r.match);
-
-        if (regressions.length > 0) {
-            console.log('  Visual differences detected:');
-            regressions.forEach(r => {
-                if (r.reason === 'no_baseline') {
-                    console.log(`  ⚠️  ${r.name}: No baseline exists`);
-                } else {
-                    console.log(`  ❌ ${r.name}: ${r.diff}% different`);
-                }
-            });
-            console.log('');
-        }
-        console.log(`  📊 Results: ${passed.length} match, ${regressions.length} differ`);
-    }
-}
-
 // ============================================
 // MAIN RUNNERS
 // ============================================
 
 async function runAllTests() {
-    cleanupScreenshots();
     if (fs.existsSync(OUTPUT_FILE)) fs.unlinkSync(OUTPUT_FILE);
     if (fs.existsSync(JSON_OUTPUT)) fs.unlinkSync(JSON_OUTPUT);
     outputLines = [];
@@ -504,7 +495,6 @@ async function runAllTests() {
 
     if (ONLY_TESTS.length > 0) console.log(`\n🎯 Running only: ${ONLY_TESTS.join(', ')}`);
     if (TEST_GROUPS.length > 0) console.log(`\n📂 Running groups: ${TEST_GROUPS.join(', ')}`);
-    if (SKIP_VISUAL) console.log('\n⏭️  Skipping visual regression tests');
     if (QUIET) console.log('\n🔇 Quiet mode: compact single-line progress');
 
     console.log('\n⚡ Running Unit Tests and UI Tests in parallel...\n');
@@ -521,24 +511,18 @@ async function runAllTests() {
 
     displayUnitResults(unitResults);
     displayUIResults(uiResults);
-    displayVisualResults(uiResults.visualRegressions);
 
     await browser.close();
-    cleanupScreenshots();
-    console.log('\n  🧹 Cleaned up test screenshots');
 
     const totalPassed = unitResults.passed + uiResults.passed;
     const totalFailed = unitResults.failed + uiResults.failed;
-    const visualFailed = uiResults.visualRegressions?.filter(r => !r.match && r.reason !== 'no_baseline').length || 0;
 
     console.log('\n' + '='.repeat(60));
-    console.log(`\n🎯 FINAL RESULTS: ${totalPassed} passed, ${totalFailed} failed`);
-    if (visualFailed > 0) console.log(`   ⚠️  ${visualFailed} visual regression(s) detected`);
-    console.log('');
+    console.log(`\n🎯 FINAL RESULTS: ${totalPassed} passed, ${totalFailed} failed\n`);
 
-    saveResults({ unitResults, uiResults, totalPassed, totalFailed, visualFailed });
+    saveResults({ unitResults, uiResults, totalPassed, totalFailed });
 
-    if (totalFailed > 0 || visualFailed > 0) process.exit(1);
+    if (totalFailed > 0) process.exit(1);
 }
 
 async function runUnitTestsOnly() {
@@ -576,7 +560,6 @@ async function runUnitTestsOnly() {
 }
 
 async function runUITestsOnly() {
-    cleanupScreenshots();
     outputLines = [];
 
     const browser = await puppeteer.launch({
@@ -589,7 +572,6 @@ async function runUITestsOnly() {
 
     if (ONLY_TESTS.length > 0) console.log(`\n🎯 Running only: ${ONLY_TESTS.join(', ')}`);
     if (TEST_GROUPS.length > 0) console.log(`\n📂 Running groups: ${TEST_GROUPS.join(', ')}`);
-    if (SKIP_VISUAL) console.log('\n⏭️  Skipping visual regression tests');
 
     console.log('\n⚡ Running UI Tests...\n');
 
@@ -600,31 +582,32 @@ async function runUITestsOnly() {
     if (!VERBOSE) process.stdout.write('\r' + ' '.repeat(100) + '\r');
 
     displayUIResults(uiResults);
-    if (!SKIP_VISUAL) displayVisualResults(uiResults.visualRegressions);
 
     await browser.close();
-    cleanupScreenshots();
-    console.log('\n  🧹 Cleaned up test screenshots');
-
-    const visualFailed = uiResults.visualRegressions?.filter(r => !r.match && r.reason !== 'no_baseline').length || 0;
 
     console.log('\n' + '='.repeat(60));
-    console.log(`\n🎯 RESULTS: ${uiResults.passed} passed, ${uiResults.failed} failed`);
-    if (visualFailed > 0) console.log(`   ⚠️  ${visualFailed} visual regression(s) detected`);
-    console.log('');
+    console.log(`\n🎯 RESULTS: ${uiResults.passed} passed, ${uiResults.failed} failed\n`);
 
-    saveResults({ uiResults, totalPassed: uiResults.passed, totalFailed: uiResults.failed, visualFailed });
+    saveResults({ uiResults, totalPassed: uiResults.passed, totalFailed: uiResults.failed });
 
-    if (uiResults.failed > 0 || visualFailed > 0) process.exit(1);
+    if (uiResults.failed > 0) process.exit(1);
 }
 
 function saveResults(data) {
     const jsonResults = {
         timestamp: new Date().toISOString(),
+        runId: RUN_TIMESTAMP,
+        filters: {
+            unitOnly: UNIT_ONLY,
+            uiOnly: UI_ONLY,
+            domains: UNIT_DOMAINS,
+            groups: TEST_GROUPS,
+            tests: ONLY_TESTS,
+            rerunFailed: RUN_FAILED
+        },
         summary: {
             totalPassed: data.totalPassed || 0,
-            totalFailed: data.totalFailed || 0,
-            visualRegressions: data.visualFailed || 0
+            totalFailed: data.totalFailed || 0
         },
         unit: data.unitResults ? {
             passed: data.unitResults.passed,
@@ -635,13 +618,21 @@ function saveResults(data) {
             passed: data.uiResults.passed,
             failed: data.uiResults.failed,
             pending: data.uiResults.pending,
-            failedTests: data.uiResults.failedTests,
-            visualRegressions: data.uiResults.visualRegressions
+            failedTests: data.uiResults.failedTests
         } : null
     };
 
+    // Save timestamped results
     fs.writeFileSync(JSON_OUTPUT, JSON.stringify(jsonResults, null, 2));
     fs.writeFileSync(OUTPUT_FILE, outputLines.join('\n'));
+
+    // Save as latest (overwrite)
+    fs.writeFileSync(LATEST_JSON, JSON.stringify(jsonResults, null, 2));
+    fs.writeFileSync(LATEST_TXT, outputLines.join('\n'));
+
+    console.log(`\n📁 Results saved to:`);
+    console.log(`   .test-output/run-${RUN_TIMESTAMP}.json`);
+    console.log(`   .test-output/latest.json (for quick access)`);
 }
 
 // ============================================

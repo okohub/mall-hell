@@ -7,38 +7,42 @@
 const Enemy = {
     // Enemy type definitions
     types: {
-        CART: {
-            id: 'cart',
-            name: 'Shopping Cart',
-            health: 3,
-            speed: 0.4,              // Multiplier of base speed
-            damage: 20,              // Damage dealt to player
-            behavior: 'chase',       // AI behavior type
-            scoreHit: 100,           // Points for hitting
-            scoreDestroy: 300,       // Points for destroying
-            driftInterval: 1.5,      // Seconds between drift changes
-            driftSpeed: 3,           // Max drift speed
-            collisionRadius: 2,      // For hit detection
+        SKELETON: {
+            id: 'skeleton',
+            name: 'Skeleton Driver',
+            health: 4,
+            speed: 0.45,
+            damage: 25,
+            behavior: 'chase',
+            scoreHit: 150,
+            scoreDestroy: 400,
+            driftInterval: 1.2,           // Erratic movement
+            driftSpeed: 4,
+            collisionRadius: 2.5,
+            walkSpeed: 3.5,               // Walking animation speed
             visual: {
-                bodyColor: 0xe94560,
-                wireColor: 0xc0392b,
-                eyeColor: 0xffff00,
+                boneColor: 0xf5f5dc,      // Bone white
+                eyeColor: 0xff0000,       // Blood red eyes
+                smileColor: 0x8b0000,     // Dark red smile
                 glowColor: 0xff0000,
-                size: { w: 2, h: 1.5, d: 2.5 }
+                cartColor: 0x1a1a1a,      // Dark cart
+                hornColor: 0x8b0000,      // Devil horns
+                bodyColor: 0x1a1a1a,      // For compatibility
+                wireColor: 0x8b0000,
+                size: { w: 2.2, h: 1.5, d: 2.8 }
             }
         }
-        // Future enemy types can be added here:
-        // SECURITY_CART: { ... },
-        // DRONE: { ... },
-        // TURRET: { ... }
     },
+
+    // Default enemy type
+    defaultType: 'SKELETON',
 
     // Behavior definitions (what behaviors exist)
     behaviors: ['chase', 'patrol', 'stationary', 'ranged'],
 
-    // Helper to get enemy config
+    // Helper to get enemy config (defaults to SKELETON)
     get(typeId) {
-        return this.types[typeId] || null;
+        return this.types[typeId] || this.types[this.defaultType] || null;
     },
 
     // Create enemy instance data
@@ -56,7 +60,8 @@ const Enemy = {
             driftSpeed: (Math.random() - 0.5) * config.driftSpeed,
             driftTimer: 0,
             hitFlash: 0,
-            patrolTimer: 0
+            patrolTimer: 0,
+            walkTimer: Math.random() * Math.PI * 2  // Random start phase for walking
         };
     },
 

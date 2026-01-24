@@ -3053,10 +3053,80 @@
             });
         }
 
+        // ============================================
+        // URL PARAMETER FILTERING
+        // ============================================
+
+        function parseFilters() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                domains: params.get('domains')?.split(',').map(d => d.toLowerCase().trim()).filter(Boolean) || [],
+                tests: params.get('tests')?.split(',').map(t => t.trim()).filter(Boolean) || []
+            };
+        }
+
+        let filtersApplied = false;
+
+        function applyFilters() {
+            if (filtersApplied) return; // Only apply once
+            filtersApplied = true;
+
+            const filters = parseFilters();
+            const modules = test.getModules();
+
+            // Early exit if no filters
+            if (filters.domains.length === 0 && filters.tests.length === 0) {
+                return;
+            }
+
+            // Debug: console.log('[Filter] Applying:', JSON.stringify(filters));
+
+            // Filter by domain (module name contains domain)
+            if (filters.domains.length > 0) {
+                for (const module of modules) {
+                    const moduleLower = module.name.toLowerCase();
+                    const matchesDomain = filters.domains.some(d => moduleLower.includes(d));
+                    if (!matchesDomain) {
+                        module.tests = []; // Remove all tests from non-matching modules
+                    }
+                }
+            }
+
+            // Filter by specific test names
+            if (filters.tests.length > 0) {
+                for (const module of modules) {
+                    module.tests = module.tests.filter(t => {
+                        const testLower = t.name.toLowerCase();
+                        return filters.tests.some(f => testLower.includes(f.toLowerCase()));
+                    });
+                }
+            }
+
+            // Update total count in UI
+            const totalTests = modules.reduce((sum, m) => sum + m.tests.length, 0);
+            const totalEl = document.querySelector('.summary-item .value.total');
+            if (totalEl) totalEl.textContent = totalTests;
+
+            // Show filter info if any filters active
+            const filterInfo = document.createElement('div');
+            filterInfo.style.cssText = 'background:#2980b9;padding:10px 20px;border-radius:8px;margin-bottom:20px;';
+            filterInfo.innerHTML = `
+                <strong>🔍 Filters Active:</strong>
+                ${filters.domains.length ? `Domains: ${filters.domains.join(', ')}` : ''}
+                ${filters.tests.length ? `Tests: ${filters.tests.length} specific tests` : ''}
+                - Running ${totalTests} tests
+            `;
+            const summary = document.querySelector('.summary');
+            if (summary) summary.after(filterInfo);
+        }
+
         // Run tests on button click
         document.getElementById('run-tests').addEventListener('click', function() {
             this.disabled = true;
             this.textContent = 'Running...';
+
+            // Apply filters BEFORE running
+            applyFilters();
 
             // Small delay for visual feedback
             setTimeout(() => {

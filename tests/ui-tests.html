@@ -575,14 +575,14 @@
                 );
 
                 // Camera mode selector removed in v3.0 - now FPS only
-                this.addTest('menu-version', 'Menu Screen', 'Version shows v3.2',
+                this.addTest('menu-version', 'Menu Screen', 'Version shows v3.3',
                     'Verifies menu shows correct version',
                     async () => {
                         this.resetGame();
                         await this.wait(100);
                         const version = this.getElement('.version');
-                        if (!version || !version.textContent.includes('3.2')) {
-                            throw new Error('Version should show v3.2');
+                        if (!version || !version.textContent.includes('3.3')) {
+                            throw new Error('Version should show v3.3');
                         }
                     }
                 );
@@ -1738,8 +1738,8 @@
                     }
                 );
 
-                this.addTest('fps-tension-builds', 'FPS Charging', 'Auto-fire creates multiple projectiles',
-                    'Verifies that holding fire creates multiple projectiles over time (NERF gun auto mode)',
+                this.addTest('fps-tension-builds', 'FPS Charging', 'Slingshot tension builds while charging',
+                    'Verifies that holding fire builds slingshot tension over time',
                     async () => {
                         this.resetGame();
                         await this.wait(100);
@@ -1751,31 +1751,29 @@
 
                         // Reset cooldown
                         this.gameWindow.lastShootTime = 0;
-                        if (this.gameWindow.weapon) {
-                            this.gameWindow.weapon.lastFireTime = 0;
+                        if (this.gameWindow.WeaponSystem) {
+                            this.gameWindow.WeaponSystem.lastFireTime = 0;
                         }
 
-                        const initialCount = this.gameWindow.projectiles?.length || 0;
+                        const initialTension = this.gameWindow.slingshotTension || 0;
 
-                        // Start firing and run several update cycles
-                        this.gameWindow.startFiring();
+                        // Start charging
+                        this.gameWindow.startCharging();
+                        await this.wait(50);
 
-                        // Run manual updates to simulate auto-fire
-                        for (let i = 0; i < 5; i++) {
-                            // Reset cooldown between shots for test
-                            this.gameWindow.lastShootTime = 0;
-                            if (this.gameWindow.weapon) {
-                                this.gameWindow.weapon.lastFireTime = 0;
-                            }
-                            this.gameWindow.manualUpdate(0.016);
-                            await this.wait(20);
+                        // Run manual updates to build tension
+                        for (let i = 0; i < 10; i++) {
+                            this.gameWindow.manualUpdate(0.1); // 100ms per update
+                            await this.wait(10);
                         }
 
-                        this.gameWindow.stopFiring();
+                        const finalTension = this.gameWindow.slingshotTension || 0;
 
-                        const finalCount = this.gameWindow.projectiles?.length || 0;
-                        if (finalCount <= initialCount + 1) {
-                            throw new Error(`Auto-fire should create multiple projectiles: initial=${initialCount}, final=${finalCount}`);
+                        // Release without firing (cancel)
+                        this.gameWindow.cancelCharging();
+
+                        if (finalTension <= initialTension) {
+                            throw new Error(`Tension should build during charge: initial=${initialTension}, final=${finalTension}`);
                         }
                     }
                 );
@@ -1819,8 +1817,8 @@
                     }
                 );
 
-                this.addTest('fps-release-fires', 'FPS Charging', 'NERF gun fires on trigger press',
-                    'Verifies that pressing fire immediately shoots (auto-fire mode)',
+                this.addTest('fps-release-fires', 'FPS Charging', 'Slingshot fires on release',
+                    'Verifies that releasing after charging fires a projectile',
                     async () => {
                         // Wait for game to fully initialize (up to 5 seconds)
                         let attempts = 0;
@@ -1839,11 +1837,6 @@
                         this.resetGame();
                         await this.wait(300);
 
-                        // Ensure FPS mode
-                        const fpsBtn = this.getElement('#fps-btn');
-                        if (fpsBtn) this.simulateClick(fpsBtn);
-                        await this.wait(100);
-
                         const startBtn = this.getElement('#start-btn');
                         if (!startBtn) {
                             throw new Error('Start button not found');
@@ -1858,8 +1851,8 @@
 
                         // Reset cooldown to ensure we can fire
                         this.gameWindow.lastShootTime = 0;
-                        if (this.gameWindow.weapon) {
-                            this.gameWindow.weapon.lastFireTime = 0;
+                        if (this.gameWindow.WeaponSystem) {
+                            this.gameWindow.WeaponSystem.lastFireTime = 0;
                         }
 
                         const initialProjectiles = this.gameWindow.projectiles?.length || 0;
@@ -1873,18 +1866,25 @@
                             throw new Error('Camera exists but position is undefined');
                         }
 
-                        // NERF gun fires immediately on startFiring (auto mode)
-                        this.gameWindow.startFiring();
+                        // Slingshot: start charging, build tension, then release
+                        this.gameWindow.startCharging();
                         await this.wait(50);
 
-                        // Check immediately - projectile should exist
+                        // Build some tension
+                        for (let i = 0; i < 5; i++) {
+                            this.gameWindow.manualUpdate(0.1);
+                            await this.wait(10);
+                        }
+
+                        // Release and fire
+                        this.gameWindow.releaseAndFire();
+                        await this.wait(50);
+
+                        // Check that projectile was created
                         const projectilesAfterFire = this.gameWindow.projectiles?.length || 0;
 
-                        // Stop firing
-                        this.gameWindow.stopFiring();
-
                         if (projectilesAfterFire <= initialProjectiles) {
-                            throw new Error(`Projectile should be created on fire: initial=${initialProjectiles}, afterFire=${projectilesAfterFire}`);
+                            throw new Error(`Projectile should be created on release: initial=${initialProjectiles}, afterFire=${projectilesAfterFire}`);
                         }
                     }
                 );
@@ -2313,21 +2313,39 @@
                         await this.wait(100);
                         const startBtn = this.getElement('#start-btn');
                         this.simulateClick(startBtn);
-                        await this.wait(500);  // Let enemies spawn
+                        await this.wait(500);
 
-                        const enemies = this.gameWindow.enemies;
-                        if (!enemies || enemies.length === 0) {
-                            throw new Error('No enemies found in scene');
+                        // Directly test EnemyVisual.createEnemy (enemies don't spawn in entrance room)
+                        const THREE = this.gameWindow.THREE;
+                        const EnemyVisual = this.gameWindow.EnemyVisual;
+                        const Enemy = this.gameWindow.Enemy;
+
+                        if (!EnemyVisual || !Enemy) {
+                            throw new Error('EnemyVisual or Enemy not found');
                         }
 
-                        const enemy = enemies[0];
+                        const config = Enemy.types.SKELETON;
+                        const enemy = EnemyVisual.createEnemy(THREE, config);
+
                         if (!enemy || !enemy.children) {
                             throw new Error('Enemy has no children groups');
                         }
 
-                        // Skeleton enemy should have at least 2 main groups: cart + skeleton
-                        if (enemy.children.length < 2) {
-                            throw new Error(`Enemy should have cart and skeleton groups, found ${enemy.children.length}`);
+                        // Skeleton enemy mesh contains visual group which has cart + skeleton
+                        let hasCartAndSkeleton = false;
+                        enemy.traverse(child => {
+                            if (child.userData && child.userData.skeleton && child.userData.cart) {
+                                hasCartAndSkeleton = true;
+                            }
+                        });
+
+                        // Also check the top-level userData
+                        if (enemy.userData.skeleton && enemy.userData.cart) {
+                            hasCartAndSkeleton = true;
+                        }
+
+                        if (!hasCartAndSkeleton) {
+                            throw new Error('Enemy missing skeleton or cart in userData');
                         }
                     }
                 );
@@ -2341,12 +2359,24 @@
                         this.simulateClick(startBtn);
                         await this.wait(500);
 
-                        const enemies = this.gameWindow.enemies;
-                        if (!enemies || enemies.length === 0) {
-                            throw new Error('No enemies found');
+                        // Directly test EnemyVisual.createEnemy (enemies don't spawn in entrance room)
+                        const THREE = this.gameWindow.THREE;
+                        const EnemyVisual = this.gameWindow.EnemyVisual;
+                        const EnemySystem = this.gameWindow.EnemySystem;
+                        const Enemy = this.gameWindow.Enemy;
+
+                        if (!EnemyVisual || !EnemySystem || !Enemy) {
+                            throw new Error('EnemyVisual, EnemySystem, or Enemy not found');
                         }
 
-                        const ud = enemies[0].userData;
+                        const config = Enemy.types.SKELETON;
+                        const enemy = EnemyVisual.createEnemy(THREE, config);
+
+                        // Get userData from EnemySystem
+                        const enemyData = EnemySystem.createEnemyData('SKELETON');
+                        Object.assign(enemy.userData, enemyData);
+
+                        const ud = enemy.userData;
                         if (typeof ud.health !== 'number') {
                             throw new Error('Enemy missing health property');
                         }
@@ -2507,21 +2537,27 @@
                         await this.wait(100);
                         const startBtn = this.getElement('#start-btn');
                         this.simulateClick(startBtn);
-                        await this.wait(600);
+                        await this.wait(500);
 
-                        const enemies = this.gameWindow.enemies;
-                        if (!enemies || enemies.length === 0) {
-                            throw new Error('No enemies found');
+                        // Directly test EnemyVisual.createEnemy (enemies don't spawn in entrance room)
+                        const THREE = this.gameWindow.THREE;
+                        const EnemyVisual = this.gameWindow.EnemyVisual;
+                        const Enemy = this.gameWindow.Enemy;
+
+                        if (!EnemyVisual || !Enemy) {
+                            throw new Error('EnemyVisual or Enemy not found');
                         }
 
+                        const config = Enemy.types.SKELETON;
+                        const enemy = EnemyVisual.createEnemy(THREE, config);
+
                         // Check that enemy has many mesh children (detailed skeleton)
-                        const enemy = enemies[0];
                         let meshCount = 0;
                         enemy.traverse(obj => {
                             if (obj.isMesh) meshCount++;
                         });
 
-                        // Detailed skeleton with teeth should have 50+ meshes
+                        // Detailed skeleton with teeth should have 40+ meshes
                         if (meshCount < 40) {
                             throw new Error(`Skeleton lacks detail, only ${meshCount} meshes (need 40+)`);
                         }

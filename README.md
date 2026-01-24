@@ -118,6 +118,7 @@ mall-hell/
 
 ## Version History
 
+- **v3.3** - Skeleton enemy with creepy backwards-facing joker skull, fixed movement AI
 - **v3.2** - Domain-driven architecture, separated test commands
 - **v3.1** - Menu redesign, aim-assist improvements, enhanced test suite
 - **v3.0** - Slingshot tension/power mechanic, FPS-only camera with visible weapon

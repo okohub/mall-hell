@@ -43,29 +43,67 @@ Before claiming any feature is "done", I must confirm:
 
 | Command | Description |
 |---------|-------------|
-| `bun run test` | Run all tests (unit + UI) in parallel |
-| `bun run test:unit` | Run unit tests only |
-| `bun run test:ui` | Run UI tests only |
-| `bun run test:quick` | Run unit tests in quiet mode |
+| `bun run-tests.js --failed` | **Re-run only failed tests from last run** |
+| `bun run-tests.js --test=<id>` | Run specific test by ID |
 | `bun run-tests.js --group=<name>` | Run specific test group |
-| `bun run-tests.js --test=<id>` | Run specific test |
+| `bun run-tests.js --domain=<name>` | Run unit tests for specific domain (weapon, enemy, etc.) |
+| `bun run-tests.js --list` | List recent test runs |
+| `bun run test:unit` | Run all unit tests |
+| `bun run test:ui` | Run all UI tests |
+| `bun run test` | Run ALL tests (unit + UI) - **ONLY when user explicitly asks** |
 
-### Test Workflow Rules (MANDATORY)
+### Test Output
 
-**NEVER run the full test suite repeatedly. Follow this workflow:**
+All test runs save output to `.test-output/`:
+- `latest.json` - Most recent run results (always overwritten)
+- `latest.txt` - Most recent run console output
+- `run-<timestamp>.json` - Timestamped results (kept for history)
 
-1. **Test output is persisted** - When tests run, output is saved to `.test-output/`. READ the output file instead of re-running tests.
+### Test Workflow Rules (MANDATORY - STRICT ENFORCEMENT)
 
-2. **Run only failing tests** - Use `bun run-tests.js --test=<test-id>` to run a specific failing test, not the entire suite.
+**⚠️ NEVER run the full test suite (`bun run test`) unless the user EXPLICITLY asks for it.**
 
-3. **Check output files first** - Before running any test command, check if there's already a recent output file with the results you need.
+**Standard workflow:**
 
-4. **One test run per change** - After making a fix, run tests ONCE. Read the output. Don't run again unless you made another code change.
+1. **READ `.test-output/latest.json` FIRST**
+   - Before running any tests, read the latest results
+   - Check what failed in the last run
+   - Only run tests if you've made code changes
 
-**Visual Baseline Rules:**
-- Visual regression tests compare screenshots against baselines in `.baselines/`
-- If visual tests show "differ" after non-visual code changes, **investigate the bug**
-- To update baselines: manually copy screenshots from `screenshots/` to `.baselines/`
+2. **Run ONLY related tests**
+   - Changed enemy code? → `bun run-tests.js --domain=enemy`
+   - Changed specific feature? → `bun run-tests.js --test=<test-id>`
+   - Need to re-run failures? → `bun run-tests.js --failed`
+
+3. **ONE test run per code change**
+   - Make your fix
+   - Run the specific test(s) ONCE
+   - Read the output file
+   - DO NOT re-run unless you made another change
+
+4. **Wait for tests to complete**
+   - After starting a test run, WAIT for it to finish
+   - Read the output file when done
+   - NEVER re-run tests because you're impatient
+
+**Examples:**
+
+```bash
+# GOOD: Run only failed tests
+bun run-tests.js --failed
+
+# GOOD: Run only enemy domain tests
+bun run-tests.js --domain=enemy
+
+# GOOD: Run specific test
+bun run-tests.js --test=skeleton-spawn
+
+# GOOD: Run specific group
+bun run-tests.js --group=weapon
+
+# BAD: Running full suite unnecessarily
+bun run test  # ONLY if user explicitly asks!
+```
 
 ---
 
@@ -114,9 +152,7 @@ mall-hell/
 │   ├── unit-tests.html     # Unit test runner (loads domain tests)
 │   └── ui-tests.html       # UI/integration tests
 │
-├── .baselines/             # Visual regression baselines
-├── .test-output/           # Test results
-└── screenshots/            # Temporary test screenshots
+└── .test-output/           # Test results
 ```
 
 ### Domain Structure Pattern
@@ -141,7 +177,7 @@ Each domain follows this pattern:
 ## Overview
 
 **Title:** Mall Hell
-**Version:** 3.2
+**Version:** 3.3
 **Platform:** Desktop Browser
 **Tech Stack:** HTML5, CSS3, JavaScript, Three.js (r128)
 **Delivery:** Single `index.html` file with domain modules in `src/`
@@ -359,4 +395,4 @@ Objects are removed when:
 - requestAnimationFrame for game loop
 - Delta time used for frame-rate independent movement
 - Objects stored in arrays, filtered each frame for cleanup
-- Puppeteer-based automated testing with visual regression
+- Puppeteer-based automated testing

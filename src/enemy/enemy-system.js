@@ -99,71 +99,84 @@ const EnemySystem = {
 
     /**
      * Deal damage to an enemy
-     * @param {Object} enemy - Enemy to damage
+     * @param {Object} enemy - Enemy to damage (mesh with userData OR instance data)
      * @param {number} amount - Damage amount
      * @returns {Object} Damage result with scores
      */
     damage(enemy, amount = 1) {
-        if (!enemy || !enemy.active) return null;
+        if (!enemy) return null;
 
-        enemy.health -= amount;
-        enemy.hitFlash = 1;
+        // Support both mesh (userData) and instance data objects
+        const data = enemy.userData || enemy;
+        if (!data.active) return null;
 
-        const destroyed = enemy.health <= 0;
+        data.health -= amount;
+        data.hitFlash = 1;
+
+        const destroyed = data.health <= 0;
 
         if (destroyed) {
-            enemy.health = 0;
-            enemy.active = false;
+            data.health = 0;
+            data.active = false;
         }
 
+        const config = data.config || {};
         return {
             hit: true,
             destroyed: destroyed,
-            scoreHit: enemy.config.scoreHit,
-            scoreDestroy: destroyed ? enemy.config.scoreDestroy : 0,
-            totalScore: enemy.config.scoreHit + (destroyed ? enemy.config.scoreDestroy : 0)
+            scoreHit: config.scoreHit || 100,
+            scoreDestroy: destroyed ? (config.scoreDestroy || 300) : 0,
+            totalScore: (config.scoreHit || 100) + (destroyed ? (config.scoreDestroy || 300) : 0)
         };
     },
 
     /**
      * Update enemy AI behavior
-     * @param {Object} enemy - Enemy to update
+     * @param {Object} enemy - Enemy to update (can be instance data OR THREE.Group mesh)
      * @param {Object} playerPos - Player position
      * @param {number} dt - Delta time
      * @param {number} baseSpeed - Base movement speed
      */
     updateBehavior(enemy, playerPos, dt, baseSpeed) {
-        if (!enemy || !enemy.active) return;
+        if (!enemy) return;
 
-        const config = enemy.config;
+        // Support both instance data and THREE.Group meshes
+        const data = enemy.userData || enemy;
+        if (!data.active) return;
+
+        const config = data.config;
+        if (!config) return;
+
         const behavior = config.behavior;
 
-        // Execute behavior
+        // Execute behavior (pass position from mesh or instance)
+        const position = enemy.position;
         switch (behavior) {
             case 'chase':
-                this._behaviorChase(enemy, playerPos, dt, baseSpeed);
+                this._behaviorChase({ position, config }, playerPos, dt, baseSpeed);
                 break;
             case 'patrol':
-                this._behaviorPatrol(enemy, playerPos, dt, baseSpeed);
+                this._behaviorPatrol({ position, config, patrolTimer: data.patrolTimer || 0 }, playerPos, dt, baseSpeed);
+                data.patrolTimer = (data.patrolTimer || 0) + dt;
                 break;
             case 'stationary':
                 // Does nothing
                 break;
             default:
-                this._behaviorChase(enemy, playerPos, dt, baseSpeed);
+                this._behaviorChase({ position, config }, playerPos, dt, baseSpeed);
         }
 
         // Random drift (all enemies)
-        enemy.driftTimer += dt;
-        if (enemy.driftTimer > config.driftInterval) {
-            enemy.driftTimer = 0;
-            enemy.driftSpeed = (Math.random() - 0.5) * config.driftSpeed;
+        data.driftTimer = (data.driftTimer || 0) + dt;
+        if (data.driftTimer > config.driftInterval) {
+            data.driftTimer = 0;
+            data.driftSpeed = (Math.random() - 0.5) * config.driftSpeed;
         }
-        enemy.position.x += enemy.driftSpeed * dt;
+        position.x += (data.driftSpeed || 0) * dt;
 
-        // Update mesh position
+        // Update mesh position if this is instance data with a mesh reference
         if (enemy.mesh) {
-            enemy.mesh.position.set(enemy.position.x, 0, enemy.position.z);
+            enemy.mesh.position.set(position.x, 0, position.z);
         }
     },
 
@@ -171,9 +184,10 @@ const EnemySystem = {
      * Chase behavior - move towards player
      */
     _behaviorChase(enemy, playerPos, dt, baseSpeed) {
+        const position = enemy.position;
         const toPlayer = {
-            x: playerPos.x - enemy.position.x,
-            z: playerPos.z - enemy.position.z
+            x: playerPos.x - position.x,
+            z: playerPos.z - position.z
         };
         const dist = Math.sqrt(toPlayer.x * toPlayer.x + toPlayer.z * toPlayer.z);
 
@@ -181,8 +195,8 @@ const EnemySystem = {
             const nx = toPlayer.x / dist;
             const nz = toPlayer.z / dist;
             const speed = baseSpeed * enemy.config.speed;
-            enemy.position.x += nx * speed * dt;
-            enemy.position.z += nz * speed * dt;
+            position.x += nx * speed * dt;
+            position.z += nz * speed * dt;
         }
     },
 
@@ -190,7 +204,6 @@ const EnemySystem = {
      * Patrol behavior - move back and forth
      */
     _behaviorPatrol(enemy, playerPos, dt, baseSpeed) {
-        enemy.patrolTimer = (enemy.patrolTimer || 0) + dt;
         const dir = Math.sin(enemy.patrolTimer) > 0 ? 1 : -1;
         enemy.position.x += dir * baseSpeed * 0.2 * dt;
     },
@@ -255,7 +268,7 @@ const EnemySystem = {
         const x = (Math.random() - 0.5) * (aisleWidth - 4);
         const z = cameraPos.z - this.spawnDistance;
 
-        return this.spawn('CART', x, z, THREE);
+        return this.spawn('SKELETON', x, z, THREE);
     },
 
     /**
@@ -270,5 +283,39 @@ const EnemySystem = {
      */
     getCount() {
         return this.enemies.length;
+    },
+
+    /**
+     * Create enemy data for a new enemy (helper for index.html)
+     * @param {string} typeId - Enemy type ID
+     * @returns {Object} Enemy data object
+     */
+    createEnemyData(typeId) {
+        const config = this.enemyData ? this.enemyData.get(typeId) : (typeof Enemy !== 'undefined' ? Enemy.get(typeId) : null);
+        if (!config) return { active: true, health: 3, maxHealth: 3, hitFlash: 0 };
+
+        return {
+            type: typeId,
+            config: config,
+            health: config.health,
+            maxHealth: config.health,
+            active: true,
+            driftSpeed: (Math.random() - 0.5) * config.driftSpeed,
+            driftTimer: 0,
+            hitFlash: 0,
+            walkTimer: Math.random() * Math.PI * 2
+        };
+    },
+
+    /**
+     * Get health percentage for an enemy
+     * @param {Object} enemy - Enemy mesh with userData
+     * @returns {number} Health percentage 0-1
+     */
+    getHealthPercent(enemy) {
+        if (!enemy || !enemy.userData) return 0;
+        const health = enemy.userData.health || 0;
+        const maxHealth = enemy.userData.maxHealth || 1;
+        return health / maxHealth;
     }
 };

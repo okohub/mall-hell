@@ -192,6 +192,36 @@ const WeaponSystem = {
         return weapon ? weapon.aimAssist : false;
     },
 
+    /**
+     * Get projectile configuration for current weapon
+     * @returns {Object} Projectile config with size, color, glow settings
+     */
+    getProjectileConfig() {
+        const weapon = this.getWeaponConfig();
+        if (!weapon) {
+            // Default projectile config
+            return {
+                size: 0.2,
+                color: 0xf39c12,
+                glowColor: 0xf39c12,
+                glow: true,
+                emissiveIntensity: { min: 0.2, max: 0.6 }
+            };
+        }
+        // Get from Projectile definitions if available
+        if (typeof Projectile !== 'undefined' && Projectile.types && Projectile.types[weapon.projectile?.toUpperCase()]) {
+            return Projectile.types[weapon.projectile.toUpperCase()].visual;
+        }
+        // Default stone projectile config
+        return {
+            size: 0.2,
+            color: 0xf39c12,
+            glowColor: 0xf39c12,
+            glow: true,
+            emissiveIntensity: { min: 0.2, max: 0.6 }
+        };
+    },
+
     // ==========================================
     // AIMING METHODS
     // ==========================================
