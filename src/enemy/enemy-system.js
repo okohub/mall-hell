@@ -590,6 +590,7 @@ const EnemySystem = {
             onPlayerCollision = null,
             collisionCheck = null,
             hasLineOfSight = null,
+            clampToRoomBounds = null,
             obstacles = null,
             shelves = null,
             despawnDistance = this.despawnDistance,
@@ -606,6 +607,11 @@ const EnemySystem = {
             // Run multiple passes to handle nested overlaps
             for (let i = 0; i < 3; i++) {
                 this._resolveEnvironmentCollisions(enemy, enemies, obstacles, shelves);
+            }
+
+            // Hard clamp to room bounds (never go through walls)
+            if (clampToRoomBounds) {
+                clampToRoomBounds(enemy.position);
             }
 
             // Calculate distance to player

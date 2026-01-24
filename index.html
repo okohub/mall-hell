@@ -488,6 +488,8 @@
             for (let i = 0; i < 5; i++) {
                 if (!CollisionSystem.pushOutOfOverlaps(PlayerSystem.position, obstacles, shelves, Player.visual.COLLISION_RADIUS)) break;
             }
+            // Hard clamp to room bounds (last resort - never go through walls)
+            CollisionSystem.clampToRoomBounds(PlayerSystem.position, mallGrid, Room.structure, Player.visual.COLLISION_RADIUS);
             playerCart.position.x = PlayerSystem.position.x;
             playerCart.position.z = PlayerSystem.position.z;
 
@@ -525,6 +527,7 @@
                 onPlayerCollision: () => damagePlayer(Player.health.ENEMY_DAMAGE),
                 collisionCheck: (nX, nZ, oX, oZ) => CollisionSystem.checkAllCollisions(nX, nZ, oX, oZ, { gridSystem: mallGrid, roomConfig: Room.structure, obstacles, shelves, playerRadius: 1.5 }),
                 hasLineOfSight: (fX, fZ, tX, tZ) => CollisionSystem.hasLineOfSight(fX, fZ, tX, tZ, mallGrid, Room.structure),
+                clampToRoomBounds: (pos) => CollisionSystem.clampToRoomBounds(pos, mallGrid, Room.structure, 1.5),
                 obstacles,
                 shelves
             });

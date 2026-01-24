@@ -641,6 +641,77 @@ const CollisionSystem = {
     },
 
     /**
+     * Hard clamp position to stay within room bounds (last resort safety)
+     * @param {Object} position - Entity position {x, z} - will be modified
+     * @param {Object} gridSystem - Grid system for room lookup
+     * @param {Object} roomConfig - Room configuration
+     * @param {number} margin - Distance from walls
+     * @returns {boolean} True if position was clamped
+     */
+    clampToRoomBounds(position, gridSystem, roomConfig, margin = 1.5) {
+        const ROOM_UNIT = roomConfig.UNIT;
+        const room = gridSystem.getRoomAtWorld(position.x, position.z);
+
+        if (!room) {
+            // Outside grid entirely - find nearest valid room and clamp
+            const gridX = Math.floor(position.x / ROOM_UNIT);
+            const gridZ = Math.floor(position.z / ROOM_UNIT);
+            // Clamp to grid bounds
+            const clampedGridX = Math.max(0, Math.min(gridSystem.width - 1, gridX));
+            const clampedGridZ = Math.max(0, Math.min(gridSystem.height - 1, gridZ));
+            position.x = clampedGridX * ROOM_UNIT + ROOM_UNIT / 2;
+            position.z = clampedGridZ * ROOM_UNIT + ROOM_UNIT / 2;
+            return true;
+        }
+
+        let clamped = false;
+        const roomMinX = room.gridX * ROOM_UNIT + margin;
+        const roomMaxX = (room.gridX + 1) * ROOM_UNIT - margin;
+        const roomMinZ = room.gridZ * ROOM_UNIT + margin;
+        const roomMaxZ = (room.gridZ + 1) * ROOM_UNIT - margin;
+
+        // Only clamp if NOT in a doorway
+        const doorCenterX = room.gridX * ROOM_UNIT + ROOM_UNIT / 2;
+        const doorCenterZ = room.gridZ * ROOM_UNIT + ROOM_UNIT / 2;
+        const doorHalf = roomConfig.DOOR_WIDTH / 2;
+        const doors = room.doors || [];
+
+        // Clamp X
+        if (position.x < roomMinX) {
+            const inWestDoor = doors.includes('west') && position.z > doorCenterZ - doorHalf && position.z < doorCenterZ + doorHalf;
+            if (!inWestDoor) {
+                position.x = roomMinX;
+                clamped = true;
+            }
+        }
+        if (position.x > roomMaxX) {
+            const inEastDoor = doors.includes('east') && position.z > doorCenterZ - doorHalf && position.z < doorCenterZ + doorHalf;
+            if (!inEastDoor) {
+                position.x = roomMaxX;
+                clamped = true;
+            }
+        }
+
+        // Clamp Z
+        if (position.z < roomMinZ) {
+            const inNorthDoor = doors.includes('north') && position.x > doorCenterX - doorHalf && position.x < doorCenterX + doorHalf;
+            if (!inNorthDoor) {
+                position.z = roomMinZ;
+                clamped = true;
+            }
+        }
+        if (position.z > roomMaxZ) {
+            const inSouthDoor = doors.includes('south') && position.x > doorCenterX - doorHalf && position.x < doorCenterX + doorHalf;
+            if (!inSouthDoor) {
+                position.z = roomMaxZ;
+                clamped = true;
+            }
+        }
+
+        return clamped;
+    },
+
+    /**
      * Get wall direction between two adjacent rooms
      * @param {Object} fromRoom - Source room {gridX, gridZ}
      * @param {Object} toRoom - Target room {gridX, gridZ}
