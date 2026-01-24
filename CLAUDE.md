@@ -7,13 +7,13 @@
 ### Pre-Implementation (Required)
 - [ ] Feature requirements documented in this file
 - [ ] Acceptance criteria defined with checkboxes
-- [ ] Unit tests written in `tests/unit-tests.html`
+- [ ] Domain tests written in `src/<domain>/<domain>.test.js`
 - [ ] UI tests written in `tests/ui-tests.html` (if UI affected)
 
 ### Implementation (Required)
 - [ ] Code the feature
 - [ ] Run unit tests → **ALL MUST PASS**
-- [ ] Run UI tests → **ALL MUST PASS**
+- [ ] Run UI tests → **ALL MUST PASS** (if applicable)
 - [ ] Manual smoke test (30-second check)
 
 ### Post-Implementation (Required)
@@ -32,16 +32,29 @@
 Before claiming any feature is "done", I must confirm:
 ```
 [ ] Unit tests: PASS
-[ ] UI tests: PASS
+[ ] UI tests: PASS (if applicable)
 [ ] Smoke test: PASS
 [ ] AC verified: YES
 ```
+
+---
+
+## Test Commands
+
+| Command | Description |
+|---------|-------------|
+| `bun run test` | Run all tests (unit + UI) in parallel |
+| `bun run test:unit` | Run unit tests only |
+| `bun run test:ui` | Run UI tests only |
+| `bun run test:quick` | Run unit tests in quiet mode |
+| `bun run-tests.js --group=<name>` | Run specific test group |
+| `bun run-tests.js --test=<id>` | Run specific test |
 
 ### Test Workflow Rules (MANDATORY)
 
 **NEVER run the full test suite repeatedly. Follow this workflow:**
 
-1. **Test output is persisted** - When tests run, output is saved to files. READ the output file instead of re-running tests.
+1. **Test output is persisted** - When tests run, output is saved to `.test-output/`. READ the output file instead of re-running tests.
 
 2. **Run only failing tests** - Use `bun run-tests.js --test=<test-id>` to run a specific failing test, not the entire suite.
 
@@ -49,30 +62,89 @@ Before claiming any feature is "done", I must confirm:
 
 4. **One test run per change** - After making a fix, run tests ONCE. Read the output. Don't run again unless you made another code change.
 
-**Commands:**
-- `bun run test` - Full suite (use sparingly)
-- `bun run-tests.js --test=<id>` - Single test
-- `bun run-tests.js --group=<name>` - Run test group (menu, movement, projectile, etc.)
-- `bun run-tests.js --update-baselines` - Update visual baselines (ONLY when intentional UI changes)
-
 **Visual Baseline Rules:**
-- Visual regression tests compare screenshots against baselines
-- **DO NOT update baselines automatically** after every change
+- Visual regression tests compare screenshots against baselines in `.baselines/`
 - If visual tests show "differ" after non-visual code changes, **investigate the bug**
-- Only run `--update-baselines` when you **intentionally changed UI/visuals**
-- Baselines exist to catch UNINTENDED visual regressions
+- To update baselines: manually copy screenshots from `screenshots/` to `.baselines/`
 
-**Output files location:** `/Users/onurkagan/.claude/projects/-Users-onurkagan-projects-mall-hell/.../tool-results/`
+---
+
+## Architecture
+
+### Domain-Driven Design
+
+The codebase follows a domain-driven architecture where each domain is self-contained:
+
+```
+mall-hell/
+├── index.html              # Main game file
+├── CLAUDE.md               # Project definition (this file)
+├── README.md               # Player documentation
+├── package.json            # Dependencies & scripts
+├── run-tests.js            # Test runner
+│
+├── src/
+│   ├── weapon/             # Weapon domain
+│   │   ├── weapon.js           # Data definitions (types, configs)
+│   │   ├── weapon-visual.js    # Mesh creation (THREE.js)
+│   │   ├── weapon-system.js    # Orchestrator (state, logic)
+│   │   └── weapon.test.js      # Domain tests
+│   │
+│   ├── projectile/         # Projectile domain
+│   │   ├── projectile.js
+│   │   ├── projectile-visual.js
+│   │   ├── projectile-system.js
+│   │   └── projectile.test.js
+│   │
+│   ├── enemy/              # Enemy domain
+│   │   ├── enemy.js
+│   │   ├── enemy-visual.js
+│   │   ├── enemy-system.js
+│   │   └── enemy.test.js
+│   │
+│   └── environment/        # Environment domain
+│       ├── obstacle.js
+│       ├── obstacle-visual.js
+│       ├── shelf.js
+│       ├── shelf-visual.js
+│       ├── environment-system.js
+│       └── environment.test.js
+│
+├── tests/
+│   ├── unit-tests.html     # Unit test runner (loads domain tests)
+│   └── ui-tests.html       # UI/integration tests
+│
+├── .baselines/             # Visual regression baselines
+├── .test-output/           # Test results
+└── screenshots/            # Temporary test screenshots
+```
+
+### Domain Structure Pattern
+
+Each domain follows this pattern:
+
+| File | Purpose |
+|------|---------|
+| `<domain>.js` | Pure data definitions (no dependencies) |
+| `<domain>-visual.js` | THREE.js mesh creation (receives THREE as parameter) |
+| `<domain>-system.js` | Orchestrator: state management, logic, coordination |
+| `<domain>.test.js` | Domain-specific unit tests |
+
+**Key principles:**
+- **Zero cross-file dependencies** - Each file is self-contained
+- **No imports** - Files use global scope or receive dependencies as parameters
+- **Separation of concerns** - Data, visuals, and logic are separate
+- **Testable** - Each component can be tested in isolation
 
 ---
 
 ## Overview
 
 **Title:** Mall Hell
-**Version:** 3.1
+**Version:** 3.2
 **Platform:** Desktop Browser
 **Tech Stack:** HTML5, CSS3, JavaScript, Three.js (r128)
-**Delivery:** Single `index.html` file, runs locally without build tools
+**Delivery:** Single `index.html` file with domain modules in `src/`
 
 ## Game Concept
 
@@ -251,182 +323,6 @@ Objects are removed when:
 - Obstacles: Fully fallen or 30 units behind camera
 - Particles: Life reaches 0
 
-## File Structure
-
-```
-mall-hell/
-├── index.html          # Complete game (single file)
-├── CLAUDE.md           # Project definition & acceptance criteria
-├── README.md           # Player-facing documentation
-├── BUILD_LIFECYCLE.md  # Build and release procedures
-├── package.json        # Dependencies (puppeteer, pngjs for tests)
-├── run-tests.js        # Test runner script
-└── tests/
-    ├── unit-tests.html # Unit tests
-    ├── ui-tests.html   # UI/integration tests
-    └── baselines/      # Visual regression baseline images
-```
-
-## Future Considerations
-
-- Multiple weapon types
-- Power-ups
-- Multiple aisles/levels
-- Sound effects and music
-- Mobile touch controls
-- Leaderboard (local storage)
-- Different enemy types
-- Boss encounters
-
-## Acceptance Criteria
-
-### AC1: Build & Load
-- [ ] Single `index.html` file with all code inlined
-- [ ] No external dependencies except Three.js CDN
-- [ ] File opens in Chrome, Firefox, Safari without errors
-- [ ] No console errors on load
-- [ ] No console warnings related to game code
-- [ ] Three.js initializes and renders first frame within 2 seconds
-
-### AC2: Game State Management
-- [ ] Game starts in MENU state
-- [ ] Start button transitions to PLAYING state
-- [ ] ESC key transitions PLAYING → PAUSED
-- [ ] ESC key transitions PAUSED → PLAYING
-- [ ] Resume button transitions PAUSED → PLAYING
-- [ ] Quit button transitions PAUSED → MENU
-- [ ] Reaching checkout transitions PLAYING → GAME_OVER
-- [ ] Play Again button transitions GAME_OVER → PLAYING
-- [ ] No stuck states or invalid transitions possible
-
-### AC3: Player Controls
-- [ ] Arrow keys move crosshair/aim
-- [ ] SPACE (hold) charges slingshot with tension indicator
-- [ ] SPACE (release) fires projectile at tension-based speed
-- [ ] Shooting respects 300ms cooldown
-- [ ] Aim-assist locks onto nearby targets
-- [ ] Cannot shoot during MENU, PAUSED, or GAME_OVER states
-- [ ] ESC pauses game
-
-### AC4: Player Movement
-- [ ] Cart moves forward automatically at constant speed
-- [ ] Camera position updates smoothly each frame
-- [ ] Progress bar reflects actual distance traveled
-- [ ] Player reaches checkout at correct distance (800 units)
-
-### AC5: Projectiles
-- [ ] Projectile spawns at camera position on shoot
-- [ ] Projectile travels in aim direction
-- [ ] Projectile has visible glow effect
-- [ ] Projectile despawns when out of bounds
-- [ ] Projectile despawns on collision
-- [ ] No projectile accumulation/memory leak
-
-### AC6: Enemy Behavior
-- [ ] Enemies spawn ahead of player
-- [ ] Enemies move toward player (slower than player)
-- [ ] Enemies drift horizontally randomly
-- [ ] Enemies stay within aisle bounds
-- [ ] Enemy health bar displays correctly
-- [ ] Enemy health bar updates on hit
-- [ ] Enemy flashes white when hit
-- [ ] Enemy destroyed after 3 hits
-- [ ] Destroyed enemies show particle explosion
-- [ ] Enemies despawn when behind camera
-
-### AC7: Obstacle Behavior
-- [ ] Obstacles spawn ahead of player
-- [ ] Three obstacle types render correctly (stack, barrel, display)
-- [ ] Obstacles fall/topple when hit
-- [ ] Fallen obstacles despawn properly
-- [ ] Obstacles show particle effect on hit
-
-### AC8: Collision Detection
-- [ ] Projectile-enemy collision detected accurately
-- [ ] Projectile-obstacle collision detected accurately
-- [ ] No collision tunneling at normal speeds
-- [ ] Hit marker displays on successful hit
-- [ ] Only one collision registered per projectile
-
-### AC9: Scoring System
-- [ ] Score starts at 0
-- [ ] +100 points on enemy hit
-- [ ] +300 points on enemy destroy
-- [ ] +150 points on obstacle hit
-- [ ] Score popup appears at hit location
-- [ ] Score popup floats up and fades
-- [ ] HUD score updates immediately
-- [ ] Final score displays on game over
-- [ ] Correct rating displayed based on score
-
-### AC10: UI/HUD
-- [ ] Main menu displays title, version, instructions, start button
-- [ ] HUD shows score, progress bar, ammo status, pause hint
-- [ ] Crosshair visible and centered during gameplay
-- [ ] Tension indicator (ring around crosshair) shows charge level
-- [ ] Aim-assist indicator shows when locked on target
-- [ ] Pause menu shows current score, resume, quit buttons
-- [ ] Game over shows final score, rating, play again button
-- [ ] All buttons respond to hover state
-- [ ] All buttons trigger correct actions on click
-
-### AC11: Environment
-- [ ] Floor renders with tile pattern
-- [ ] Ceiling renders with light fixtures
-- [ ] Walls render on both sides
-- [ ] Shelf units line both walls with products
-- [ ] Checkout zone visible at end of aisle
-- [ ] Fog effect creates depth perception
-
-### AC12: Performance
-- [ ] Maintains ~60 FPS during normal gameplay
-- [ ] No frame drops below 30 FPS
-- [ ] No memory leaks (stable RAM usage over 5 minutes)
-- [ ] Object arrays don't grow unbounded
-- [ ] Particle count stays reasonable (<100)
-
-### AC13: Restart/Reset
-- [ ] Restart resets score to 0
-- [ ] Restart resets distance to 0
-- [ ] Restart clears all projectiles
-- [ ] Restart clears all enemies
-- [ ] Restart clears all obstacles
-- [ ] Restart clears all particles
-- [ ] Restart resets camera position
-- [ ] No duplicate objects after restart
-- [ ] Game plays identically after restart
-
-### AC14: Edge Cases
-- [ ] Rapid clicking doesn't break shooting cooldown
-- [ ] Pause during projectile flight works correctly
-- [ ] Resume after pause continues smoothly (no time jump)
-- [ ] Window resize updates camera aspect ratio
-- [ ] Game handles alt-tab/focus loss gracefully
-
-### AC15: Player Movement Controls
-- [ ] A key dodges cart left
-- [ ] D key dodges cart right
-- [ ] Cart uses acceleration-based movement with leaning
-- [ ] Cart stays within aisle bounds (±10 units)
-- [ ] Movement is smooth (no jitter)
-- [ ] Controls work during PLAYING state only
-- [ ] Controls disabled during PAUSED state
-- [ ] Movement decelerates when key released
-
-### AC16: Player Health System
-- [ ] Health bar displays in HUD (bottom-left)
-- [ ] Health starts at 100
-- [ ] Health bar visually reflects current health
-- [ ] Collision with enemy cart deals 20 damage
-- [ ] Collision with obstacle deals 10 damage
-- [ ] Screen flashes red on damage
-- [ ] 1 second invulnerability after taking damage
-- [ ] Invulnerability has visual indicator (flashing)
-- [ ] Health reaching 0 triggers Game Over
-- [ ] Game Over shows "WRECKED!" instead of "CHECKOUT!"
-- [ ] Health does not go below 0
-- [ ] Health does not regenerate
-
 ---
 
 ## Test Procedure
@@ -450,13 +346,6 @@ mall-hell/
 7. Press ESC → Quit to Menu
 8. Verify return to main menu
 9. Start new game, verify clean state
-
-### Stress Test (5 minutes)
-1. Play game while rapidly clicking (test cooldown)
-2. Let many enemies/obstacles spawn
-3. Pause and resume multiple times
-4. Check browser memory usage (should be stable)
-5. Verify no console errors accumulated
 
 ---
 

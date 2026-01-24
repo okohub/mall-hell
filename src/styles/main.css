@@ -1,0 +1,1237 @@
+/* ============================================
+   MALL HELL - Main Stylesheet
+   ============================================ */
+
+/* Google Font Import */
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;700&family=Share+Tech+Mono&display=swap');
+
+/* ============================================
+   CSS Variables / Theme Colors
+   ============================================ */
+:root {
+    --mall-magenta: #FF1744;
+    --mall-yellow: #FFEA00;
+    --mall-cyan: #00E5FF;
+    --mall-dark: #0a0a12;
+    --mall-purple: #7B1FA2;
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background: #0a0a0f;
+    overflow: hidden;
+    font-family: 'Arial Black', Arial, sans-serif;
+}
+
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+
+canvas { display: block; }
+
+/* ============================================
+   UI Layer
+   ============================================ */
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+/* ============================================
+   Crosshair
+   ============================================ */
+#crosshair {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+}
+
+#crosshair::before, #crosshair::after {
+    content: '';
+    position: absolute;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 10px rgba(233, 69, 96, 0.8);
+}
+
+#crosshair::before {
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    transform: translateY(-50%);
+}
+
+#crosshair::after {
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    transform: translateX(-50%);
+}
+
+#crosshair-dot {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 6px;
+    height: 6px;
+    background: #e94560;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #e94560;
+    transition: all 0.15s ease;
+}
+
+/* Aim-assist locked on */
+#crosshair.aim-assist-active::before,
+#crosshair.aim-assist-active::after {
+    background: rgba(0, 255, 136, 0.95);
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.9);
+}
+
+#crosshair.aim-assist-active #crosshair-dot {
+    background: #00ff88;
+    box-shadow: 0 0 15px #00ff88, 0 0 30px #00ff88;
+    width: 8px;
+    height: 8px;
+}
+
+/* ============================================
+   Tension Indicator
+   ============================================ */
+#tension-indicator {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+#tension-indicator.charging {
+    opacity: 1;
+}
+
+#tension-indicator svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+#tension-indicator .tension-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.15);
+    stroke-width: 6;
+}
+
+#tension-indicator .tension-fill {
+    fill: none;
+    stroke: #f1c40f;
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-dasharray: 283;
+    stroke-dashoffset: 283;
+    transition: stroke 0.1s, stroke-dashoffset 0.05s;
+}
+
+#tension-indicator.medium .tension-fill {
+    stroke: #e67e22;
+}
+
+#tension-indicator.high .tension-fill {
+    stroke: #e74c3c;
+}
+
+#tension-indicator.max .tension-fill {
+    stroke: #e74c3c;
+    filter: drop-shadow(0 0 8px #e74c3c);
+}
+
+#tension-text {
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: #fff;
+    text-shadow: 0 0 5px #000;
+    white-space: nowrap;
+}
+
+/* ============================================
+   HUD
+   ============================================ */
+#hud {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 20px;
+    display: none;
+}
+
+/* Glass morphism mixin for HUD elements */
+.glass-panel {
+    background: rgba(10, 10, 20, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* ============================================
+   Score Display
+   ============================================ */
+#score-container {
+    background: rgba(10, 10, 20, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 15px 25px;
+    border-radius: 12px;
+    border: 1px solid rgba(233, 69, 96, 0.4);
+    border-top: 1px solid rgba(233, 69, 96, 0.6);
+    display: inline-block;
+    box-shadow: 0 8px 32px rgba(233, 69, 96, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
+}
+
+#score-container.bump {
+    transform: scale(1.05);
+    box-shadow: 0 12px 40px rgba(233, 69, 96, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+#score-label {
+    color: #e94560;
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+}
+
+#score {
+    color: #f1c40f;
+    font-size: 36px;
+    text-shadow: 0 0 20px rgba(241, 196, 15, 0.6),
+                 0 0 40px rgba(241, 196, 15, 0.3);
+    transition: transform 0.15s ease-out, text-shadow 0.15s ease-out;
+}
+
+#score.bump {
+    transform: scale(1.1);
+    text-shadow: 0 0 30px rgba(241, 196, 15, 0.8),
+                 0 0 60px rgba(241, 196, 15, 0.5);
+}
+
+/* ============================================
+   Timer Display
+   ============================================ */
+#timer-container {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    background: rgba(10, 10, 20, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(233, 69, 96, 0.4);
+    border-top: 1px solid rgba(233, 69, 96, 0.6);
+    box-shadow: 0 8px 32px rgba(233, 69, 96, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    text-align: center;
+}
+
+#timer-label {
+    color: #e94560;
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+#timer-display {
+    color: #fff;
+    font-size: 36px;
+    text-shadow: 0 0 20px rgba(233, 69, 96, 0.6);
+    margin: 5px 0;
+}
+
+#timer-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(26, 26, 46, 0.8);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+#timer-fill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #e94560 0%, #f39c12 50%, #2ecc71 100%);
+    border-radius: 4px;
+    transition: width 0.15s ease-out;
+}
+
+/* ============================================
+   Cooldown Indicator
+   ============================================ */
+#cooldown-indicator {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 60px;
+}
+
+#cooldown-ring {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 4px solid rgba(255, 255, 255, 0.15);
+    position: relative;
+    background: rgba(10, 10, 20, 0.4);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+#cooldown-fill {
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 4px solid transparent;
+    border-top-color: #e94560;
+    transform: rotate(0deg);
+    transition: transform 0.05s linear;
+    filter: drop-shadow(0 0 4px rgba(233, 69, 96, 0.5));
+}
+
+/* ============================================
+   Ammo Display
+   ============================================ */
+#ammo-display {
+    position: absolute;
+    bottom: 40px;
+    right: 40px;
+    color: #fff;
+    font-size: 18px;
+    background: rgba(10, 10, 20, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 12px 20px;
+    border-radius: 10px;
+    border: 1px solid rgba(52, 152, 219, 0.4);
+    border-top: 1px solid rgba(52, 152, 219, 0.6);
+    box-shadow: 0 8px 32px rgba(52, 152, 219, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#ammo-display.ready {
+    border-color: rgba(46, 204, 113, 0.5);
+    box-shadow: 0 8px 32px rgba(46, 204, 113, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* ============================================
+   Menu Screens
+   ============================================ */
+#menu-screen, #gameover-screen, #pause-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+    background: var(--mall-dark);
+    overflow: hidden;
+}
+
+/* Tiled floor pattern background */
+#menu-screen::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background:
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 60px 60px;
+    transform: perspective(500px) rotateX(60deg);
+    transform-origin: center top;
+    pointer-events: none;
+}
+
+/* Neon glow overlay */
+#menu-screen::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background:
+        radial-gradient(ellipse at 30% 20%, rgba(255, 23, 68, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 80%, rgba(0, 229, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(123, 31, 162, 0.08) 0%, transparent 60%);
+    pointer-events: none;
+    animation: neonPulse 4s ease-in-out infinite alternate;
+}
+
+@keyframes neonPulse {
+    0% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+/* Floating sale tags decoration */
+.menu-decor {
+    position: absolute;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.sale-tag {
+    position: absolute;
+    background: var(--mall-yellow);
+    color: var(--mall-dark);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    padding: 4px 12px;
+    transform: rotate(-12deg);
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.4);
+    opacity: 0.6;
+}
+
+.sale-tag::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    background: var(--mall-dark);
+    border-radius: 50%;
+    transform: translateX(-50%);
+}
+
+#gameover-screen, #pause-screen { display: none; }
+
+.menu-container {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 40px;
+}
+
+/* ============================================
+   Title Treatment
+   ============================================ */
+.title-wrapper {
+    position: relative;
+    margin-bottom: 15px;
+}
+
+.title {
+    font-family: 'Bebas Neue', Impact, sans-serif;
+    font-size: clamp(72px, 15vw, 140px);
+    color: var(--mall-yellow);
+    text-transform: uppercase;
+    letter-spacing: 8px;
+    line-height: 0.85;
+    position: relative;
+    text-shadow:
+        4px 4px 0 var(--mall-magenta),
+        8px 8px 0 rgba(0,0,0,0.3),
+        0 0 60px rgba(255, 234, 0, 0.5),
+        0 0 120px rgba(255, 234, 0, 0.3);
+    animation: titleSlam 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) both,
+               titleGlow 2s ease-in-out infinite alternate 0.6s;
+    transform-origin: center bottom;
+}
+
+@keyframes titleSlam {
+    0% {
+        opacity: 0;
+        transform: translateY(-100px) scale(1.5) rotate(-5deg);
+    }
+    60% {
+        transform: translateY(10px) scale(0.95) rotate(1deg);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1) rotate(0deg);
+    }
+}
+
+@keyframes titleGlow {
+    0% {
+        text-shadow:
+            4px 4px 0 var(--mall-magenta),
+            8px 8px 0 rgba(0,0,0,0.3),
+            0 0 60px rgba(255, 234, 0, 0.5),
+            0 0 120px rgba(255, 234, 0, 0.3);
+        filter: brightness(1);
+    }
+    100% {
+        text-shadow:
+            4px 4px 0 var(--mall-magenta),
+            8px 8px 0 rgba(0,0,0,0.3),
+            0 0 80px rgba(255, 234, 0, 0.7),
+            0 0 160px rgba(255, 234, 0, 0.5);
+        filter: brightness(1.1);
+    }
+}
+
+/* Decorative strike-through on title */
+.title::after {
+    content: '';
+    position: absolute;
+    left: -10%;
+    top: 50%;
+    width: 120%;
+    height: 4px;
+    background: var(--mall-magenta);
+    transform: rotate(-3deg);
+    box-shadow: 0 0 20px var(--mall-magenta);
+    animation: strikeSlide 0.4s ease-out 0.5s both;
+}
+
+@keyframes strikeSlide {
+    from { transform: scaleX(0) rotate(-3deg); }
+    to { transform: scaleX(1) rotate(-3deg); }
+}
+
+/* Version badge - Price tag style */
+.version {
+    display: inline-block;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    color: var(--mall-dark);
+    background: var(--mall-cyan);
+    padding: 6px 20px;
+    margin-bottom: 20px;
+    position: relative;
+    clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+    animation: tagDrop 0.4s ease-out 0.3s both;
+    box-shadow: 0 4px 15px rgba(0, 229, 255, 0.4);
+}
+
+@keyframes tagDrop {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) rotate(10deg);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) rotate(0deg);
+    }
+}
+
+/* Subtitle - Receipt style */
+.subtitle {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 16px;
+    color: rgba(255,255,255,0.7);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 35px;
+    position: relative;
+    animation: typeIn 0.8s steps(25) 0.6s both;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.subtitle::after {
+    content: '█';
+    animation: blink 0.8s infinite;
+    margin-left: 4px;
+    color: var(--mall-cyan);
+}
+
+@keyframes typeIn {
+    from { width: 0; }
+    to { width: 100%; }
+}
+
+@keyframes blink {
+    50% { opacity: 0; }
+}
+
+/* ============================================
+   Controls Display - Price Tag Cards
+   ============================================ */
+.instructions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 30px;
+    animation: fadeInUp 0.5s ease-out 0.7s both;
+}
+
+.control-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 10px 16px;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.control-item:hover {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255, 234, 0, 0.3);
+    transform: translateY(-2px);
+}
+
+.control-key {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    color: var(--mall-dark);
+    background: var(--mall-yellow);
+    padding: 4px 12px;
+    min-width: 32px;
+    text-align: center;
+    box-shadow:
+        0 3px 0 #c4b200,
+        0 4px 8px rgba(0,0,0,0.3);
+    border-radius: 4px;
+    transition: all 0.15s ease;
+}
+
+.control-item:hover .control-key {
+    transform: translateY(2px);
+    box-shadow:
+        0 1px 0 #c4b200,
+        0 2px 4px rgba(0,0,0,0.3);
+}
+
+.control-action {
+    font-family: 'Oswald', sans-serif;
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* How to play link */
+.how-to-play-btn {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--mall-cyan);
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: none;
+    letter-spacing: 2px;
+    margin-bottom: 25px;
+    display: inline-block;
+    padding: 8px 16px;
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+    animation: fadeInUp 0.5s ease-out 0.8s both;
+    position: relative;
+    z-index: 10;
+}
+
+.how-to-play-btn:hover {
+    color: #fff;
+    border-color: var(--mall-cyan);
+    background: rgba(0, 229, 255, 0.1);
+    text-shadow: 0 0 20px var(--mall-cyan);
+    transform: scale(1.05);
+}
+
+.how-to-play-btn:active {
+    transform: scale(0.95);
+    background: rgba(0, 229, 255, 0.2);
+}
+
+/* ============================================
+   Main Action Button - Shopping Cart Style
+   ============================================ */
+.btn {
+    font-family: 'Bebas Neue', Impact, sans-serif;
+    font-size: 28px;
+    letter-spacing: 6px;
+    color: var(--mall-dark);
+    background: linear-gradient(180deg, var(--mall-yellow) 0%, #e6d200 100%);
+    border: none;
+    padding: 18px 60px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow:
+        0 6px 0 #b8a600,
+        0 8px 20px rgba(0,0,0,0.4),
+        inset 0 2px 0 rgba(255,255,255,0.3);
+    animation: buttonEntry 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.9s both,
+               buttonPulse 2s ease-in-out infinite 1.5s;
+    clip-path: polygon(
+        0 10px, 10px 0, calc(100% - 10px) 0, 100% 10px,
+        100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px)
+    );
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    transform: skewX(-20deg);
+    transition: left 0.6s ease;
+}
+
+.btn::after {
+    content: '🛒';
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 24px;
+    opacity: 0.8;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-4px);
+    box-shadow:
+        0 10px 0 #b8a600,
+        0 15px 30px rgba(0,0,0,0.5),
+        0 0 40px rgba(255, 234, 0, 0.3),
+        inset 0 2px 0 rgba(255,255,255,0.3);
+}
+
+.btn:hover::before {
+    left: 120%;
+}
+
+.btn:hover::after {
+    transform: translateY(-50%) translateX(5px) rotate(10deg);
+}
+
+.btn:active {
+    transform: translateY(2px);
+    box-shadow:
+        0 2px 0 #b8a600,
+        0 4px 10px rgba(0,0,0,0.4),
+        inset 0 2px 0 rgba(255,255,255,0.3);
+}
+
+@keyframes buttonEntry {
+    0% {
+        opacity: 0;
+        transform: translateY(40px) scale(0.8);
+    }
+    60% {
+        transform: translateY(-5px) scale(1.02);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes buttonPulse {
+    0%, 100% { box-shadow: 0 6px 0 #b8a600, 0 8px 20px rgba(0,0,0,0.4), inset 0 2px 0 rgba(255,255,255,0.3); }
+    50% { box-shadow: 0 6px 0 #b8a600, 0 8px 30px rgba(255, 234, 0, 0.3), 0 0 40px rgba(255, 234, 0, 0.2), inset 0 2px 0 rgba(255,255,255,0.3); }
+}
+
+/* ============================================
+   How To Play Modal
+   ============================================ */
+#how-to-play-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 2000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(10px);
+    pointer-events: auto;
+}
+
+#how-to-play-modal.visible {
+    display: flex;
+}
+
+.modal-content {
+    pointer-events: auto;
+    background: linear-gradient(180deg, #1a1a2e 0%, #0d0d1a 100%);
+    padding: 40px 50px;
+    border-radius: 4px;
+    max-width: 500px;
+    border: 2px solid var(--mall-magenta);
+    text-align: left;
+    position: relative;
+    box-shadow:
+        0 0 60px rgba(255, 23, 68, 0.3),
+        inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+.modal-content::before {
+    content: 'HELP';
+    position: absolute;
+    top: -12px;
+    left: 30px;
+    background: var(--mall-magenta);
+    color: white;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    padding: 4px 16px;
+    letter-spacing: 3px;
+    pointer-events: none;
+}
+
+.modal-content h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    color: var(--mall-yellow);
+    font-size: 32px;
+    letter-spacing: 4px;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.modal-content h3 {
+    font-family: 'Oswald', sans-serif;
+    color: var(--mall-cyan);
+    margin: 25px 0 12px 0;
+    font-size: 15px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.modal-content p {
+    font-family: 'Share Tech Mono', monospace;
+    color: rgba(255,255,255,0.7);
+    line-height: 1.8;
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+.modal-content .key {
+    font-family: 'Bebas Neue', sans-serif;
+    color: var(--mall-dark);
+    background: var(--mall-yellow);
+    padding: 2px 10px;
+    border-radius: 3px;
+    font-size: 14px;
+    margin-right: 8px;
+}
+
+.modal-close {
+    display: block;
+    margin: 35px auto 0;
+    padding: 12px 40px;
+    background: var(--mall-magenta);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 3px;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 10;
+}
+
+.modal-close:hover {
+    background: #ff4569;
+    transform: scale(1.05);
+    box-shadow: 0 0 30px rgba(255, 23, 68, 0.5);
+}
+
+.modal-close:active {
+    transform: scale(0.95);
+    background: #cc1144;
+}
+
+/* ============================================
+   Game Over Screen
+   ============================================ */
+#final-score-container {
+    margin: 30px 0;
+    text-align: center;
+    animation: fadeInUp 0.6s ease-out 0.1s both;
+}
+
+#final-score-label {
+    font-family: 'Oswald', sans-serif;
+    color: var(--mall-cyan);
+    font-size: 20px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+#final-score {
+    font-family: 'Bebas Neue', sans-serif;
+    color: var(--mall-yellow);
+    font-size: clamp(72px, 20vw, 120px);
+    text-shadow:
+        4px 4px 0 var(--mall-magenta),
+        0 0 60px rgba(255, 234, 0, 0.5);
+    animation: scoreReveal 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+@keyframes scoreReveal {
+    0% {
+        opacity: 0;
+        transform: scale(0.5) rotate(-10deg);
+    }
+    60% {
+        transform: scale(1.1) rotate(2deg);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+#rating {
+    font-family: 'Bebas Neue', sans-serif;
+    color: var(--mall-magenta);
+    font-size: 28px;
+    letter-spacing: 4px;
+    margin-top: 10px;
+    text-shadow: 0 0 30px rgba(255, 23, 68, 0.5);
+    animation: fadeInUp 0.6s ease-out 0.4s both;
+}
+
+/* ============================================
+   Pause Screen
+   ============================================ */
+.pause-score {
+    font-family: 'Share Tech Mono', monospace;
+    color: rgba(255,255,255,0.6);
+    font-size: 16px;
+    letter-spacing: 2px;
+    margin: 20px 0 30px;
+}
+
+.pause-score span {
+    color: var(--mall-yellow);
+    font-size: 24px;
+}
+
+.pause-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.pause-btn {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 4px;
+    padding: 14px 50px;
+    border: 2px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.05);
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+
+.pause-btn:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: var(--mall-cyan);
+    color: var(--mall-cyan);
+    transform: translateX(5px);
+}
+
+.pause-btn.primary {
+    background: var(--mall-yellow);
+    color: var(--mall-dark);
+    border: none;
+}
+
+.pause-btn.primary:hover {
+    background: #fff;
+    box-shadow: 0 0 30px rgba(255, 234, 0, 0.5);
+}
+
+/* Duplicate final-score-container with slideInUp (kept for compatibility) */
+#final-score-container {
+    margin: 30px 0;
+    text-align: center;
+    animation: slideInUp 0.6s ease-out 0.1s both;
+}
+
+#final-score-label {
+    color: #f1c40f;
+    font-size: 28px;
+    letter-spacing: 5px;
+    text-shadow: 0 0 20px rgba(241, 196, 15, 0.5);
+}
+
+#final-score {
+    color: #fff;
+    font-size: 96px;
+    text-shadow: 0 0 40px rgba(255, 255, 255, 0.5),
+                 0 0 80px rgba(255, 255, 255, 0.3);
+    animation: glowPulse 2s ease-in-out infinite;
+}
+
+#rating {
+    color: #e94560;
+    font-size: 32px;
+    margin-top: 10px;
+    text-shadow: 0 0 20px rgba(233, 69, 96, 0.5);
+    animation: slideInUp 0.6s ease-out 0.2s both;
+}
+
+/* ============================================
+   Hit Marker
+   ============================================ */
+#hit-marker {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    width: 30px;
+    height: 30px;
+    pointer-events: none;
+    opacity: 0;
+    transition: all 0.1s;
+}
+
+#hit-marker.show {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+}
+
+#hit-marker::before, #hit-marker::after {
+    content: '';
+    position: absolute;
+    background: #f1c40f;
+}
+
+#hit-marker::before {
+    top: 0; bottom: 0; left: 50%;
+    width: 3px;
+    transform: translateX(-50%) rotate(45deg);
+}
+
+#hit-marker::after {
+    left: 0; right: 0; top: 50%;
+    height: 3px;
+    transform: translateY(-50%) rotate(45deg);
+}
+
+/* ============================================
+   Score Popup
+   ============================================ */
+.score-popup {
+    position: absolute;
+    color: #f1c40f;
+    font-size: 24px;
+    font-weight: bold;
+    pointer-events: none;
+    text-shadow: 0 0 10px rgba(241, 196, 15, 0.8);
+    animation: popupFloat 1s ease-out forwards;
+}
+
+@keyframes popupFloat {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-50px) scale(1.5); }
+}
+
+/* Pause score (alternate) */
+.pause-score {
+    color: #f1c40f;
+    font-size: 28px;
+    margin-bottom: 40px;
+}
+
+.pause-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #34495e, #2c3e50);
+    box-shadow: 0 10px 30px rgba(52, 73, 94, 0.4);
+}
+
+.btn-secondary:hover {
+    box-shadow: 0 15px 40px rgba(52, 73, 94, 0.6);
+}
+
+.pause-hint {
+    color: #666;
+    font-size: 14px;
+    margin-top: 30px;
+    letter-spacing: 2px;
+}
+
+#pause-indicator {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    color: #888;
+    font-size: 14px;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 8px 15px;
+    border-radius: 5px;
+    letter-spacing: 1px;
+}
+
+/* ============================================
+   Health Display
+   ============================================ */
+#health-container {
+    position: absolute;
+    bottom: 40px;
+    left: 40px;
+    background: rgba(10, 10, 20, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(231, 76, 60, 0.4);
+    border-top: 1px solid rgba(231, 76, 60, 0.6);
+    display: none;
+    z-index: 100;
+    box-shadow: 0 8px 32px rgba(231, 76, 60, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+#health-container.low-health {
+    border-color: rgba(231, 76, 60, 0.8);
+    box-shadow: 0 8px 32px rgba(231, 76, 60, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    animation: healthPulse 0.5s ease-in-out infinite;
+}
+
+@keyframes healthPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+}
+
+#health-label {
+    color: #e74c3c;
+    font-size: 12px;
+    letter-spacing: 2px;
+    margin-bottom: 5px;
+    text-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+}
+
+#health-bar {
+    width: 150px;
+    height: 20px;
+    background: rgba(26, 26, 46, 0.8);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+#health-fill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+        #e74c3c 0%,
+        #e67e22 30%,
+        #f1c40f 60%,
+        #2ecc71 100%);
+    background-size: 200% 100%;
+    border-radius: 10px;
+    transition: width 0.2s ease-out;
+    box-shadow: 0 0 10px rgba(46, 204, 113, 0.3);
+}
+
+#health-value {
+    color: #fff;
+    font-size: 14px;
+    text-align: center;
+    margin-top: 5px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+#controls-hint {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #666;
+    font-size: 12px;
+    letter-spacing: 1px;
+}
+
+/* ============================================
+   Damage Overlay
+   ============================================ */
+#damage-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 30%, rgba(231, 76, 60, 0.6) 100%);
+    opacity: 0;
+    transition: opacity 0.1s;
+}
+
+#damage-overlay.flash {
+    opacity: 1;
+}
+
+/* ============================================
+   Invulnerability Effect
+   ============================================ */
+.invulnerable {
+    animation: invulnerableFlash 0.2s infinite;
+}
+
+@keyframes invulnerableFlash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}

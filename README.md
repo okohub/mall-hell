@@ -66,7 +66,7 @@ The slingshot uses a **tension system** - hold SPACE to charge up power:
 
 - HTML5 / CSS3 / JavaScript
 - Three.js (r128) for 3D rendering
-- Single file, no build tools required
+- Domain-driven architecture with modular code
 - Runs entirely in browser
 
 ## Development
@@ -75,24 +75,50 @@ The slingshot uses a **tension system** - hold SPACE to charge up power:
 # Install dependencies
 bun install
 
-# Create visual baselines (required on first run)
-bun run-tests.js --update-baselines
-
-# Run all tests
+# Run all tests (unit + UI in parallel)
 bun run test
+
+# Run unit tests only
+bun run test:unit
+
+# Run UI tests only
+bun run test:ui
+
+# Run unit tests in quiet mode
+bun run test:quick
+
+# Run specific test group
+bun run-tests.js --group=weapon
 
 # Run specific test
 bun run-tests.js --test=<test-id>
 
-# Run test group
-bun run-tests.js --group=menu
+# Start local server
+bun run serve
 
 # Or just open in browser
 open index.html
 ```
 
+## Project Structure
+
+```
+mall-hell/
+├── index.html              # Main game file
+├── src/
+│   ├── weapon/             # Weapon domain (data, visual, system, tests)
+│   ├── projectile/         # Projectile domain
+│   ├── enemy/              # Enemy domain
+│   └── environment/        # Environment domain (obstacles, shelves)
+├── tests/
+│   ├── unit-tests.html     # Unit test runner
+│   └── ui-tests.html       # UI/integration tests
+└── .baselines/             # Visual regression baselines
+```
+
 ## Version History
 
+- **v3.2** - Domain-driven architecture, separated test commands
 - **v3.1** - Menu redesign, aim-assist improvements, enhanced test suite
 - **v3.0** - Slingshot tension/power mechanic, FPS-only camera with visible weapon
 - **v1.9** - Bug fixes, code quality tests
