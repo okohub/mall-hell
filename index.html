@@ -419,8 +419,18 @@
         }
 
         const togglePause = () => StateSystem.is('PLAYING') ? pauseGame() : StateSystem.is('PAUSED') ? resumeGame() : null;
-        const spawnInitialObjects = () => updateCurrentRoom();
         const updateTimerDisplay = () => UISystem.updateTimerDisplay(GameSession.getTimer(), GameSession.DURATION);
+
+        // Spawn all room contents at game start (no pop-in)
+        function spawnInitialObjects() {
+            RoomSystem.getAllRooms().forEach(room => {
+                if (room) {
+                    const roomKey = `${room.gridX}_${room.gridZ}`;
+                    visitedRooms.add(roomKey);
+                    spawnRoomContents(room);
+                }
+            });
+        }
 
         function updateCurrentRoom() {
             const room = mallGrid.getRoomAtWorld(PlayerSystem.position.x, PlayerSystem.position.z);
@@ -484,7 +494,18 @@
 
             // Entity updates
             ProjectileSystem.updateMeshArray(projectiles, { dt, cameraPosition: camera.position });
-            EnemySystem.updateAll(enemies, { playerPosition: PlayerSystem.position, playerCart, dt, baseSpeed: CART_SPEED, isInvulnerable: PlayerSystem.getIsInvulnerable(), onPlayerCollision: () => damagePlayer(Player.health.ENEMY_DAMAGE) });
+            EnemySystem.updateAll(enemies, {
+                playerPosition: PlayerSystem.position,
+                playerCart,
+                dt,
+                baseSpeed: CART_SPEED,
+                isInvulnerable: PlayerSystem.getIsInvulnerable(),
+                onPlayerCollision: () => damagePlayer(Player.health.ENEMY_DAMAGE),
+                collisionCheck: (nX, nZ, oX, oZ) => CollisionSystem.checkWallCollision(nX, nZ, oX, oZ, mallGrid, Room.structure, 1.5),
+                hasLineOfSight: (fX, fZ, tX, tZ) => CollisionSystem.hasLineOfSight(fX, fZ, tX, tZ, mallGrid, Room.structure),
+                obstacles,
+                shelves
+            });
             EnvironmentSystem.updateObstaclesArray(obstacles, { playerCart, dt, isInvulnerable: PlayerSystem.getIsInvulnerable(), onPlayerCollision: () => damagePlayer(Player.health.OBSTACLE_DAMAGE) });
             ParticleSystem.updateAll(particles, dt, { gravity: 15, fadeRate: 2 });
 

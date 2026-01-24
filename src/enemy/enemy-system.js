@@ -136,9 +136,12 @@ const EnemySystem = {
      * @param {Object} playerPos - Player position
      * @param {number} dt - Delta time
      * @param {number} baseSpeed - Base movement speed
+     * @param {Object} [aiOptions] - AI options {collisionCheck, hasLineOfSight}
      */
-    updateBehavior(enemy, playerPos, dt, baseSpeed) {
+    updateBehavior(enemy, playerPos, dt, baseSpeed, aiOptions = {}) {
         if (!enemy) return;
+
+        const { collisionCheck = null, hasLineOfSight = null } = aiOptions;
 
         // Support both instance data and THREE.Group meshes
         const data = enemy.userData || enemy;
@@ -148,12 +151,36 @@ const EnemySystem = {
         if (!config) return;
 
         const behavior = config.behavior;
-
-        // Execute behavior (pass position from mesh or instance)
         const position = enemy.position;
+        const oldX = position.x;
+        const oldZ = position.z;
+
+        // Check line of sight to player
+        const canSeePlayer = hasLineOfSight
+            ? hasLineOfSight(position.x, position.z, playerPos.x, playerPos.z)
+            : true; // Default to true if no LOS check provided
+
+        // Track LOS state for smooth behavior transitions
+        if (canSeePlayer) {
+            data.lastSeenPlayerPos = { x: playerPos.x, z: playerPos.z };
+            data.lostSightTimer = 0;
+        } else {
+            data.lostSightTimer = (data.lostSightTimer || 0) + dt;
+        }
+
+        // Execute behavior based on LOS
         switch (behavior) {
             case 'chase':
-                this._behaviorChase({ position, config }, playerPos, dt, baseSpeed);
+                if (canSeePlayer) {
+                    // Can see player - chase directly
+                    this._behaviorChase({ position, config }, playerPos, dt, baseSpeed);
+                } else if (data.lastSeenPlayerPos && data.lostSightTimer < 2) {
+                    // Lost sight recently - move to last known position
+                    this._behaviorChase({ position, config }, data.lastSeenPlayerPos, dt, baseSpeed * 0.5);
+                } else {
+                    // No LOS for a while - wander in room
+                    this._behaviorWander(enemy, data, dt, baseSpeed);
+                }
                 break;
             case 'patrol':
                 this._behaviorPatrol({ position, config, patrolTimer: data.patrolTimer || 0 }, playerPos, dt, baseSpeed);
@@ -163,16 +190,36 @@ const EnemySystem = {
                 // Does nothing
                 break;
             default:
-                this._behaviorChase({ position, config }, playerPos, dt, baseSpeed);
+                if (canSeePlayer) {
+                    this._behaviorChase({ position, config }, playerPos, dt, baseSpeed);
+                } else {
+                    this._behaviorWander(enemy, data, dt, baseSpeed);
+                }
         }
 
-        // Random drift (all enemies)
-        data.driftTimer = (data.driftTimer || 0) + dt;
-        if (data.driftTimer > config.driftInterval) {
-            data.driftTimer = 0;
-            data.driftSpeed = (Math.random() - 0.5) * config.driftSpeed;
+        // Random drift only when can see player (adds unpredictability to chase)
+        if (canSeePlayer) {
+            data.driftTimer = (data.driftTimer || 0) + dt;
+            if (data.driftTimer > config.driftInterval) {
+                data.driftTimer = 0;
+                data.driftSpeed = (Math.random() - 0.5) * config.driftSpeed;
+            }
+            position.x += (data.driftSpeed || 0) * dt;
         }
-        position.x += (data.driftSpeed || 0) * dt;
+
+        // Wall collision check - revert movement if blocked
+        if (collisionCheck) {
+            const collision = collisionCheck(position.x, position.z, oldX, oldZ);
+            if (collision.blockedX) {
+                position.x = oldX;
+                data.driftSpeed = -(data.driftSpeed || 0);
+                data.wanderDirX = -(data.wanderDirX || 0); // Reverse wander direction
+            }
+            if (collision.blockedZ) {
+                position.z = oldZ;
+                data.wanderDirZ = -(data.wanderDirZ || 0);
+            }
+        }
 
         // Update mesh position if this is instance data with a mesh reference
         if (enemy.mesh) {
@@ -181,23 +228,44 @@ const EnemySystem = {
     },
 
     /**
-     * Chase behavior - move towards player
+     * Chase behavior - move towards target
      */
-    _behaviorChase(enemy, playerPos, dt, baseSpeed) {
+    _behaviorChase(enemy, targetPos, dt, baseSpeed) {
         const position = enemy.position;
-        const toPlayer = {
-            x: playerPos.x - position.x,
-            z: playerPos.z - position.z
+        const toTarget = {
+            x: targetPos.x - position.x,
+            z: targetPos.z - position.z
         };
-        const dist = Math.sqrt(toPlayer.x * toPlayer.x + toPlayer.z * toPlayer.z);
+        const dist = Math.sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
 
         if (dist > 3) {
-            const nx = toPlayer.x / dist;
-            const nz = toPlayer.z / dist;
+            const nx = toTarget.x / dist;
+            const nz = toTarget.z / dist;
             const speed = baseSpeed * enemy.config.speed;
             position.x += nx * speed * dt;
             position.z += nz * speed * dt;
         }
+    },
+
+    /**
+     * Wander behavior - random movement within room (when can't see player)
+     */
+    _behaviorWander(enemy, data, dt, baseSpeed) {
+        const position = enemy.position;
+
+        // Initialize or update wander direction periodically
+        data.wanderTimer = (data.wanderTimer || 0) + dt;
+        if (!data.wanderDirX || !data.wanderDirZ || data.wanderTimer > 2) {
+            data.wanderTimer = 0;
+            const angle = Math.random() * Math.PI * 2;
+            data.wanderDirX = Math.cos(angle);
+            data.wanderDirZ = Math.sin(angle);
+        }
+
+        // Move slowly in wander direction
+        const wanderSpeed = baseSpeed * 0.15;
+        position.x += data.wanderDirX * wanderSpeed * dt;
+        position.z += data.wanderDirZ * wanderSpeed * dt;
     },
 
     /**
@@ -351,6 +419,88 @@ const EnemySystem = {
     },
 
     /**
+     * Check and resolve environment collisions (obstacles, other enemies)
+     * @param {Object} enemy - Enemy mesh
+     * @param {Array} allEnemies - All enemy meshes (for enemy-enemy collision)
+     * @param {Array} obstacles - Obstacle meshes
+     * @param {Array} shelves - Shelf meshes
+     */
+    _resolveEnvironmentCollisions(enemy, allEnemies, obstacles, shelves) {
+        const pos = enemy.position;
+        const enemyRadius = 1.2;
+
+        // Enemy-Enemy collision (separation)
+        allEnemies.forEach(other => {
+            if (other === enemy || !other.userData.active) return;
+
+            const dx = pos.x - other.position.x;
+            const dz = pos.z - other.position.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            const minDist = enemyRadius * 2;
+
+            if (dist < minDist && dist > 0.01) {
+                // Push apart
+                const overlap = minDist - dist;
+                const nx = dx / dist;
+                const nz = dz / dist;
+                pos.x += nx * overlap * 0.5;
+                pos.z += nz * overlap * 0.5;
+            }
+        });
+
+        // Enemy-Obstacle collision
+        if (obstacles) {
+            obstacles.forEach(obs => {
+                if (!obs.userData.active || obs.userData.hit) return;
+
+                const dx = pos.x - obs.position.x;
+                const dz = pos.z - obs.position.z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+                const obsRadius = (obs.userData.width || 1.5) * 0.6;
+                const minDist = enemyRadius + obsRadius;
+
+                if (dist < minDist && dist > 0.01) {
+                    // Push away from obstacle
+                    const overlap = minDist - dist;
+                    const nx = dx / dist;
+                    const nz = dz / dist;
+                    pos.x += nx * overlap;
+                    pos.z += nz * overlap;
+                }
+            });
+        }
+
+        // Enemy-Shelf collision
+        if (shelves) {
+            shelves.forEach(shelf => {
+                if (!shelf.position) return;
+
+                // Shelves are rectangular - use AABB-ish check
+                const shelfWidth = 3;
+                const shelfDepth = 1.5;
+                const halfW = shelfWidth / 2 + enemyRadius;
+                const halfD = shelfDepth / 2 + enemyRadius;
+
+                const dx = pos.x - shelf.position.x;
+                const dz = pos.z - shelf.position.z;
+
+                // Check if within shelf bounds
+                if (Math.abs(dx) < halfW && Math.abs(dz) < halfD) {
+                    // Push out along shortest axis
+                    const overlapX = halfW - Math.abs(dx);
+                    const overlapZ = halfD - Math.abs(dz);
+
+                    if (overlapX < overlapZ) {
+                        pos.x += Math.sign(dx) * overlapX;
+                    } else {
+                        pos.z += Math.sign(dz) * overlapZ;
+                    }
+                }
+            });
+        }
+    },
+
+    /**
      * Update all enemies in an array (for external enemy arrays)
      * @param {Array} enemies - Array of enemy meshes
      * @param {Object} options - Update options
@@ -360,6 +510,10 @@ const EnemySystem = {
      * @param {number} options.baseSpeed - Base movement speed
      * @param {boolean} options.isInvulnerable - Whether player is invulnerable
      * @param {Function} options.onPlayerCollision - Callback when enemy hits player (damage)
+     * @param {Function} options.collisionCheck - Wall collision check function(newX, newZ, oldX, oldZ)
+     * @param {Function} options.hasLineOfSight - LOS check function(fromX, fromZ, toX, toZ)
+     * @param {Array} options.obstacles - Obstacle meshes for collision
+     * @param {Array} options.shelves - Shelf meshes for collision
      * @param {number} options.despawnDistance - Distance to despawn (default 60)
      * @param {number} options.collisionDistance - Collision distance (default 3.5)
      */
@@ -371,6 +525,10 @@ const EnemySystem = {
             baseSpeed,
             isInvulnerable = false,
             onPlayerCollision = null,
+            collisionCheck = null,
+            hasLineOfSight = null,
+            obstacles = null,
+            shelves = null,
             despawnDistance = 60,
             collisionDistance = 3.5
         } = options;
@@ -378,8 +536,11 @@ const EnemySystem = {
         enemies.forEach(enemy => {
             if (!enemy.userData.active) return;
 
-            // Behavior updates (movement + drift)
-            this.updateBehavior(enemy, playerPosition, dt, baseSpeed);
+            // Behavior updates with wall collision and LOS awareness
+            this.updateBehavior(enemy, playerPosition, dt, baseSpeed, { collisionCheck, hasLineOfSight });
+
+            // Environment collision (obstacles, other enemies, shelves)
+            this._resolveEnvironmentCollisions(enemy, enemies, obstacles, shelves);
 
             // Calculate distance to player
             const dx = playerPosition.x - enemy.position.x;
