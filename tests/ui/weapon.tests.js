@@ -495,4 +495,74 @@
         }
     );
 
+    // Ammo Display Tests
+    runner.addTest('ammo-display-no-ammo', 'Ammo Display', 'Shows NO AMMO when empty',
+        'Verifies the HUD shows "NO AMMO" when weapon ammo is depleted',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+            const startBtn = runner.getElement('#start-btn');
+            runner.simulateClick(startBtn);
+            await runner.wait(400);
+
+            // Set ammo to 0
+            if (runner.gameWindow.WeaponManager?.currentWeapon) {
+                runner.gameWindow.WeaponManager.currentWeapon.state.ammo = 0;
+            }
+
+            // Trigger ammo display update
+            if (runner.gameWindow.updateAmmoDisplay) {
+                runner.gameWindow.updateAmmoDisplay();
+            }
+            await runner.wait(50);
+
+            // Check the ammo display element
+            const ammoDisplay = runner.getElement('#ammo-display');
+            if (!ammoDisplay) {
+                throw new Error('Ammo display element not found');
+            }
+
+            const text = ammoDisplay.textContent;
+            if (!text.includes('NO AMMO')) {
+                throw new Error(`Expected "NO AMMO" when ammo is 0, got: "${text}"`);
+            }
+        }
+    );
+
+    runner.addTest('ammo-display-shows-count', 'Ammo Display', 'Shows ammo count when available',
+        'Verifies the HUD shows ammo count when weapon has ammo',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+            const startBtn = runner.getElement('#start-btn');
+            runner.simulateClick(startBtn);
+            await runner.wait(400);
+
+            // Ensure ammo is available
+            if (runner.gameWindow.WeaponManager?.currentWeapon) {
+                const weapon = runner.gameWindow.WeaponManager.currentWeapon;
+                if (weapon.config?.ammo?.max) {
+                    weapon.state.ammo = weapon.config.ammo.max;
+                }
+            }
+
+            // Trigger ammo display update
+            if (runner.gameWindow.updateAmmoDisplay) {
+                runner.gameWindow.updateAmmoDisplay();
+            }
+            await runner.wait(50);
+
+            // Check the ammo display element
+            const ammoDisplay = runner.getElement('#ammo-display');
+            if (!ammoDisplay) {
+                throw new Error('Ammo display element not found');
+            }
+
+            const text = ammoDisplay.textContent;
+            if (text.includes('NO AMMO')) {
+                throw new Error(`Should show ammo count, not "NO AMMO": "${text}"`);
+            }
+        }
+    );
+
 })(window.runner);

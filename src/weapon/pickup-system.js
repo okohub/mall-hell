@@ -217,27 +217,63 @@ const PickupSystem = {
     },
 
     /**
-     * Create ammo pickup mesh (simplified for performance)
+     * Create ammo pickup mesh - distinctive crate design
      * @private
      */
     _createAmmoMesh(instance, THREE) {
         const pickup = new THREE.Group();
 
-        const color = instance.config.visual.color || 0xf1c40f;
+        // Green military-style ammo crate (different from weapon colors)
+        const crateColor = 0x2d5a27;  // Military green
+        const stripeColor = 0xf1c40f; // Yellow warning stripe
 
-        // Simple glowing ammo box - single material for performance
-        const boxMat = new THREE.MeshStandardMaterial({
-            color: color,
-            roughness: 0.3,
-            metalness: 0.4,
-            emissive: color,
-            emissiveIntensity: 0.6
+        // Main crate body
+        const crateMat = new THREE.MeshStandardMaterial({
+            color: crateColor,
+            roughness: 0.7,
+            metalness: 0.2,
+            emissive: crateColor,
+            emissiveIntensity: 0.2
         });
 
-        // Main ammo box
-        const boxGeo = new THREE.BoxGeometry(0.6, 0.4, 0.5);
-        const box = new THREE.Mesh(boxGeo, boxMat);
-        pickup.add(box);
+        const crateGeo = new THREE.BoxGeometry(0.8, 0.5, 0.6);
+        const crate = new THREE.Mesh(crateGeo, crateMat);
+        pickup.add(crate);
+
+        // Yellow warning stripes (X pattern on top)
+        const stripeMat = new THREE.MeshBasicMaterial({ color: stripeColor });
+
+        // Stripe 1
+        const stripe1Geo = new THREE.BoxGeometry(0.7, 0.02, 0.08);
+        const stripe1 = new THREE.Mesh(stripe1Geo, stripeMat);
+        stripe1.position.set(0, 0.26, 0);
+        stripe1.rotation.y = Math.PI / 4;
+        pickup.add(stripe1);
+
+        // Stripe 2
+        const stripe2 = new THREE.Mesh(stripe1Geo, stripeMat);
+        stripe2.position.set(0, 0.26, 0);
+        stripe2.rotation.y = -Math.PI / 4;
+        pickup.add(stripe2);
+
+        // Metal corner reinforcements
+        const cornerMat = new THREE.MeshStandardMaterial({
+            color: 0x7f8c8d,
+            metalness: 0.8,
+            roughness: 0.3
+        });
+        const cornerGeo = new THREE.BoxGeometry(0.12, 0.52, 0.12);
+        const corners = [
+            [-0.35, 0, -0.25],
+            [0.35, 0, -0.25],
+            [-0.35, 0, 0.25],
+            [0.35, 0, 0.25]
+        ];
+        corners.forEach(pos => {
+            const corner = new THREE.Mesh(cornerGeo, cornerMat);
+            corner.position.set(pos[0], pos[1], pos[2]);
+            pickup.add(corner);
+        });
 
         return pickup;
     },

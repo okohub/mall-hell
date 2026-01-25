@@ -120,6 +120,7 @@ mall-hell/
 
 ## Version History
 
+- **v4.5** - NO AMMO display, distinctive ammo crate visuals, center display collision fix
 - **v4.4** - Slingshot limited ammo, water splash damage, laser beam visuals, runtime pickup spawning
 - **v4.3** - Weapon redesign: Laser Blaster (rapid-fire energy), Water Blaster (arcing splash damage), balanced weapon roles
 - **v4.2.1** - Analytics integration: provider-agnostic tracking system with detailed game events

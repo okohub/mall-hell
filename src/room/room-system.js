@@ -474,8 +474,12 @@ const RoomSystem = {
             // Center display (not in JUNCTION rooms)
             if (room.theme !== 'JUNCTION' && typeof RoomMesh !== 'undefined') {
                 const display = RoomMesh.createCenterDisplay(THREE, theme, worldX, worldZ, shelfSystem);
+                // Add collision data (5x5 base platform)
+                display.userData.width = 5;
+                display.userData.depth = 5;
                 result.meshes.push(display);
                 if (scene) scene.add(display);
+                if (shelfArray) shelfArray.push(display);
             }
         }
 

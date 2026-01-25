@@ -220,6 +220,7 @@ const TestBridge = {
         window.stopFiring = gi.releaseAndFire;  // Alias
         window.manualUpdate = gi.manualUpdate;
         window.triggerWallBump = gi.triggerWallBump;
+        window.updateAmmoDisplay = gi.updateAmmoDisplay;
 
         // ==========================================
         // DOMAIN MODULES (already global)

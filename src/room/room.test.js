@@ -337,6 +337,70 @@
             test.assertTrue(roomMesh instanceof THREE.Group);
             test.assertTrue(roomMesh.children.length >= 3); // floor, ceiling, walls
         });
+
+        test.it('should have createCenterDisplay method', () => {
+            test.assertTrue(typeof RoomMesh.createCenterDisplay === 'function');
+        });
+
+        test.it('should create center display with THREE', () => {
+            if (typeof THREE === 'undefined') {
+                test.skip('THREE.js not available');
+                return;
+            }
+            const theme = RoomTheme.getTheme('PRODUCE');
+            const display = RoomMesh.createCenterDisplay(THREE, theme, 15, 15, null);
+            test.assertTrue(display instanceof THREE.Group);
+            test.assertTrue(display.children.length > 0, 'Center display should have children');
+        });
+    });
+
+    // ==========================================
+    // CENTER DISPLAY COLLISION TESTS
+    // ==========================================
+
+    test.describe('Center Display Collision', () => {
+        test.it('should add center display to shelfArray with collision data', () => {
+            if (typeof THREE === 'undefined') {
+                test.skip('THREE.js not available');
+                return;
+            }
+            // Create a non-JUNCTION room
+            const room = Room.createRoomData(0, 0, 'PRODUCE', ['north']);
+            RoomSystem.reset();
+            RoomSystem.addRoom(room);
+
+            const shelfArray = [];
+            RoomSystem.createRoomMeshes(THREE, room, { shelfArray });
+
+            // Find center display in shelfArray (has 5x5 dimensions)
+            const centerDisplay = shelfArray.find(s =>
+                s.userData && s.userData.width === 5 && s.userData.depth === 5
+            );
+
+            test.assertTrue(centerDisplay !== undefined, 'Center display should be in shelfArray');
+            test.assertEqual(centerDisplay.userData.width, 5, 'Center display should have width 5');
+            test.assertEqual(centerDisplay.userData.depth, 5, 'Center display should have depth 5');
+        });
+
+        test.it('should not create center display in JUNCTION rooms', () => {
+            if (typeof THREE === 'undefined') {
+                test.skip('THREE.js not available');
+                return;
+            }
+            const room = Room.createRoomData(0, 0, 'JUNCTION', ['north', 'south', 'east', 'west']);
+            RoomSystem.reset();
+            RoomSystem.addRoom(room);
+
+            const shelfArray = [];
+            RoomSystem.createRoomMeshes(THREE, room, { shelfArray });
+
+            // Check no 5x5 display was added
+            const centerDisplay = shelfArray.find(s =>
+                s.userData && s.userData.width === 5 && s.userData.depth === 5
+            );
+
+            test.assertTrue(centerDisplay === undefined, 'JUNCTION room should not have center display');
+        });
     });
 
 })(window.TestFramework || { describe: () => {}, it: () => {}, beforeEach: () => {}, skip: () => {} });

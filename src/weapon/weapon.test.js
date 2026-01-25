@@ -682,6 +682,32 @@
             test.assertTrue(typeof PickupSystem.trySpawnForRoom === 'function');
             // Just verify the function exists - actual collision avoidance is tested in UI
         });
+
+        test.it('should create ammo mesh with crate design', () => {
+            if (typeof THREE === 'undefined') {
+                test.skip('THREE.js not available');
+                return;
+            }
+            // Create ammo instance
+            const instance = WeaponPickup.createInstance('AMMO_SMALL', { x: 0, y: 1, z: 0 });
+            test.assertTrue(instance.config.isAmmo, 'Should be ammo type');
+
+            // Test the private mesh creation method
+            PickupSystem.THREE = THREE;
+            const mesh = PickupSystem._createAmmoMesh(instance, THREE);
+
+            test.assertTrue(mesh instanceof THREE.Group, 'Mesh should be a Group');
+            test.assertTrue(mesh.children.length >= 3, 'Ammo crate should have multiple parts (body, stripes, corners)');
+        });
+
+        test.it('should have ammo types with distinct visual', () => {
+            const ammoSmall = WeaponPickup.types.AMMO_SMALL;
+            const ammoLarge = WeaponPickup.types.AMMO_LARGE;
+
+            test.assertTrue(ammoSmall.isAmmo, 'AMMO_SMALL should be ammo type');
+            test.assertTrue(ammoLarge.isAmmo, 'AMMO_LARGE should be ammo type');
+            test.assertTrue(ammoSmall.visual.scale < 2, 'Ammo should be smaller than weapons');
+        });
     });
 
     // ==========================================

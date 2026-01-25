@@ -71,7 +71,7 @@
                     <div class="title-wrapper">
                         <div class="title">MALL HELL</div>
                     </div>
-                    <div class="version">VERSION 4.4</div>
+                    <div class="version">VERSION 4.5</div>
                     <div class="subtitle">SUPERMARKET MAYHEM</div>
                     <div class="instructions" id="instructions">
                         <div class="control-item">
@@ -378,9 +378,11 @@
         }
 
         function updateAmmoDisplay() {
-            const reloading = WeaponManager.isReloading(Date.now());
-            ammoDisplay.textContent = reloading ? 'RELOADING...' : (WeaponManager.getAmmoDisplay() || 'READY');
-            ammoDisplay.style.borderColor = reloading ? '#e94560' : '#3498db';
+            const ammo = WeaponManager.getAmmo();
+            const display = WeaponManager.getAmmoDisplay() || 'READY';
+            const isEmpty = ammo <= 0;
+            ammoDisplay.textContent = isEmpty ? 'NO AMMO' : display;
+            ammoDisplay.style.borderColor = isEmpty ? '#e94560' : '#3498db';
         }
 
         function resetGame() {
@@ -725,7 +727,7 @@
             getObstacles: () => obstacles,
             // Functions
             startGame, pauseGame, resumeGame, endGame, resetGame, damagePlayer,
-            startCharging, releaseAndFire, cancelCharging,
+            startCharging, releaseAndFire, cancelCharging, updateAmmoDisplay,
             manualUpdate: (dt = 0.016) => update(dt),
             triggerWallBump: (intensity, dirX, dirZ) => {
                 PlayerSystem.wallBumpIntensity = intensity;
