@@ -1197,262 +1197,443 @@ const EnemyVisual = {
     },
 
     /**
-     * Create complete dinosaur figure
+     * Create T-Rex - organic, scary, unmistakably a dinosaur
      * @private
      */
     _createFullDinosaur(THREE, v) {
         const dinosaur = new THREE.Group();
 
         const bodyMat = new THREE.MeshStandardMaterial({
-            color: v.bodyColor || 0x228b22,
+            color: v.bodyColor || 0x8B5A2B,
             roughness: 0.7,
-            metalness: 0.1
-        });
-
-        const bellyMat = new THREE.MeshStandardMaterial({
-            color: v.bellyColor || 0x90ee90,
-            roughness: 0.8,
             metalness: 0.05
         });
 
-        // Scale factor for dinosaur - BIG BOSS!
-        const scale = 3.5;
+        const bellyMat = new THREE.MeshStandardMaterial({
+            color: v.bellyColor || 0xD2B48C,
+            roughness: 0.8,
+            metalness: 0.02
+        });
 
-        // === BODY (large barrel shape) ===
-        const body = new THREE.Mesh(
-            new THREE.SphereGeometry(0.8 * scale, 16, 12),
+        const stripeMat = new THREE.MeshStandardMaterial({
+            color: v.stripeColor || 0x5D3A1A,
+            roughness: 0.7,
+            metalness: 0.05
+        });
+
+        // Scale factor - big boss!
+        const S = 2.0;
+
+        // ==========================================
+        // BODY - Barrel-shaped torso, tilted forward
+        // ==========================================
+        // Main body - cylinder tilted forward to suggest horizontal posture
+        const torsoGroup = new THREE.Group();
+
+        // Upper body (chest area) - wider
+        const upperBody = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.75 * S, 0.65 * S, 1.2 * S, 12),
             bodyMat
         );
-        body.scale.set(1, 0.9, 1.4);
-        body.position.y = 1.5 * scale;
-        dinosaur.add(body);
+        upperBody.position.set(0, 0.6 * S, 0);
+        torsoGroup.add(upperBody);
 
-        // Belly (lighter colored underside)
+        // Lower body (hip area) - connects to legs
+        const lowerBody = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.6 * S, 0.7 * S, 0.8 * S, 12),
+            bodyMat
+        );
+        lowerBody.position.set(0, -0.1 * S, 0);
+        torsoGroup.add(lowerBody);
+
+        // Belly (lighter colored, front-facing)
         const belly = new THREE.Mesh(
-            new THREE.SphereGeometry(0.6 * scale, 12, 8),
+            new THREE.SphereGeometry(0.5 * S, 12, 10),
             bellyMat
         );
-        belly.scale.set(0.8, 0.6, 1.2);
-        belly.position.set(0, 1.2 * scale, 0.1 * scale);
-        dinosaur.add(belly);
+        belly.scale.set(0.8, 1.0, 0.5);
+        belly.position.set(0, 0.3 * S, -0.35 * S);
+        torsoGroup.add(belly);
 
-        // === HEAD (T-Rex style) ===
-        const head = this._createDinosaurHead(THREE, v, scale);
-        head.position.set(0, 2.2 * scale, -0.8 * scale);
-        head.rotation.y = Math.PI; // Face player
+        // Position the whole torso
+        torsoGroup.position.set(0, 1.8 * S, 0.2 * S);
+        torsoGroup.rotation.x = 0.25; // Tilt forward slightly
+        dinosaur.add(torsoGroup);
+
+        // ==========================================
+        // HEAD - HUGE! The T-Rex signature
+        // ==========================================
+        const head = this._createDinosaurHead(THREE, v, S * 1.6); // Extra big!
+        head.position.set(0, 3.0 * S, -0.6 * S);
+        head.rotation.x = -0.1; // Looking at player
         dinosaur.add(head);
         dinosaur.userData.head = head;
 
-        // === TAIL ===
-        const tail = this._createDinosaurTail(THREE, bodyMat, scale);
-        tail.position.set(0, 1.5 * scale, 0.9 * scale);
-        dinosaur.add(tail);
-        dinosaur.userData.tail = tail;
+        // Thick neck connecting head to body
+        const neck = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.35 * S, 0.5 * S, 0.6 * S, 10),
+            bodyMat
+        );
+        neck.position.set(0, 2.55 * S, -0.2 * S);
+        neck.rotation.x = 0.3;
+        dinosaur.add(neck);
 
-        // === LEGS ===
-        const legs = this._createDinosaurLegs(THREE, bodyMat, scale);
-        legs.position.y = 0;
+        // ==========================================
+        // LEGS - Powerful dinosaur legs
+        // ==========================================
+        const legs = this._createDinosaurLegs(THREE, bodyMat, stripeMat, S);
         dinosaur.add(legs);
         dinosaur.userData.leftLeg = legs.userData.leftLeg;
         dinosaur.userData.rightLeg = legs.userData.rightLeg;
 
-        // === SMALL ARMS (T-Rex style) ===
-        const arms = this._createDinosaurArms(THREE, bodyMat, scale);
-        arms.position.set(0, 1.7 * scale, -0.5 * scale);
+        // ==========================================
+        // TAIL - Extends back, sways side to side
+        // ==========================================
+        const tail = this._createDinosaurTail(THREE, bodyMat, stripeMat, S);
+        tail.position.set(0, 1.4 * S, 0.8 * S);
+        dinosaur.add(tail);
+        dinosaur.userData.tail = tail;
+
+        // ==========================================
+        // ARMS - Tiny T-Rex arms!
+        // ==========================================
+        const arms = this._createDinosaurArms(THREE, bodyMat, S);
+        arms.position.set(0, 2.1 * S, -0.35 * S);
         dinosaur.add(arms);
         dinosaur.userData.leftArm = arms.userData.leftArm;
         dinosaur.userData.rightArm = arms.userData.rightArm;
+
+        // ==========================================
+        // BACK RIDGES - Dinosaur texture
+        // ==========================================
+        for (let i = 0; i < 6; i++) {
+            const ridge = new THREE.Mesh(
+                new THREE.ConeGeometry((0.08 - i * 0.008) * S, (0.2 - i * 0.02) * S, 4),
+                stripeMat
+            );
+            ridge.position.set(0, 2.5 * S - i * 0.18 * S, 0.35 * S + i * 0.15 * S);
+            ridge.rotation.x = -0.2;
+            dinosaur.add(ridge);
+        }
 
         return dinosaur;
     },
 
     /**
-     * Create dinosaur head with jaw
+     * Create massive T-Rex head - the defining feature!
      * @private
      */
-    _createDinosaurHead(THREE, v, scale) {
+    _createDinosaurHead(THREE, v, S) {
         const head = new THREE.Group();
 
         const headMat = new THREE.MeshStandardMaterial({
-            color: v.bodyColor || 0x228b22,
+            color: v.headColor || v.bodyColor || 0x6B4423,
             roughness: 0.7,
-            metalness: 0.1
+            metalness: 0.05
         });
 
-        // Skull
-        const skull = new THREE.Mesh(
-            new THREE.SphereGeometry(0.4 * scale, 12, 10),
-            headMat
-        );
-        skull.scale.set(0.8, 0.9, 1.3);
-        head.add(skull);
+        const darkHeadMat = new THREE.MeshStandardMaterial({
+            color: v.stripeColor || 0x5D3A1A,
+            roughness: 0.75,
+            metalness: 0.05
+        });
 
-        // Snout
-        const snout = new THREE.Mesh(
-            new THREE.BoxGeometry(0.35 * scale, 0.3 * scale, 0.5 * scale),
-            headMat
-        );
-        snout.position.set(0, -0.1 * scale, -0.45 * scale);
-        head.add(snout);
+        const mouthMat = new THREE.MeshBasicMaterial({
+            color: v.mouthColor || 0x4A1515
+        });
 
-        // Eyes (glowing orange-red)
+        const teethMat = new THREE.MeshStandardMaterial({
+            color: v.teethColor || 0xFFFFF0,
+            roughness: 0.3
+        });
+
         const eyeMat = new THREE.MeshBasicMaterial({
-            color: v.eyeColor || 0xff4500
+            color: v.eyeColor || 0xFFCC00
         });
 
-        [-0.18, 0.18].forEach((x, i) => {
-            // Eye socket
-            const socket = new THREE.Mesh(
-                new THREE.SphereGeometry(0.08 * scale, 8, 8),
-                new THREE.MeshBasicMaterial({ color: 0x000000 })
+        // ==========================================
+        // UPPER SKULL - Angular T-Rex head, NOT a pig!
+        // ==========================================
+        // Back of skull (box-ish)
+        const skullBack = new THREE.Mesh(
+            new THREE.BoxGeometry(0.55 * S, 0.4 * S, 0.4 * S),
+            headMat
+        );
+        skullBack.position.set(0, 0.1 * S, 0.1 * S);
+        head.add(skullBack);
+
+        // Upper snout - RECTANGULAR box, not cylinder!
+        const upperSnout = new THREE.Mesh(
+            new THREE.BoxGeometry(0.45 * S, 0.3 * S, 0.6 * S),
+            headMat
+        );
+        upperSnout.position.set(0, 0, -0.35 * S);
+        head.add(upperSnout);
+
+        // Snout tip - FLAT front, not round pig nose!
+        const snoutTip = new THREE.Mesh(
+            new THREE.BoxGeometry(0.4 * S, 0.25 * S, 0.2 * S),
+            headMat
+        );
+        snoutTip.position.set(0, -0.02 * S, -0.7 * S);
+        head.add(snoutTip);
+
+        // Brow ridges - angular, fierce
+        [-1, 1].forEach((side) => {
+            const browRidge = new THREE.Mesh(
+                new THREE.BoxGeometry(0.2 * S, 0.1 * S, 0.25 * S),
+                darkHeadMat
             );
-            socket.position.set(x * scale, 0.1 * scale, -0.3 * scale);
+            browRidge.position.set(side * 0.18 * S, 0.28 * S, -0.1 * S);
+            browRidge.rotation.z = side * 0.2; // Angry angle
+            head.add(browRidge);
+        });
+
+        // ==========================================
+        // EYES - Fierce and glowing
+        // ==========================================
+        [-1, 1].forEach((side, i) => {
+            // Eye socket (depression)
+            const socket = new THREE.Mesh(
+                new THREE.SphereGeometry(0.1 * S, 8, 8),
+                new THREE.MeshBasicMaterial({ color: 0x1a1a1a })
+            );
+            socket.position.set(side * 0.22 * S, 0.12 * S, -0.15 * S);
             head.add(socket);
 
             // Glowing eye
             const eye = new THREE.Mesh(
-                new THREE.SphereGeometry(0.05 * scale, 8, 8),
+                new THREE.SphereGeometry(0.07 * S, 8, 8),
                 eyeMat
             );
-            eye.position.set(x * scale, 0.1 * scale, -0.35 * scale);
+            eye.position.set(side * 0.24 * S, 0.12 * S, -0.2 * S);
             head.add(eye);
+
+            // Red pupil slit
+            const pupil = new THREE.Mesh(
+                new THREE.SphereGeometry(0.03 * S, 6, 6),
+                new THREE.MeshBasicMaterial({ color: v.pupilColor || 0xFF0000 })
+            );
+            pupil.scale.set(0.5, 1.5, 1);
+            pupil.position.set(side * 0.26 * S, 0.12 * S, -0.23 * S);
+            head.add(pupil);
 
             if (i === 0) head.userData.leftEye = eye;
             else head.userData.rightEye = eye;
         });
 
-        // Upper jaw teeth
-        const teethMat = new THREE.MeshStandardMaterial({
-            color: v.teethColor || 0xfffff0,
-            roughness: 0.4
+        // Nostrils - on TOP of snout, not on front like a pig!
+        [-1, 1].forEach((side) => {
+            const nostril = new THREE.Mesh(
+                new THREE.BoxGeometry(0.06 * S, 0.03 * S, 0.08 * S),
+                new THREE.MeshBasicMaterial({ color: 0x1a1a1a })
+            );
+            nostril.position.set(side * 0.1 * S, 0.15 * S, -0.65 * S);
+            head.add(nostril);
         });
 
-        for (let i = -3; i <= 3; i++) {
+        // ==========================================
+        // MOUTH INTERIOR - Dark and scary
+        // ==========================================
+        const mouthCavity = new THREE.Mesh(
+            new THREE.BoxGeometry(0.38 * S, 0.2 * S, 0.55 * S),
+            mouthMat
+        );
+        mouthCavity.position.set(0, -0.12 * S, -0.4 * S);
+        head.add(mouthCavity);
+
+        // Upper teeth - big and menacing
+        for (let i = -5; i <= 5; i++) {
+            if (i === 0) continue;
+            const toothSize = (Math.abs(i) < 3) ? 0.12 : 0.08; // Bigger front teeth
             const tooth = new THREE.Mesh(
-                new THREE.ConeGeometry(0.025 * scale, 0.08 * scale, 4),
+                new THREE.ConeGeometry(0.025 * S, toothSize * S, 4),
                 teethMat
             );
-            tooth.position.set(i * 0.045 * scale, -0.2 * scale, -0.6 * scale);
-            tooth.rotation.x = Math.PI;
+            tooth.position.set(i * 0.035 * S, -0.18 * S, -0.55 * S + Math.abs(i) * 0.02 * S);
+            tooth.rotation.x = Math.PI; // Point down
+            tooth.rotation.z = (i / 10) * 0.1; // Slight angle outward
             head.add(tooth);
         }
 
-        // Lower jaw
-        const jaw = new THREE.Mesh(
-            new THREE.BoxGeometry(0.32 * scale, 0.15 * scale, 0.45 * scale),
+        // ==========================================
+        // LOWER JAW - Angular, powerful
+        // ==========================================
+        const lowerJaw = new THREE.Group();
+        lowerJaw.position.set(0, -0.2 * S, 0.05 * S); // Pivot point at back
+
+        // Jaw bone - rectangular!
+        const jawMain = new THREE.Mesh(
+            new THREE.BoxGeometry(0.4 * S, 0.15 * S, 0.55 * S),
             headMat
         );
-        jaw.position.set(0, -0.32 * scale, -0.4 * scale);
-        head.add(jaw);
-        head.userData.jaw = jaw;
+        jawMain.position.set(0, -0.02 * S, -0.32 * S);
+        lowerJaw.add(jawMain);
+
+        // Chin/front of jaw - angular
+        const jawFront = new THREE.Mesh(
+            new THREE.BoxGeometry(0.35 * S, 0.12 * S, 0.15 * S),
+            headMat
+        );
+        jawFront.position.set(0, -0.02 * S, -0.62 * S);
+        lowerJaw.add(jawFront);
 
         // Lower teeth
-        for (let i = -2; i <= 2; i++) {
+        for (let i = -4; i <= 4; i++) {
+            if (i === 0) continue;
+            const toothSize = (Math.abs(i) < 2) ? 0.1 : 0.07;
             const tooth = new THREE.Mesh(
-                new THREE.ConeGeometry(0.02 * scale, 0.06 * scale, 4),
+                new THREE.ConeGeometry(0.02 * S, toothSize * S, 4),
                 teethMat
             );
-            tooth.position.set(i * 0.05 * scale, -0.22 * scale, -0.55 * scale);
-            head.add(tooth);
+            tooth.position.set(i * 0.04 * S, 0.06 * S, -0.45 * S + Math.abs(i) * 0.015 * S);
+            lowerJaw.add(tooth);
         }
 
-        // Brow ridges (angry look)
-        [-0.15, 0.15].forEach((x, i) => {
-            const brow = new THREE.Mesh(
-                new THREE.BoxGeometry(0.12 * scale, 0.04 * scale, 0.08 * scale),
-                headMat
-            );
-            brow.position.set(x * scale, 0.2 * scale, -0.25 * scale);
-            brow.rotation.z = (i === 0 ? 1 : -1) * 0.3;
-            head.add(brow);
-        });
+        // Tongue
+        const tongue = new THREE.Mesh(
+            new THREE.BoxGeometry(0.2 * S, 0.04 * S, 0.25 * S),
+            new THREE.MeshStandardMaterial({ color: v.tongueColor || 0xCC3333 })
+        );
+        tongue.position.set(0, 0.04 * S, -0.3 * S);
+        lowerJaw.add(tongue);
+
+        // Start with mouth open
+        lowerJaw.rotation.x = 0.35;
+        head.add(lowerJaw);
+        head.userData.jaw = lowerJaw;
 
         return head;
     },
 
     /**
-     * Create dinosaur tail
+     * Create thick, powerful tail extending backward (+Z)
      * @private
      */
-    _createDinosaurTail(THREE, material, scale) {
+    _createDinosaurTail(THREE, material, stripeMat, S) {
         const tail = new THREE.Group();
 
-        // Segmented tail
-        for (let i = 0; i < 5; i++) {
-            const segmentSize = (0.35 - i * 0.05) * scale;
+        // Smooth tapered tail with overlapping segments
+        const segments = 8;
+        for (let i = 0; i < segments; i++) {
+            const t = i / segments;
+            const size = (0.35 - t * 0.28) * S; // Taper from thick to thin
+
             const segment = new THREE.Mesh(
-                new THREE.SphereGeometry(segmentSize, 8, 6),
-                material
+                new THREE.SphereGeometry(size, 10, 8),
+                (i % 3 === 0) ? stripeMat : material
             );
-            segment.scale.set(0.8, 0.7, 1.2);
-            segment.position.set(0, -i * 0.08 * scale, i * 0.35 * scale);
+            segment.scale.set(0.85, 0.7, 1.2);
+            // Curve slightly downward and back
+            segment.position.set(
+                0,
+                -i * 0.05 * S,  // Droop down
+                i * 0.3 * S     // Extend back
+            );
             tail.add(segment);
         }
 
-        // Tail tip
+        // Pointed tip
         const tip = new THREE.Mesh(
-            new THREE.ConeGeometry(0.08 * scale, 0.25 * scale, 6),
-            material
+            new THREE.ConeGeometry(0.05 * S, 0.4 * S, 6),
+            stripeMat
         );
-        tip.rotation.x = Math.PI / 2;
-        tip.position.set(0, -0.35 * scale, 1.9 * scale);
+        tip.rotation.x = Math.PI / 2 + 0.2;
+        tip.position.set(0, -0.4 * S, 2.5 * S);
         tail.add(tip);
 
         return tail;
     },
 
     /**
-     * Create dinosaur legs
+     * Create T-Rex legs - powerful theropod stance
      * @private
      */
-    _createDinosaurLegs(THREE, material, scale) {
+    _createDinosaurLegs(THREE, material, stripeMat, S) {
         const legs = new THREE.Group();
 
         [-1, 1].forEach((side, index) => {
             const leg = new THREE.Group();
-            leg.position.set(side * 0.4 * scale, 0, 0);
+            // Position at hips, wide stance
+            leg.position.set(side * 0.5 * S, 0, 0.25 * S);
 
-            // Thigh (thick)
+            // THIGH - Massive, muscular
             const thigh = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.2 * scale, 0.15 * scale, 0.6 * scale, 8),
+                new THREE.CylinderGeometry(0.28 * S, 0.2 * S, 0.9 * S, 10),
                 material
             );
-            thigh.position.y = 0.9 * scale;
+            thigh.position.set(side * 0.05 * S, 1.15 * S, 0);
+            thigh.rotation.z = side * 0.1;
+            thigh.rotation.x = 0.15; // Slight forward lean
             leg.add(thigh);
 
-            // Shin
-            const shin = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.12 * scale, 0.1 * scale, 0.5 * scale, 8),
+            // Thigh muscles (bulge)
+            const thighMuscle = new THREE.Mesh(
+                new THREE.SphereGeometry(0.2 * S, 8, 8),
                 material
             );
-            shin.position.y = 0.4 * scale;
+            thighMuscle.scale.set(1.0, 1.3, 0.8);
+            thighMuscle.position.set(side * 0.12 * S, 1.2 * S, -0.05 * S);
+            leg.add(thighMuscle);
+
+            // KNEE - Prominent joint
+            const knee = new THREE.Mesh(
+                new THREE.SphereGeometry(0.16 * S, 10, 8),
+                material
+            );
+            knee.position.set(side * 0.08 * S, 0.65 * S, -0.08 * S);
+            leg.add(knee);
+
+            // SHIN - Thinner, angled back
+            const shin = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.14 * S, 0.1 * S, 0.65 * S, 8),
+                material
+            );
+            shin.position.set(side * 0.03 * S, 0.32 * S, -0.05 * S);
+            shin.rotation.x = -0.1;
             leg.add(shin);
 
-            // Foot (3-toed)
-            const foot = new THREE.Group();
-            foot.position.set(0, 0.1 * scale, -0.1 * scale);
-
-            // Main foot
-            const footBase = new THREE.Mesh(
-                new THREE.BoxGeometry(0.2 * scale, 0.1 * scale, 0.25 * scale),
+            // ANKLE - Bird-like, backwards knee appearance
+            const ankle = new THREE.Mesh(
+                new THREE.SphereGeometry(0.1 * S, 8, 8),
                 material
             );
-            foot.add(footBase);
+            ankle.position.set(0, 0.08 * S, 0);
+            leg.add(ankle);
 
-            // Toes
-            for (let t = -1; t <= 1; t++) {
+            // FOOT - Large, three-toed
+            const footBase = new THREE.Mesh(
+                new THREE.SphereGeometry(0.15 * S, 8, 6),
+                material
+            );
+            footBase.scale.set(1.2, 0.4, 1.5);
+            footBase.position.set(0, 0.06 * S, -0.12 * S);
+            leg.add(footBase);
+
+            // Three big clawed toes
+            [-1, 0, 1].forEach((t) => {
+                // Toe
                 const toe = new THREE.Mesh(
-                    new THREE.ConeGeometry(0.04 * scale, 0.15 * scale, 4),
+                    new THREE.CylinderGeometry(0.05 * S, 0.035 * S, 0.25 * S, 6),
                     material
                 );
-                toe.rotation.x = -Math.PI / 2;
-                toe.position.set(t * 0.06 * scale, 0, -0.18 * scale);
-                foot.add(toe);
-            }
+                toe.rotation.x = Math.PI / 2 - 0.3;
+                toe.rotation.y = t * 0.25;
+                toe.position.set(t * 0.1 * S, 0.05 * S, -0.28 * S);
+                leg.add(toe);
 
-            leg.add(foot);
+                // Claw
+                const claw = new THREE.Mesh(
+                    new THREE.ConeGeometry(0.035 * S, 0.12 * S, 4),
+                    stripeMat
+                );
+                claw.rotation.x = Math.PI / 2 - 0.1;
+                claw.rotation.y = t * 0.25;
+                claw.position.set(t * 0.12 * S, 0.03 * S, -0.42 * S);
+                leg.add(claw);
+            });
+
             legs.add(leg);
-
             if (index === 0) legs.userData.leftLeg = leg;
             else legs.userData.rightLeg = leg;
         });
@@ -1461,51 +1642,71 @@ const EnemyVisual = {
     },
 
     /**
-     * Create dinosaur arms (small T-Rex style)
+     * Create comically small T-Rex arms - iconic feature!
      * @private
      */
-    _createDinosaurArms(THREE, material, scale) {
+    _createDinosaurArms(THREE, material, S) {
         const arms = new THREE.Group();
 
         [-1, 1].forEach((side, index) => {
             const arm = new THREE.Group();
-            arm.position.set(side * 0.35 * scale, 0, 0);
+            // Position at upper chest, sticking out to sides
+            arm.position.set(side * 0.55 * S, 0, 0);
 
-            // Upper arm (small)
-            const upperArm = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.06 * scale, 0.05 * scale, 0.2 * scale, 6),
+            // Tiny shoulder
+            const shoulder = new THREE.Mesh(
+                new THREE.SphereGeometry(0.08 * S, 8, 6),
                 material
             );
-            upperArm.position.y = -0.08 * scale;
-            upperArm.rotation.z = side * 0.3;
+            shoulder.position.set(side * 0.05 * S, 0, 0);
+            arm.add(shoulder);
+
+            // Upper arm - stubby, pointing outward/down
+            const upperArm = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.06 * S, 0.05 * S, 0.18 * S, 6),
+                material
+            );
+            upperArm.position.set(side * 0.12 * S, -0.08 * S, -0.02 * S);
+            upperArm.rotation.z = side * 1.0;
+            upperArm.rotation.x = -0.3;
             arm.add(upperArm);
 
-            // Forearm
-            const forearm = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.04 * scale, 0.035 * scale, 0.15 * scale, 6),
+            // Elbow
+            const elbow = new THREE.Mesh(
+                new THREE.SphereGeometry(0.045 * S, 6, 6),
                 material
             );
-            forearm.position.set(side * 0.05 * scale, -0.2 * scale, -0.05 * scale);
-            forearm.rotation.x = -0.4;
+            elbow.position.set(side * 0.22 * S, -0.14 * S, -0.05 * S);
+            arm.add(elbow);
+
+            // Forearm - bent forward
+            const forearm = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.045 * S, 0.035 * S, 0.14 * S, 6),
+                material
+            );
+            forearm.position.set(side * 0.26 * S, -0.2 * S, -0.1 * S);
+            forearm.rotation.z = side * 0.3;
+            forearm.rotation.x = -0.8;
             arm.add(forearm);
 
-            // Tiny claws
-            for (let c = 0; c < 2; c++) {
+            // Tiny two-clawed hand
+            const handPos = { x: side * 0.28 * S, y: -0.28 * S, z: -0.18 * S };
+            [-1, 1].forEach((clawSide, c) => {
                 const claw = new THREE.Mesh(
-                    new THREE.ConeGeometry(0.015 * scale, 0.05 * scale, 4),
+                    new THREE.ConeGeometry(0.02 * S, 0.08 * S, 4),
                     material
                 );
-                claw.rotation.x = -Math.PI / 2 - 0.3;
                 claw.position.set(
-                    side * 0.05 * scale + c * 0.025 * scale,
-                    -0.28 * scale,
-                    -0.1 * scale
+                    handPos.x + clawSide * 0.025 * S,
+                    handPos.y,
+                    handPos.z - 0.02 * S
                 );
+                claw.rotation.x = -1.0;
+                claw.rotation.y = clawSide * 0.2;
                 arm.add(claw);
-            }
+            });
 
             arms.add(arm);
-
             if (index === 0) arms.userData.leftArm = arm;
             else arms.userData.rightArm = arm;
         });
@@ -1514,7 +1715,7 @@ const EnemyVisual = {
     },
 
     /**
-     * Animate dinosaur walking - stomping motion
+     * Animate dinosaur walking - heavy, menacing stomping
      */
     animateDinosaurWalk(enemyMesh, walkTimer, walkSpeed = 2.5) {
         if (!enemyMesh || !enemyMesh.userData) return walkTimer;
@@ -1527,35 +1728,64 @@ const EnemyVisual = {
         const head = enemyMesh.userData.head;
         const tail = enemyMesh.userData.tail;
 
-        // Walking cycle (slower, stomping)
-        const legSwing = Math.sin(walkTimer) * 0.25;
-        const armSwing = Math.sin(walkTimer) * 0.15;
-        const bodyBob = Math.abs(Math.sin(walkTimer * 2)) * 0.05;
-        const tailSwing = Math.sin(walkTimer * 0.8) * 0.1;
-        const headBob = Math.sin(walkTimer * 1.5) * 0.05;
+        const t = walkTimer * 1.5; // Walk cycle speed
 
-        // Animate legs (opposite phase)
-        if (leftLeg) leftLeg.rotation.x = -legSwing;
-        if (rightLeg) rightLeg.rotation.x = legSwing;
+        // LEGS - Heavy stomping motion
+        const legSwing = Math.sin(t) * 0.35;
+        if (leftLeg) {
+            leftLeg.rotation.x = legSwing;
+            // Lift leg higher when stepping
+            leftLeg.position.y = Math.max(0, Math.sin(t)) * 0.1;
+        }
+        if (rightLeg) {
+            rightLeg.rotation.x = -legSwing;
+            rightLeg.position.y = Math.max(0, -Math.sin(t)) * 0.1;
+        }
 
-        // Animate tiny arms
-        if (leftArm) leftArm.rotation.x = armSwing;
-        if (rightArm) rightArm.rotation.x = -armSwing;
+        // ARMS - Tiny useless wobble
+        const armWobble = Math.sin(t * 2) * 0.2;
+        if (leftArm) {
+            leftArm.rotation.z = armWobble;
+            leftArm.rotation.x = Math.sin(t * 1.5) * 0.1;
+        }
+        if (rightArm) {
+            rightArm.rotation.z = -armWobble;
+            rightArm.rotation.x = -Math.sin(t * 1.5) * 0.1;
+        }
 
-        // Body bob
+        // BODY - Heavy bob and slight sway
         if (dinosaur) {
-            dinosaur.position.y = bodyBob;
+            // Bob with each step
+            dinosaur.position.y = Math.abs(Math.sin(t * 2)) * 0.2;
+            // Slight side-to-side sway
+            dinosaur.rotation.z = Math.sin(t) * 0.025;
+            // Slight forward lean when stepping
+            dinosaur.rotation.x = Math.sin(t * 2) * 0.02;
         }
 
-        // Head movement
+        // HEAD - Menacing movement and biting
         if (head) {
-            head.rotation.x = headBob;
-            head.rotation.z = Math.sin(walkTimer * 0.5) * 0.03;
+            // Look around slowly
+            head.rotation.y = Math.sin(t * 0.5) * 0.15;
+            // Bob with body
+            head.rotation.z = Math.sin(t * 0.7) * 0.04;
+
+            // JAW - Periodic snapping
+            const jaw = head.userData?.jaw;
+            if (jaw) {
+                // Snap shut periodically
+                const snapCycle = Math.sin(t * 1.2);
+                const openAmount = 0.15 + Math.max(0, snapCycle) * 0.35;
+                jaw.rotation.x = openAmount;
+            }
         }
 
-        // Tail swing
+        // TAIL - Counterbalance swing
         if (tail) {
-            tail.rotation.y = tailSwing;
+            // Swing opposite to body motion
+            tail.rotation.y = Math.sin(t * 0.8 + Math.PI) * 0.3;
+            // Slight up/down wave
+            tail.rotation.x = Math.sin(t * 0.6) * 0.08;
         }
 
         return walkTimer;

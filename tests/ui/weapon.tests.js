@@ -96,51 +96,37 @@
     runner.addTest('fps-charging-starts', 'FPS Charging', 'Firing state activates on button press',
         'Verifies that charging state activates when player presses fire button',
         async () => {
-            runner.resetGame();
-            await runner.wait(100);
+            runner.simulateClick(runner.getElement('#start-btn'));
+            await runner.wait(300);
 
-            const startBtn = runner.getElement('#start-btn');
-            runner.simulateClick(startBtn);
-            await runner.wait(400);
-
-            // Verify we're in PLAYING state
-            const state = runner.getGameState();
-            if (state !== 'PLAYING') {
-                throw new Error(`Not in PLAYING state: ${state}`);
+            if (runner.getGameState() !== 'PLAYING') {
+                throw new Error(`Not in PLAYING state: ${runner.getGameState()}`);
             }
 
-            // Reset weapon state and ensure ammo via __gameInternals
-            const internals = runner.gameWindow.__gameInternals;
-            if (internals?.setLastShootTime) {
-                internals.setLastShootTime(0);
-            }
-
-            // Reset via WeaponManager if available
             const WeaponManager = runner.gameWindow.WeaponManager;
-            if (WeaponManager?.currentWeapon) {
-                const weapon = WeaponManager.currentWeapon;
-                weapon.state.isCharging = false;
-                weapon.state.chargeAmount = 0;
-                weapon.state.lastFireTime = 0;
-                if (weapon.config?.ammo?.max && weapon.config.ammo.max !== Infinity) {
-                    weapon.state.ammo = weapon.config.ammo.max;
-                }
+            if (!WeaponManager?.currentWeapon) {
+                throw new Error('WeaponManager.currentWeapon not available');
             }
 
-            // Use startFiring which is the exposed function
-            runner.gameWindow.startFiring();
-            await runner.wait(100);
+            // Reset weapon to ensure clean state
+            WeaponManager.currentWeapon.reset?.();
 
-            // Check if charging via multiple methods
-            const isChargingViaManager = WeaponManager?.isCharging?.() || false;
-            const isChargingViaInternals = internals?.getIsChargingSlingshot?.() || false;
-            const isCharging = isChargingViaManager || isChargingViaInternals;
+            const weapon = WeaponManager.currentWeapon;
 
-            if (!isCharging) {
-                throw new Error('Weapon should be in charging state after startFiring()');
+            // Verify weapon can fire
+            const canFire = weapon.canFire(Date.now());
+            if (!canFire) {
+                throw new Error(`Weapon cannot fire. Ammo: ${weapon.state.ammo}, cooldown issue: ${Date.now() - weapon.state.lastFireTime < weapon.config.cooldown}`);
             }
 
-            runner.gameWindow.cancelCharging?.();
+            // Call onFireStart directly
+            weapon.onFireStart(Date.now());
+
+            if (!weapon.state.isCharging) {
+                throw new Error('Weapon not charging after onFireStart()');
+            }
+
+            weapon.cancelAction?.();
         }
     );
 

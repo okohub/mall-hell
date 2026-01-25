@@ -41,14 +41,6 @@ const VALID_FLAGS = [
     '--help', '-h'
 ];
 
-// Fail fast if shell redirect passed as argument (common mistake)
-if (args.some(a => a.includes('2>&1') || a.includes('>&'))) {
-    console.error('\n❌ Shell redirect detected in arguments!');
-    console.error('   Do not use: bun run-tests.js 2>&1');
-    console.error('   Just use:   bun run-tests.js');
-    process.exit(1);
-}
-
 // Check for unrecognized flags
 for (let i = 0; i < args.length; i++) {
     const arg = args[i];

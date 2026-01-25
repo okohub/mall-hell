@@ -454,11 +454,10 @@ canvas { display: block; }
     color: #fff;
     text-shadow:
         0 0 20px rgba(255, 23, 68, 0.8),
-        0 0 40px rgba(255, 23, 68, 0.6),
-        0 0 60px rgba(255, 23, 68, 0.4),
+        0 0 40px rgba(255, 23, 68, 0.5),
         4px 4px 0 rgba(0, 0, 0, 0.8);
     letter-spacing: 8px;
-    animation: objectivePulse 1s ease-in-out infinite;
+    animation: objectivePulse 0.8s ease-in-out 2;
 }
 
 .objective-subtext {
@@ -480,13 +479,11 @@ canvas { display: block; }
 @keyframes objectivePulse {
     0%, 100% { text-shadow:
         0 0 20px rgba(255, 23, 68, 0.8),
-        0 0 40px rgba(255, 23, 68, 0.6),
-        0 0 60px rgba(255, 23, 68, 0.4),
+        0 0 40px rgba(255, 23, 68, 0.5),
         4px 4px 0 rgba(0, 0, 0, 0.8); }
     50% { text-shadow:
         0 0 30px rgba(255, 23, 68, 1),
-        0 0 60px rgba(255, 23, 68, 0.8),
-        0 0 90px rgba(255, 23, 68, 0.6),
+        0 0 50px rgba(255, 23, 68, 0.7),
         4px 4px 0 rgba(0, 0, 0, 0.8); }
 }
 
@@ -1541,9 +1538,8 @@ canvas { display: block; }
     text-shadow:
         0 0 20px #ff0000,
         0 0 40px #ff4500,
-        0 0 60px #ff4500,
         4px 4px 0 #8b0000;
-    animation: bossWarn 0.3s ease-in-out 4;
+    animation: bossWarn 0.25s ease-in-out 3;
     z-index: 1000;
     pointer-events: none;
 }

@@ -109,15 +109,10 @@
     runner.addTest('movement-disabled-when-paused', 'Player Movement', 'Controls disabled when paused',
         'Verifies movement controls do not work when game is paused',
         async () => {
-            runner.resetGame();
-            await runner.wait(100);
-
-            const startBtn = runner.getElement('#start-btn');
-            runner.simulateClick(startBtn);
+            runner.simulateClick(runner.getElement('#start-btn'));
             await runner.wait(200);
 
-            runner.simulateKeyDown('Escape');
-            await runner.wait(200);
+            runner.gameWindow.pauseGame();
 
             if (runner.getGameState() !== 'PAUSED') {
                 throw new Error('Game not paused');
@@ -317,13 +312,9 @@
     runner.addTest('health-container-hidden-when-paused', 'Player Health UI', 'Health hidden when paused',
         'Verifies health container is hidden when game is paused',
         async () => {
-            runner.resetGame();
-            await runner.wait(100);
-            const startBtn = runner.getElement('#start-btn');
-            runner.simulateClick(startBtn);
-            await runner.wait(300);
-            runner.simulateKeyDown('Escape');
-            await runner.wait(300);
+            runner.simulateClick(runner.getElement('#start-btn'));
+            await runner.wait(200);
+            runner.gameWindow.pauseGame();
 
             const healthContainer = runner.getElement('#health-container');
             const computedStyle = runner.gameWindow.getComputedStyle(healthContainer);

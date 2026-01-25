@@ -28,6 +28,9 @@ const UISystem = {
         gameoverTitle: null
     },
 
+    // Track pending timeouts for cleanup
+    _pendingTimeouts: [],
+
     /**
      * Initialize UI by caching DOM elements
      */
@@ -365,9 +368,18 @@ const UISystem = {
     // ==========================================
 
     /**
+     * Clear all pending UI timeouts
+     */
+    clearPendingTimeouts() {
+        this._pendingTimeouts.forEach(id => clearTimeout(id));
+        this._pendingTimeouts = [];
+    },
+
+    /**
      * Show menu screen
      */
     showMenu() {
+        this.clearPendingTimeouts();
         if (this.elements.menuScreen) this.elements.menuScreen.style.display = 'flex';
         if (this.elements.gameoverScreen) this.elements.gameoverScreen.style.display = 'none';
         if (this.elements.pauseScreen) this.elements.pauseScreen.style.display = 'none';
@@ -376,6 +388,8 @@ const UISystem = {
         if (this.elements.ammoDisplay) this.elements.ammoDisplay.style.display = 'none';
         this.hideMinimap();
         this.hideObjective();
+        // Remove any lingering boss warnings
+        document.querySelectorAll('.boss-warning').forEach(el => el.remove());
     },
 
     /**
@@ -485,11 +499,18 @@ const UISystem = {
      * @param {string} text - Warning text (e.g., "DINO BOSS!")
      */
     showBossWarning(text) {
-        const warning = document.createElement('div');
+        // Reuse existing warning element to prevent accumulation
+        let warning = document.querySelector('.boss-warning');
+        if (warning) {
+            // Reset animation by removing and re-adding
+            warning.remove();
+        }
+        warning = document.createElement('div');
         warning.className = 'boss-warning';
         warning.textContent = text;
         document.body.appendChild(warning);
-        setTimeout(() => warning.remove(), 2500);
+        // Match animation duration: 0.25s * 3 iterations = 0.75s + small buffer
+        this._pendingTimeouts.push(setTimeout(() => warning.remove(), 1000));
     },
 
     /**
@@ -553,15 +574,15 @@ const UISystem = {
         objectiveEl.classList.add('show');
         objectiveEl.classList.remove('fade-out');
 
-        // Start fade out after 2 seconds
-        setTimeout(() => {
+        // Start fade out after 1.5 seconds (animation runs 0.8s * 2 = 1.6s)
+        this._pendingTimeouts.push(setTimeout(() => {
             objectiveEl.classList.add('fade-out');
-        }, 2000);
+        }, 1500));
 
-        // Hide completely after fade
-        setTimeout(() => {
+        // Hide completely after fade (1.5s display + 1s fade)
+        this._pendingTimeouts.push(setTimeout(() => {
             objectiveEl.classList.remove('show', 'fade-out');
-        }, 3500);
+        }, 2500));
     },
 
     /**

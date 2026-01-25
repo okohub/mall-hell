@@ -274,6 +274,9 @@ const TestBridge = {
         if (typeof ShelfVisual !== 'undefined') window.ShelfVisual = ShelfVisual;
         if (typeof EnvironmentSystem !== 'undefined') window.EnvironmentSystem = EnvironmentSystem;
 
+        // UI domain
+        if (typeof UISystem !== 'undefined') window.UISystem = UISystem;
+
         console.log('TestBridge: Initialized successfully');
     },
 

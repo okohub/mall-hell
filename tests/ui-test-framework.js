@@ -119,19 +119,44 @@ class UITestRunner {
     }
 
     simulateKeyDown(key) {
+        // Ensure iframe has focus for keyboard events
+        const frame = document.getElementById('game-frame');
+        if (frame) frame.focus();
+
+        // Map key to code for common keys
+        const codeMap = {
+            'Escape': 'Escape',
+            ' ': 'Space',
+            'w': 'KeyW', 'W': 'KeyW',
+            'a': 'KeyA', 'A': 'KeyA',
+            's': 'KeyS', 'S': 'KeyS',
+            'd': 'KeyD', 'D': 'KeyD',
+            'p': 'KeyP', 'P': 'KeyP'
+        };
         const event = new KeyboardEvent('keydown', {
             bubbles: true,
             cancelable: true,
-            key: key
+            key: key,
+            code: codeMap[key] || key
         });
         this.gameDocument.dispatchEvent(event);
     }
 
     simulateKeyUp(key) {
+        const codeMap = {
+            'Escape': 'Escape',
+            ' ': 'Space',
+            'w': 'KeyW', 'W': 'KeyW',
+            'a': 'KeyA', 'A': 'KeyA',
+            's': 'KeyS', 'S': 'KeyS',
+            'd': 'KeyD', 'D': 'KeyD',
+            'p': 'KeyP', 'P': 'KeyP'
+        };
         const event = new KeyboardEvent('keyup', {
             bubbles: true,
             cancelable: true,
-            key: key
+            key: key,
+            code: codeMap[key] || key
         });
         this.gameDocument.dispatchEvent(event);
     }
@@ -184,27 +209,37 @@ class UITestRunner {
     }
 
     resetGame() {
+        // Reset state first via StateSystem
+        this.gameWindow.gameState = 'MENU';
+
+        // Call game's resetGame to clear game data
         if (this.gameWindow.resetGame) {
             this.gameWindow.resetGame();
         }
 
-        const menuScreen = this.getElement('#menu-screen');
-        const gameoverScreen = this.getElement('#gameover-screen');
-        const pauseScreen = this.getElement('#pause-screen');
-        const hud = this.getElement('#hud');
-        const healthContainer = this.getElement('#health-container');
-        const ammoDisplay = this.getElement('#ammo-display');
-        const statusPanel = this.getElement('#status-panel');
+        // Use UISystem if available for proper UI state management
+        if (this.gameWindow.UISystem && this.gameWindow.UISystem.showMenu) {
+            this.gameWindow.UISystem.showMenu();
+        } else {
+            // Fallback to manual DOM manipulation
+            const menuScreen = this.getElement('#menu-screen');
+            const gameoverScreen = this.getElement('#gameover-screen');
+            const pauseScreen = this.getElement('#pause-screen');
+            const hud = this.getElement('#hud');
+            const healthContainer = this.getElement('#health-container');
+            const ammoDisplay = this.getElement('#ammo-display');
+            const statusPanel = this.getElement('#status-panel');
 
-        if (menuScreen) menuScreen.style.display = 'flex';
-        if (gameoverScreen) gameoverScreen.style.display = 'none';
-        if (pauseScreen) pauseScreen.style.display = 'none';
-        if (hud) hud.style.display = 'none';
-        if (healthContainer) healthContainer.style.display = 'none';
-        if (ammoDisplay) ammoDisplay.style.display = 'none';
-        if (statusPanel) statusPanel.style.display = 'none';
+            if (menuScreen) menuScreen.style.display = 'flex';
+            if (gameoverScreen) gameoverScreen.style.display = 'none';
+            if (pauseScreen) pauseScreen.style.display = 'none';
+            if (hud) hud.style.display = 'none';
+            if (healthContainer) healthContainer.style.display = 'none';
+            if (ammoDisplay) ammoDisplay.style.display = 'none';
+            if (statusPanel) statusPanel.style.display = 'none';
+        }
 
-        this.gameWindow.gameState = 'MENU';
+        // Reset score tracking
         this.gameWindow.score = 0;
         this.gameWindow.distance = 0;
 
@@ -213,6 +248,10 @@ class UITestRunner {
 
         const progressFill = this.getElement('#progress-fill');
         if (progressFill) progressFill.style.width = '0%';
+
+        // Clear any lingering boss warnings
+        const bossWarnings = this.gameDocument.querySelectorAll('.boss-warning');
+        bossWarnings.forEach(el => el.remove());
     }
 
     startStateMonitor() {
@@ -309,6 +348,10 @@ class UITestRunner {
         this.renderTests();
         this.log(`Running: ${test.name}`, 'info');
 
+        // ISOLATION: Reset before test
+        this.resetGame();
+        await this.wait(100);
+
         const startTime = performance.now();
         try {
             await test.fn();
@@ -321,6 +364,9 @@ class UITestRunner {
             test.time = Math.round(performance.now() - startTime);
             this.log(`FAIL: ${test.name} - ${error.message}`, 'error');
         }
+
+        // ISOLATION: Reset after test (cleanup)
+        this.resetGame();
 
         this.currentTest = null;
         this.renderTests();

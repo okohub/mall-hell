@@ -48,12 +48,16 @@ const Enemy = {
             walkSpeed: 2.5,                // Slower stomp animation
             isBoss: true,                  // Boss flag for special handling
             visual: {
-                bodyColor: 0x228b22,        // Forest green body
-                bellyColor: 0x90ee90,       // Light green belly
-                eyeColor: 0xff4500,         // Orange-red eyes
-                teethColor: 0xfffff0,       // Ivory teeth
-                cartColor: 0x2d2d2d,        // Dark cart
-                glowColor: 0xff4500,        // Orange glow
+                bodyColor: 0x8B5A2B,        // Dark tan/brown body
+                bellyColor: 0xD2B48C,       // Light tan underbelly
+                stripeColor: 0x5D3A1A,      // Dark brown stripes/accents
+                headColor: 0x6B4423,        // Slightly darker head
+                mouthColor: 0x4A1515,       // Deep red mouth interior
+                eyeColor: 0xFFCC00,         // Fierce yellow eyes
+                pupilColor: 0xFF0000,       // Red slit pupils
+                teethColor: 0xFFFFF0,       // Ivory teeth
+                tongueColor: 0xCC3333,      // Red tongue
+                glowColor: 0xFF4500,        // Orange glow
                 size: { w: 3.5, h: 2.5, d: 4.5 }  // Much larger
             }
         }
