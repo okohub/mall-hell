@@ -104,14 +104,21 @@
             await runner.wait(400);
 
             // Verify we're in PLAYING state
-            if (runner.gameWindow.gameState !== 'PLAYING') {
-                throw new Error(`Not in PLAYING state: ${runner.gameWindow.gameState}`);
+            const state = runner.getGameState();
+            if (state !== 'PLAYING') {
+                throw new Error(`Not in PLAYING state: ${state}`);
             }
 
-            // Reset weapon state and ensure ammo
-            runner.gameWindow.lastShootTime = 0;
-            if (runner.gameWindow.WeaponManager?.currentWeapon) {
-                const weapon = runner.gameWindow.WeaponManager.currentWeapon;
+            // Reset weapon state and ensure ammo via __gameInternals
+            const internals = runner.gameWindow.__gameInternals;
+            if (internals?.setLastShootTime) {
+                internals.setLastShootTime(0);
+            }
+
+            // Reset via WeaponManager if available
+            const WeaponManager = runner.gameWindow.WeaponManager;
+            if (WeaponManager?.currentWeapon) {
+                const weapon = WeaponManager.currentWeapon;
                 weapon.state.isCharging = false;
                 weapon.state.chargeAmount = 0;
                 weapon.state.lastFireTime = 0;
@@ -120,15 +127,20 @@
                 }
             }
 
-            runner.gameWindow.startCharging();
-            await runner.wait(50);
+            // Use startFiring which is the exposed function
+            runner.gameWindow.startFiring();
+            await runner.wait(100);
 
-            const isCharging = runner.gameWindow.WeaponManager?.isCharging() || runner.gameWindow.isFiring;
+            // Check if charging via multiple methods
+            const isChargingViaManager = WeaponManager?.isCharging?.() || false;
+            const isChargingViaInternals = internals?.getIsChargingSlingshot?.() || false;
+            const isCharging = isChargingViaManager || isChargingViaInternals;
+
             if (!isCharging) {
-                throw new Error('Weapon should be in charging state when startCharging() is called');
+                throw new Error('Weapon should be in charging state after startFiring()');
             }
 
-            runner.gameWindow.cancelCharging();
+            runner.gameWindow.cancelCharging?.();
         }
     );
 
@@ -282,9 +294,10 @@
 
             const initialCount = runner.gameWindow.projectiles?.length || 0;
 
-            // Use simple fire pattern (matches working projectile-travels-forward test)
+            // Start charging and wait for minimum charge time
+            // minTension=0.2, chargeRate=1.2/sec, so need ~170ms minimum
             runner.gameWindow.startFiring();
-            await runner.wait(50);
+            await runner.wait(200);
             runner.gameWindow.stopFiring();
             await runner.wait(100);
 
@@ -317,9 +330,9 @@
                 }
             }
 
-            // Use simple fire pattern
+            // Start charging and wait for minimum charge time
             runner.gameWindow.startFiring();
-            await runner.wait(50);
+            await runner.wait(200);
             runner.gameWindow.stopFiring();
             await runner.wait(100);
 
@@ -367,9 +380,9 @@
 
             const initialCount = runner.gameWindow.projectiles?.length || 0;
 
-            // Use simple fire pattern
+            // Start charging and wait for minimum charge time
             runner.gameWindow.startFiring();
-            await runner.wait(50);
+            await runner.wait(200);
             runner.gameWindow.stopFiring();
             await runner.wait(100);
 

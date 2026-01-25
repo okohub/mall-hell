@@ -31,6 +31,31 @@ const Enemy = {
                 wireColor: 0x8b0000,
                 size: { w: 2.2, h: 1.5, d: 2.8 }
             }
+        },
+
+        DINOSAUR: {
+            id: 'dinosaur',
+            name: 'Dino Boss',
+            health: 10,                    // 2.5x skeleton health
+            speed: 0.25,                   // Slower but imposing
+            damage: 40,                    // High damage
+            behavior: 'chase',             // Aggressive pursuit
+            scoreHit: 250,                 // Higher hit reward
+            scoreDestroy: 1500,            // Big boss reward
+            driftInterval: 2.0,            // Slower direction changes
+            driftSpeed: 3,                 // Less erratic
+            collisionRadius: 5.5,          // Larger collision for big dino
+            walkSpeed: 2.5,                // Slower stomp animation
+            isBoss: true,                  // Boss flag for special handling
+            visual: {
+                bodyColor: 0x228b22,        // Forest green body
+                bellyColor: 0x90ee90,       // Light green belly
+                eyeColor: 0xff4500,         // Orange-red eyes
+                teethColor: 0xfffff0,       // Ivory teeth
+                cartColor: 0x2d2d2d,        // Dark cart
+                glowColor: 0xff4500,        // Orange glow
+                size: { w: 3.5, h: 2.5, d: 4.5 }  // Much larger
+            }
         }
     },
 
@@ -64,7 +89,7 @@ const Enemy = {
         MAX_ENEMIES: 10,
         SPAWN_CHANCE: 0.015,         // Per frame spawn chance
         SPAWN_DISTANCE: 150,         // Distance ahead to spawn
-        DESPAWN_DISTANCE: 60,        // Distance to despawn
+        DESPAWN_DISTANCE: 200,       // Distance to despawn (mall spans ~150 units)
         COLLISION_DISTANCE: 3.5      // Player collision distance
     },
 

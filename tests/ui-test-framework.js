@@ -192,11 +192,17 @@ class UITestRunner {
         const gameoverScreen = this.getElement('#gameover-screen');
         const pauseScreen = this.getElement('#pause-screen');
         const hud = this.getElement('#hud');
+        const healthContainer = this.getElement('#health-container');
+        const ammoDisplay = this.getElement('#ammo-display');
+        const statusPanel = this.getElement('#status-panel');
 
         if (menuScreen) menuScreen.style.display = 'flex';
         if (gameoverScreen) gameoverScreen.style.display = 'none';
         if (pauseScreen) pauseScreen.style.display = 'none';
         if (hud) hud.style.display = 'none';
+        if (healthContainer) healthContainer.style.display = 'none';
+        if (ammoDisplay) ammoDisplay.style.display = 'none';
+        if (statusPanel) statusPanel.style.display = 'none';
 
         this.gameWindow.gameState = 'MENU';
         this.gameWindow.score = 0;

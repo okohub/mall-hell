@@ -10,7 +10,7 @@ A fast, chaotic first-person browser game where you're a mischievous kid in a sh
 2. Click "START CHAOS"
 3. Hold SPACE to charge your slingshot, release to fire
 4. Dodge enemies and obstacles with A/D keys
-5. Reach the checkout to win!
+5. Clear all enemies from the mall before time runs out!
 
 ## Controls
 
@@ -120,6 +120,7 @@ mall-hell/
 
 ## Version History
 
+- **v5.0** - Live minimap with enemy counts, lazy room loading, unified status panel, improved performance
 - **v4.5** - NO AMMO display, distinctive ammo crate visuals, center display collision fix
 - **v4.4** - Slingshot limited ammo, water splash damage, laser beam visuals, runtime pickup spawning
 - **v4.3** - Weapon redesign: Laser Blaster (rapid-fire energy), Water Blaster (arcing splash damage), balanced weapon roles

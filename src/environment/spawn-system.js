@@ -31,6 +31,225 @@ const SpawnSystem = {
     },
 
     // ==========================================
+    // ROOM PLANNING (Data-only, no meshes)
+    // ==========================================
+
+    /**
+     * State for planned rooms
+     */
+    _roomPlans: new Map(),      // roomKey -> { enemies: [{x, z, type}], obstacles: [{x, z, type}] }
+    _totalPlannedEnemies: 0,    // Total enemies across all rooms
+    _materializedRooms: new Set(), // Rooms that have been materialized
+
+    /**
+     * Reset planning state (call on game reset)
+     */
+    resetPlanning() {
+        this._roomPlans.clear();
+        this._materializedRooms.clear();
+        this._totalPlannedEnemies = 0;
+    },
+
+    /**
+     * Plan contents for all rooms (data only, no mesh creation)
+     * @param {Array} rooms - Array of room data from RoomSystem.getAllRooms()
+     * @param {Object} roomConfig - Room config {UNIT, DOOR_WIDTH}
+     * @param {Function} getEnemyType - Function to get enemy type (score) => 'SKELETON' | 'DINOSAUR'
+     * @param {number} currentScore - Current score for enemy type calculation
+     * @returns {Object} Plan summary { totalEnemies, totalObstacles, roomPlans }
+     */
+    planAllRooms(rooms, roomConfig, getEnemyType, currentScore = 0) {
+        this.resetPlanning();
+
+        let totalEnemies = 0;
+        let totalObstacles = 0;
+
+        rooms.forEach(room => {
+            if (!room) return;
+            const roomKey = `${room.gridX}_${room.gridZ}`;
+            const plan = this.planRoomContents(room, roomConfig, getEnemyType, currentScore);
+            this._roomPlans.set(roomKey, plan);
+            totalEnemies += plan.enemies.length;
+            totalObstacles += plan.obstacles.length;
+        });
+
+        this._totalPlannedEnemies = totalEnemies;
+
+        return {
+            totalEnemies,
+            totalObstacles,
+            roomPlans: this._roomPlans
+        };
+    },
+
+    /**
+     * Plan contents for a single room (data only)
+     * @param {Object} room - Room data {gridX, gridZ, worldX, worldZ, theme, doors}
+     * @param {Object} roomConfig - Room config {UNIT, DOOR_WIDTH}
+     * @param {Function} getEnemyType - Function to get enemy type
+     * @param {number} currentScore - Current score
+     * @returns {Object} Room plan { enemies: [{x, z, type}], obstacles: [{x, z, type}] }
+     */
+    planRoomContents(room, roomConfig, getEnemyType, currentScore = 0) {
+        // Don't spawn in entrance room
+        if (room.theme === 'ENTRANCE') {
+            return { enemies: [], obstacles: [] };
+        }
+
+        const plannedPositions = [];
+        const enemies = [];
+        const obstacles = [];
+
+        // Plan enemies
+        const numEnemies = this.config.enemyMinCount +
+            Math.floor(Math.random() * (this.config.enemyMaxCount - this.config.enemyMinCount + 1));
+
+        for (let i = 0; i < numEnemies; i++) {
+            const pos = this.findValidPosition(room, roomConfig, plannedPositions, this.config.enemySpacing);
+            if (pos) {
+                // Get enemy type (at game start, always SKELETON since score is 0)
+                const type = getEnemyType ? getEnemyType(currentScore) : 'SKELETON';
+                enemies.push({ x: pos.x, z: pos.z, type });
+                plannedPositions.push(pos);
+            }
+        }
+
+        // Plan obstacles
+        const numObstacles = this.config.obstacleMinCount +
+            Math.floor(Math.random() * (this.config.obstacleMaxCount - this.config.obstacleMinCount + 1));
+
+        const obstacleTypes = ['stack', 'barrel', 'display'];
+
+        for (let i = 0; i < numObstacles; i++) {
+            const pos = this.findValidPosition(room, roomConfig, plannedPositions, this.config.obstacleSpacing);
+            if (pos) {
+                const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+                obstacles.push({ x: pos.x, z: pos.z, type });
+                plannedPositions.push(pos);
+            }
+        }
+
+        return { enemies, obstacles };
+    },
+
+    /**
+     * Materialize a planned room (create actual meshes)
+     * @param {string} roomKey - Room key "gridX_gridZ"
+     * @param {Object} callbacks - { createEnemy: (x, z, type) => mesh, createObstacle: (x, z, type) => mesh }
+     * @returns {Object} { enemies: [meshes], obstacles: [meshes] } or null if already materialized
+     */
+    materializeRoom(roomKey, callbacks) {
+        // Already materialized?
+        if (this._materializedRooms.has(roomKey)) {
+            return null;
+        }
+
+        const plan = this._roomPlans.get(roomKey);
+        if (!plan) {
+            return null;
+        }
+
+        this._materializedRooms.add(roomKey);
+
+        const createdEnemies = [];
+        const createdObstacles = [];
+
+        // Create enemy meshes
+        plan.enemies.forEach(e => {
+            if (callbacks.createEnemy) {
+                const mesh = callbacks.createEnemy(e.x, e.z, e.type);
+                if (mesh) createdEnemies.push(mesh);
+            }
+        });
+
+        // Create obstacle meshes
+        plan.obstacles.forEach(o => {
+            if (callbacks.createObstacle) {
+                const mesh = callbacks.createObstacle(o.x, o.z, o.type);
+                if (mesh) createdObstacles.push(mesh);
+            }
+        });
+
+        return { enemies: createdEnemies, obstacles: createdObstacles };
+    },
+
+    /**
+     * Materialize a room and its adjacent rooms
+     * Uses RoomSystem for room queries (proper DDD separation)
+     * @param {Object} centerRoom - Center room object
+     * @param {Object} gridSystem - Grid system with getRoomAtWorld
+     * @param {Object} roomSystem - RoomSystem for room utilities
+     * @param {Object} callbacks - { createEnemy, createObstacle, onRoomMaterialized }
+     * @returns {Object} { materializedKeys: string[], totalEnemies: number, totalObstacles: number }
+     */
+    materializeNearbyRooms(centerRoom, gridSystem, roomSystem, callbacks) {
+        if (!centerRoom || !roomSystem) {
+            return { materializedKeys: [], totalEnemies: 0, totalObstacles: 0 };
+        }
+
+        const roomsToMaterialize = roomSystem.getRoomWithAdjacent(centerRoom, gridSystem);
+        const materializedKeys = [];
+        let totalEnemies = 0;
+        let totalObstacles = 0;
+
+        roomsToMaterialize.forEach(room => {
+            const roomKey = roomSystem.getRoomKey(room);
+            if (!roomKey || this.isRoomMaterialized(roomKey)) {
+                return;
+            }
+
+            const result = this.materializeRoom(roomKey, callbacks);
+            if (result) {
+                materializedKeys.push(roomKey);
+                totalEnemies += result.enemies.length;
+                totalObstacles += result.obstacles.length;
+
+                // Callback for post-materialization (e.g., spawn pickups)
+                if (callbacks.onRoomMaterialized) {
+                    callbacks.onRoomMaterialized(room, roomKey, result);
+                }
+            }
+        });
+
+        return { materializedKeys, totalEnemies, totalObstacles };
+    },
+
+    /**
+     * Check if a room is materialized
+     * @param {string} roomKey - Room key "gridX_gridZ"
+     * @returns {boolean}
+     */
+    isRoomMaterialized(roomKey) {
+        return this._materializedRooms.has(roomKey);
+    },
+
+    /**
+     * Get total planned enemies
+     * @returns {number}
+     */
+    getTotalPlannedEnemies() {
+        return this._totalPlannedEnemies;
+    },
+
+    /**
+     * Get planned enemy count for a specific room
+     * @param {string} roomKey - Room key "gridX_gridZ"
+     * @returns {number}
+     */
+    getPlannedEnemyCount(roomKey) {
+        const plan = this._roomPlans.get(roomKey);
+        return plan ? plan.enemies.length : 0;
+    },
+
+    /**
+     * Get all room plans (for minimap)
+     * @returns {Map}
+     */
+    getRoomPlans() {
+        return this._roomPlans;
+    },
+
+    // ==========================================
     // POSITION VALIDATION
     // ==========================================
 

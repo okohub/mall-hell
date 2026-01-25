@@ -86,6 +86,49 @@
         test.it('should have defaultType property', () => {
             test.assertEqual(Enemy.defaultType, 'SKELETON');
         });
+
+        // DINOSAUR (Boss) type tests
+        test.it('should have DINOSAUR type defined', () => {
+            test.assertTrue(Enemy.types.DINOSAUR !== undefined);
+        });
+
+        test.it('should have correct dinosaur properties', () => {
+            const dinosaur = Enemy.types.DINOSAUR;
+            test.assertEqual(dinosaur.id, 'dinosaur');
+            test.assertEqual(dinosaur.health, 10);
+            test.assertEqual(dinosaur.speed, 0.25);
+            test.assertEqual(dinosaur.damage, 40);
+            test.assertEqual(dinosaur.behavior, 'chase');
+            test.assertEqual(dinosaur.scoreHit, 250);
+            test.assertEqual(dinosaur.scoreDestroy, 1500);
+        });
+
+        test.it('should have isBoss flag on dinosaur', () => {
+            const dinosaur = Enemy.types.DINOSAUR;
+            test.assertTrue(dinosaur.isBoss === true);
+        });
+
+        test.it('should have larger collision radius than skeleton', () => {
+            const skeleton = Enemy.types.SKELETON;
+            const dinosaur = Enemy.types.DINOSAUR;
+            test.assertTrue(dinosaur.collisionRadius > skeleton.collisionRadius);
+        });
+
+        test.it('should have dinosaur visual properties', () => {
+            const dinosaur = Enemy.types.DINOSAUR;
+            test.assertTrue(dinosaur.visual.bodyColor !== undefined);
+            test.assertTrue(dinosaur.visual.bellyColor !== undefined);
+            test.assertTrue(dinosaur.visual.eyeColor !== undefined);
+            test.assertTrue(dinosaur.visual.teethColor !== undefined);
+        });
+
+        test.it('should create dinosaur instance data', () => {
+            const instance = Enemy.createInstance('DINOSAUR', { x: 0, y: 0, z: -50 });
+            test.assertEqual(instance.type, 'DINOSAUR');
+            test.assertEqual(instance.health, 10);
+            test.assertEqual(instance.maxHealth, 10);
+            test.assertTrue(instance.active);
+        });
     });
 
     // ==========================================
@@ -818,6 +861,51 @@
             test.assertTrue(enemy.userData.rightLeg !== undefined);
         });
 
+        test.it('should have createDinosaurMesh method', () => {
+            test.assertTrue(typeof EnemyVisual.createDinosaurMesh === 'function');
+        });
+
+        test.it('should have animateDinosaurWalk method', () => {
+            test.assertTrue(typeof EnemyVisual.animateDinosaurWalk === 'function');
+        });
+
+        test.it('should create dinosaur mesh with THREE', () => {
+            if (typeof THREE === 'undefined') {
+                test.skip('THREE.js not available');
+                return;
+            }
+            const config = Enemy.get('DINOSAUR');
+            const mesh = EnemyVisual.createDinosaurMesh(THREE, config);
+            test.assertTrue(mesh instanceof THREE.Group);
+            test.assertTrue(mesh.userData.dinosaur !== undefined);
+            test.assertTrue(mesh.userData.head !== undefined);
+            test.assertTrue(mesh.userData.tail !== undefined);
+        });
+
+        test.it('should create dinosaur with legs', () => {
+            if (typeof THREE === 'undefined') {
+                test.skip('THREE.js not available');
+                return;
+            }
+            const config = Enemy.get('DINOSAUR');
+            const mesh = EnemyVisual.createDinosaurMesh(THREE, config);
+            test.assertTrue(mesh.userData.leftLeg !== undefined);
+            test.assertTrue(mesh.userData.rightLeg !== undefined);
+        });
+
+        test.it('should create enemy with dinosaur when config is dinosaur', () => {
+            if (typeof THREE === 'undefined') {
+                test.skip('THREE.js not available');
+                return;
+            }
+            const config = Enemy.get('DINOSAUR');
+            const enemy = EnemyVisual.createEnemy(THREE, config);
+            test.assertTrue(enemy instanceof THREE.Group);
+            test.assertTrue(enemy.userData.dinosaur !== undefined);
+            // Boss should have larger health bar
+            test.assertTrue(enemy.userData.healthBar !== undefined);
+        });
+
         test.it('should create health bar with THREE', () => {
             if (typeof THREE === 'undefined') {
                 test.skip('THREE.js not available');
@@ -832,6 +920,66 @@
     // ==========================================
     // ENEMY THEME TESTS
     // ==========================================
+
+    // ==========================================
+    // DINO SPAWN TESTS
+    // ==========================================
+
+    test.describe('Enemy System - Dino Spawn', () => {
+        test.beforeEach(() => {
+            EnemySystem.init(Enemy, null);
+            EnemySystem._dinoSpawnCount = 0;
+        });
+
+        test.it('should have dino spawn state properties', () => {
+            test.assertTrue(EnemySystem._dinoSpawnCount !== undefined);
+            test.assertTrue(EnemySystem.dinoSpawnInterval !== undefined);
+        });
+
+        test.it('should have dinoSpawnInterval of 5000', () => {
+            test.assertEqual(EnemySystem.dinoSpawnInterval, 5000);
+        });
+
+        test.it('should return SKELETON below 5000 points', () => {
+            const type = EnemySystem.getSpawnType(4999);
+            test.assertEqual(type, 'SKELETON');
+        });
+
+        test.it('should return DINOSAUR at 5000 points', () => {
+            const type = EnemySystem.getSpawnType(5000);
+            test.assertEqual(type, 'DINOSAUR');
+            test.assertEqual(EnemySystem._dinoSpawnCount, 1);
+        });
+
+        test.it('should return SKELETON after dino already spawned', () => {
+            EnemySystem._dinoSpawnCount = 1;
+            const type = EnemySystem.getSpawnType(7500);
+            test.assertEqual(type, 'SKELETON'); // 7500 = 1 dino expected, already spawned 1
+        });
+
+        test.it('should return DINOSAUR at each 5000 point interval', () => {
+            // First threshold
+            const type1 = EnemySystem.getSpawnType(5000);
+            test.assertEqual(type1, 'DINOSAUR');
+            test.assertEqual(EnemySystem._dinoSpawnCount, 1);
+
+            // Second threshold
+            const type2 = EnemySystem.getSpawnType(10000);
+            test.assertEqual(type2, 'DINOSAUR');
+            test.assertEqual(EnemySystem._dinoSpawnCount, 2);
+
+            // Third threshold
+            const type3 = EnemySystem.getSpawnType(15000);
+            test.assertEqual(type3, 'DINOSAUR');
+            test.assertEqual(EnemySystem._dinoSpawnCount, 3);
+        });
+
+        test.it('should reset dino state on reset', () => {
+            EnemySystem._dinoSpawnCount = 5;
+            EnemySystem.reset();
+            test.assertEqual(EnemySystem._dinoSpawnCount, 0);
+        });
+    });
 
     test.describe('Enemy Theme', () => {
         test.it('should have skeleton theme', () => {

@@ -34,6 +34,27 @@
                     <div id="score">0</div>
                 </div>
 
+                <!-- Status Panel: Enemy Progress + Map -->
+                <div id="status-panel">
+                    <div id="enemy-progress-header">
+                        <span class="progress-label">CLEARED</span>
+                        <span id="enemy-progress">0 / 0</span>
+                    </div>
+                    <div class="enemy-type-counts">
+                        <div class="enemy-type-count" id="skeleton-count">
+                            <span class="enemy-icon">💀</span>
+                            <span class="enemy-value">0</span>
+                        </div>
+                        <div class="enemy-type-count" id="dino-count">
+                            <span class="enemy-icon">🦖</span>
+                            <span class="enemy-value">0</span>
+                        </div>
+                    </div>
+                    <div id="minimap-section">
+                        <div id="minimap-grid"></div>
+                    </div>
+                </div>
+
                 <div id="timer-container">
                     <div id="timer-label">TIME REMAINING</div>
                     <div id="timer-display">3:00</div>
@@ -42,12 +63,9 @@
                     </div>
                 </div>
 
-                <div id="ammo-display">SLINGSHOT READY</div>
-
-                <div id="pause-indicator">ESC to Pause</div>
-
-                <div id="controls-hint">A/D Dodge | SPACE Fire</div>
             </div>
+
+            <div id="ammo-display">SLINGSHOT READY</div>
 
             <div id="health-container">
                 <div id="health-label">HEALTH</div>
@@ -57,21 +75,23 @@
                 <div id="health-value">100</div>
             </div>
 
-            <div id="cooldown-indicator">
-                <div id="cooldown-ring">
-                    <div id="cooldown-fill"></div>
-                </div>
-            </div>
 
             <div id="hit-marker"></div>
             <div id="damage-overlay"></div>
+
+            <!-- Objective Text (shown at game start) -->
+            <div id="objective-display">
+                <div class="objective-text">CLEAR THE MALL!</div>
+                <div class="objective-subtext">Eliminate all enemies before time runs out</div>
+            </div>
+
 
             <div id="menu-screen">
                 <div class="menu-container">
                     <div class="title-wrapper">
                         <div class="title">MALL HELL</div>
                     </div>
-                    <div class="version">VERSION 4.5</div>
+                    <div class="version">VERSION 5.0</div>
                     <div class="subtitle">SUPERMARKET MAYHEM</div>
                     <div class="instructions" id="instructions">
                         <div class="control-item">
@@ -333,7 +353,7 @@
             RoomSystem.getAllRooms().forEach(room => room && RoomSystem.createRoomMeshes(THREE, room, { scene, shelfArray: shelves, shelfSystem: ShelfSystem }));
         }
 
-        function createEnemyCart(x, z, enemyType = 'SKELETON') {
+        function createEnemy(x, z, enemyType = 'SKELETON') {
             const g = EnemySystem.createMesh(THREE, enemyType, x, z);
             if (g) { scene.add(g); enemies.push(g); }
             return g;
@@ -391,6 +411,9 @@
             InputSystem.reset(); PlayerSystem.reset();
             WeaponManager.reset(); WeaponManager.equip('slingshot', THREE, MaterialsTheme, camera);
             PickupSystem.reset();
+            SpawnSystem.resetPlanning(); // Reset room planning state
+            EnemySystem._dinoSpawnCount = 0; // Reset dino spawn tracking
+            UISystem.resetEnemyProgress(); // Reset enemy progress tracking
             crosshairX = window.innerWidth / 2; crosshairY = window.innerHeight / 2;
             lockedTarget = null; currentRoom = null; visitedRooms.clear();
             scoreElement.textContent = '0'; updateTimerDisplay(); UISystem.resetHealthBar(PLAYER_MAX_HEALTH);
@@ -408,6 +431,11 @@
             resetGame(); GameSession.start(); StateSystem.forceTransition('PLAYING'); UISystem.showGameplay();
             crosshairX = window.innerWidth / 2; crosshairY = window.innerHeight / 2;
             updateCursor(); spawnInitialObjects();
+            // Initialize minimap with all rooms
+            UISystem.initMinimap(RoomSystem.getAllRooms());
+            UISystem.showMinimap();
+            // Show objective text
+            UISystem.showObjective();
             AnalyticsSystem.gameStart();
         }
 
@@ -448,46 +476,52 @@
         const toggleFreeze = () => { if (StateSystem.is('PLAYING')) { isFrozen = !isFrozen; if (!isFrozen) LoopSystem.resetDelta(); } };
         const updateTimerDisplay = () => UISystem.updateTimerDisplay(GameSession.getTimer(), GameSession.DURATION);
 
-        // Spawn all room contents at game start (no pop-in)
+        // Spawn callbacks - passed to SpawnSystem for mesh creation
+        const spawnCallbacks = {
+            createEnemy: (x, z, type) => {
+                const enemy = createEnemy(x, z, type);
+                if (type === 'DINOSAUR') UISystem.showBossWarning('DINO BOSS!');
+                return enemy;
+            },
+            createObstacle: (x, z, type) => createObstacle(x, z, type),
+            onRoomMaterialized: (room, roomKey) => {
+                visitedRooms.add(roomKey);
+                // Spawn weapon pickup in materialized room
+                PickupSystem.trySpawnForRoom(
+                    { x: room.worldX, z: room.worldZ },
+                    Room.structure.UNIT,
+                    Room.structure.UNIT,
+                    obstacles,
+                    shelves
+                );
+            }
+        };
+
+        // Plan all rooms and spawn nearby ones (lazy loading for performance)
         function spawnInitialObjects() {
-            RoomSystem.getAllRooms().forEach(room => {
-                if (room) {
-                    const roomKey = `${room.gridX}_${room.gridZ}`;
-                    visitedRooms.add(roomKey);
-                    spawnRoomContents(room);
-                }
-            });
+            // Phase 1: Plan all rooms (fast, data only - no mesh creation)
+            const planResult = SpawnSystem.planAllRooms(
+                RoomSystem.getAllRooms(),
+                Room.structure,
+                (score) => EnemySystem.getSpawnType(score),
+                GameSession.getScore()
+            );
+
+            // Set total enemy count for progress tracking
+            UISystem.setTotalEnemies(planResult.totalEnemies);
+
+            // Phase 2: Materialize starting room + adjacent (uses RoomSystem for spatial queries)
+            const startRoom = mallGrid.getRoomAtWorld(PlayerSystem.position.x, PlayerSystem.position.z);
+            SpawnSystem.materializeNearbyRooms(startRoom, mallGrid, RoomSystem, spawnCallbacks);
         }
 
         function updateCurrentRoom() {
             const room = mallGrid.getRoomAtWorld(PlayerSystem.position.x, PlayerSystem.position.z);
             if (room && room !== currentRoom) {
-                const roomKey = `${room.gridX}_${room.gridZ}`;
                 currentRoom = room;
-                if (!visitedRooms.has(roomKey)) { visitedRooms.add(roomKey); spawnRoomContents(room); }
+                // Materialize current room + adjacent rooms (RoomSystem handles spatial logic)
+                SpawnSystem.materializeNearbyRooms(room, mallGrid, RoomSystem, spawnCallbacks);
             }
-        }
-
-        // Spawn enemies and obstacles for a room
-        function spawnRoomContents(room) {
-            SpawnSystem.spawnRoomContents(room, Room.structure, {
-                createEnemy: (x, z) => createEnemyCart(x, z, 'SKELETON'),
-                createObstacle: (x, z, type) => createObstacle(x, z, type)
-            });
-
-            // Try to spawn weapon pickup in this room (avoid obstacles and shelves)
-            PickupSystem.trySpawnForRoom(
-                { x: room.worldX, z: room.worldZ },
-                Room.structure.UNIT,
-                Room.structure.UNIT,
-                obstacles,
-                shelves
-            );
-        }
-
-        function updateCooldownIndicator() {
-            const elapsed = Date.now() - lastShootTime;
-            UISystem.updateCooldownIndicator(elapsed, WeaponManager.getCooldown());
         }
 
         function update(dt) {
@@ -571,9 +605,24 @@
             // UI updates
             UISystem.updateCrosshairUI(crosshairX, crosshairY, aim.hasTarget);
             UISystem.updateTensionUI(crosshairX, crosshairY, WeaponManager.isCharging(), WeaponManager.getTension(), WeaponManager.getMaxTension());
+            // Count enemies by type
+            const activeEnemies = enemies.filter(e => e.userData.active);
+            const enemyCounts = {
+                skeleton: activeEnemies.filter(e => e.userData.type === 'SKELETON').length,
+                dinosaur: activeEnemies.filter(e => e.userData.type === 'DINOSAUR').length
+            };
+            UISystem.updateEnemyCount(enemyCounts);
+            // Update minimap with LIVE enemy positions
+            UISystem.updateMinimap({
+                currentRoom,
+                enemies: activeEnemies,
+                gridSystem: mallGrid,
+                roomConfig: Room.structure
+            });
 
             // Entity updates
             ProjectileSystem.updateMeshArray(projectiles, { dt, cameraPosition: camera.position });
+
             EnemySystem.updateAll(enemies, {
                 playerPosition: PlayerSystem.position,
                 playerCart,
@@ -591,22 +640,19 @@
             EnvironmentSystem.updateObstaclesArray(obstacles, { playerCart, dt });
             ParticleSystem.updateAll(particles, dt, { gravity: 15, fadeRate: 2 });
 
-            // Runtime enemy spawning - maintains max count, spawns in other rooms
-            const activeEnemyCount = enemies.filter(e => e.userData.active).length;
-            const spawned = SpawnSystem.tryRuntimeSpawn({
-                currentRoom,
-                playerPosition: PlayerSystem.position,
-                visitedRooms,
-                gridSystem: mallGrid,
-                roomConfig: Room.structure,
-                currentEnemyCount: activeEnemyCount,
-                dt,
-                createEnemy: (x, z) => {
-                    const enemy = EnemySystem.createMesh(THREE, 'SKELETON', x, z);
-                    if (enemy) { scene.add(enemy); enemies.push(enemy); }
-                    return enemy;
+            // Dinosaur spawn - escalation mechanic (every 1000 points)
+            // No skeleton respawning - "Clear the Mall" design
+            if (EnemySystem.checkDinoSpawn(GameSession.getScore())) {
+                // Spawn dino in player's current room or nearby
+                const spawnRoom = currentRoom || mallGrid.getRoomAtWorld(PlayerSystem.position.x, PlayerSystem.position.z);
+                if (spawnRoom && spawnRoom.theme !== 'ENTRANCE') {
+                    const pos = SpawnSystem.findValidPosition(spawnRoom, Room.structure, [], 5);
+                    if (pos) {
+                        const dino = createEnemy(pos.x, pos.z, 'DINOSAUR');
+                        if (dino) UISystem.showBossWarning('DINO BOSS!');
+                    }
                 }
-            });
+            }
 
             // Runtime pickup spawning - maintains pickup availability
             SpawnSystem.tryRuntimePickupSpawn({
@@ -636,6 +682,7 @@
                     const enemyType = enemy.userData.config?.id || 'cart';
                     if (result.destroyed) {
                         addScore(result.scoreDestroy, enemy.position); spawnParticles(enemy.position, color, 15);
+                        UISystem.addKilledEnemy(); // Track progress
                         AnalyticsSystem.enemyKill(enemyType, result.scoreDestroy);
                     } else {
                         addScore(result.scoreHit, enemy.position); spawnParticles(closestPoint, 0xf39c12, 3);
@@ -651,7 +698,6 @@
             // Cleanup inactive objects
             const c = EntitySystem.cleanupAllInactive({ projectiles, enemies, obstacles, particles }, scene);
             projectiles = c.projectiles; enemies = c.enemies; obstacles = c.obstacles; particles = c.particles;
-            updateCooldownIndicator();
         }
 
         // Event Listeners

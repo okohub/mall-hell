@@ -528,4 +528,203 @@
         }
     );
 
+    // Objective Display Tests
+    runner.addTest('objective-element-exists', 'Objective Display', 'Objective display element exists',
+        'Verifies the objective display element is in the DOM',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+
+            const objectiveEl = runner.getElement('#objective-display');
+            if (!objectiveEl) {
+                throw new Error('Objective display element not found');
+            }
+
+            const textEl = objectiveEl.querySelector('.objective-text');
+            if (!textEl) {
+                throw new Error('Objective text element not found');
+            }
+
+            if (!textEl.textContent.includes('CLEAR THE MALL')) {
+                throw new Error(`Objective text should contain "CLEAR THE MALL", got "${textEl.textContent}"`);
+            }
+        }
+    );
+
+    runner.addTest('objective-shows-on-start', 'Objective Display', 'Objective shows on game start',
+        'Verifies the objective display becomes visible when game starts',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+
+            const objectiveEl = runner.getElement('#objective-display');
+
+            // Should be hidden in menu
+            const menuStyle = runner.gameWindow.getComputedStyle(objectiveEl);
+            if (menuStyle.visibility === 'visible' && menuStyle.opacity !== '0') {
+                throw new Error('Objective should be hidden in menu');
+            }
+
+            // Start game
+            const startBtn = runner.getElement('#start-btn');
+            runner.simulateClick(startBtn);
+            await runner.wait(300);
+
+            // Should be visible now
+            if (!objectiveEl.classList.contains('show')) {
+                throw new Error('Objective should have "show" class after game start');
+            }
+        }
+    );
+
+    runner.addTest('objective-has-text', 'Objective Display', 'Objective has correct text content',
+        'Verifies the objective display contains the Clear the Mall message',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+
+            const objectiveEl = runner.getElement('#objective-display');
+            const textEl = objectiveEl.querySelector('.objective-text');
+            const subtextEl = objectiveEl.querySelector('.objective-subtext');
+
+            if (!textEl || !textEl.textContent.includes('CLEAR THE MALL')) {
+                throw new Error('Objective should contain "CLEAR THE MALL" text');
+            }
+
+            if (!subtextEl) {
+                throw new Error('Objective should have subtext element');
+            }
+        }
+    );
+
+    // Status Panel Tests (includes enemy info + minimap)
+    runner.addTest('status-panel-exists', 'Minimap', 'Status panel element exists',
+        'Verifies the status panel (enemy info + minimap) is in the DOM',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+
+            const panelEl = runner.getElement('#status-panel');
+            if (!panelEl) {
+                throw new Error('Status panel element not found');
+            }
+
+            const gridEl = runner.getElement('#minimap-grid');
+            if (!gridEl) {
+                throw new Error('Minimap grid element not found');
+            }
+        }
+    );
+
+    runner.addTest('status-panel-hidden-on-pause', 'Minimap', 'Status panel hidden when paused',
+        'Verifies status panel is not visible when game is paused',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+
+            const startBtn = runner.getElement('#start-btn');
+            runner.simulateClick(startBtn);
+            await runner.wait(500);
+
+            // Panel should be visible while playing
+            const panelEl = runner.getElement('#status-panel');
+            if (!runner.isVisible(panelEl)) {
+                throw new Error('Status panel should be visible during gameplay');
+            }
+
+            // Pause the game
+            runner.simulateKeyDown('Escape');
+            await runner.wait(200);
+
+            // Panel should be hidden when paused
+            if (runner.isVisible(panelEl)) {
+                throw new Error('Status panel should be hidden when paused');
+            }
+        }
+    );
+
+    runner.addTest('status-panel-visible-in-game', 'Minimap', 'Status panel visible during gameplay',
+        'Verifies status panel is displayed when playing',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+
+            const startBtn = runner.getElement('#start-btn');
+            runner.simulateClick(startBtn);
+            await runner.wait(500);
+
+            const panelEl = runner.getElement('#status-panel');
+            const style = runner.gameWindow.getComputedStyle(panelEl);
+
+            if (style.display === 'none') {
+                throw new Error('Status panel should be visible during gameplay');
+            }
+        }
+    );
+
+    runner.addTest('minimap-has-rooms', 'Minimap', 'Minimap shows room cells',
+        'Verifies minimap grid contains room cells after game start',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+
+            const startBtn = runner.getElement('#start-btn');
+            runner.simulateClick(startBtn);
+            await runner.wait(500);
+
+            const gridEl = runner.getElement('#minimap-grid');
+            const roomCells = gridEl.querySelectorAll('.minimap-room');
+
+            if (roomCells.length === 0) {
+                throw new Error('Minimap has no room cells');
+            }
+
+            // Should have entrance marked
+            const entranceCell = gridEl.querySelector('.minimap-room.entrance');
+            if (!entranceCell) {
+                throw new Error('Minimap should have entrance room marked');
+            }
+        }
+    );
+
+    runner.addTest('minimap-updates-with-enemies', 'Minimap', 'Minimap shows enemy counts',
+        'Verifies minimap cells display enemy count numbers',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+
+            const startBtn = runner.getElement('#start-btn');
+            runner.simulateClick(startBtn);
+            await runner.wait(500);
+
+            // Run a few updates
+            for (let i = 0; i < 10; i++) {
+                if (runner.gameWindow.manualUpdate) {
+                    runner.gameWindow.manualUpdate(0.016);
+                }
+            }
+            await runner.wait(100);
+
+            const gridEl = runner.getElement('#minimap-grid');
+            const roomsWithEnemies = gridEl.querySelectorAll('.minimap-room.has-enemies');
+
+            // Should have at least some rooms with enemies marked
+            if (roomsWithEnemies.length === 0) {
+                throw new Error('No rooms marked as having enemies on minimap');
+            }
+
+            // At least one should show a number
+            let hasNumber = false;
+            roomsWithEnemies.forEach(cell => {
+                if (cell.textContent && parseInt(cell.textContent) > 0) {
+                    hasNumber = true;
+                }
+            });
+
+            if (!hasNumber) {
+                throw new Error('Minimap cells should display enemy count numbers');
+            }
+        }
+    );
+
 })(window.runner);

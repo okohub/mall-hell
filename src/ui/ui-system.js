@@ -13,10 +13,10 @@ const UISystem = {
         timerDisplay: null,
         timerFill: null,
         hitMarker: null,
-        cooldownFill: null,
         healthFill: null,
         healthValue: null,
         healthContainer: null,
+        ammoDisplay: null,
         damageOverlay: null,
         hud: null,
         menuScreen: null,
@@ -38,10 +38,10 @@ const UISystem = {
         this.elements.timerDisplay = document.getElementById('timer-display');
         this.elements.timerFill = document.getElementById('timer-fill');
         this.elements.hitMarker = document.getElementById('hit-marker');
-        this.elements.cooldownFill = document.getElementById('cooldown-fill');
         this.elements.healthFill = document.getElementById('health-fill');
         this.elements.healthValue = document.getElementById('health-value');
         this.elements.healthContainer = document.getElementById('health-container');
+        this.elements.ammoDisplay = document.getElementById('ammo-display');
         this.elements.damageOverlay = document.getElementById('damage-overlay');
         this.elements.hud = document.getElementById('hud');
         this.elements.menuScreen = document.getElementById('menu-screen');
@@ -51,6 +51,9 @@ const UISystem = {
         this.elements.ratingElement = document.getElementById('rating');
         this.elements.pauseScoreValue = document.getElementById('pause-score-value');
         this.elements.gameoverTitle = document.getElementById('gameover-title');
+        this.elements.statusPanel = document.getElementById('status-panel');
+        this.elements.skeletonCount = document.getElementById('skeleton-count');
+        this.elements.dinoCount = document.getElementById('dino-count');
     },
 
     // ==========================================
@@ -96,6 +99,93 @@ const UISystem = {
                         this.elements.scoreContainer.classList.remove('bump');
                     }
                 }, UI.animation.SCORE_BUMP_DURATION);
+            }
+        }
+    },
+
+    // ==========================================
+    // ENEMY COUNT DISPLAY (Progress Tracking)
+    // ==========================================
+
+    /**
+     * State for enemy progress tracking
+     */
+    _totalEnemies: 0,       // Total planned enemies
+    _killedEnemies: 0,      // Enemies killed so far
+
+    /**
+     * Set total planned enemies (call at game start after planning)
+     * @param {number} total - Total enemies planned across all rooms
+     */
+    setTotalEnemies(total) {
+        this._totalEnemies = total;
+        this._killedEnemies = 0;
+    },
+
+    /**
+     * Increment killed enemy count
+     * @param {number} count - Number of enemies killed (default 1)
+     */
+    addKilledEnemy(count = 1) {
+        this._killedEnemies += count;
+    },
+
+    /**
+     * Get progress info
+     * @returns {Object} { killed, total, remaining }
+     */
+    getEnemyProgress() {
+        return {
+            killed: this._killedEnemies,
+            total: this._totalEnemies,
+            remaining: this._totalEnemies - this._killedEnemies
+        };
+    },
+
+    /**
+     * Reset enemy progress (call on game reset)
+     */
+    resetEnemyProgress() {
+        this._totalEnemies = 0;
+        this._killedEnemies = 0;
+    },
+
+    /**
+     * Update the enemy count display with progress
+     * Shows "KILLED / TOTAL" format
+     * @param {Object} counts - Object with active enemy counts { skeleton: N, dinosaur: N }
+     */
+    updateEnemyCount(counts) {
+        const { skeleton = 0, dinosaur = 0 } = counts;
+        const totalActive = skeleton + dinosaur;
+        const remaining = this._totalEnemies - this._killedEnemies;
+
+        // Update the progress display element (shows killed / total)
+        const progressEl = document.getElementById('enemy-progress');
+        if (progressEl) {
+            progressEl.textContent = `${this._killedEnemies} / ${this._totalEnemies}`;
+        }
+
+        // Update skeleton count (now shows remaining of this type)
+        if (this.elements.skeletonCount) {
+            const valueEl = this.elements.skeletonCount.querySelector('.enemy-value');
+            if (valueEl) valueEl.textContent = skeleton;
+            this.elements.skeletonCount.classList.toggle('has-enemies', skeleton > 0);
+        }
+
+        // Update dinosaur count
+        if (this.elements.dinoCount) {
+            const valueEl = this.elements.dinoCount.querySelector('.enemy-value');
+            if (valueEl) valueEl.textContent = dinosaur;
+            this.elements.dinoCount.classList.toggle('has-enemies', dinosaur > 0);
+        }
+
+        // Check for victory condition (all enemies killed)
+        if (this._totalEnemies > 0 && remaining <= 0 && totalActive === 0) {
+            // Victory! All enemies cleared
+            const panel = document.getElementById('status-panel');
+            if (panel) {
+                panel.classList.add('all-cleared');
             }
         }
     },
@@ -185,25 +275,6 @@ const UISystem = {
         const progress = gameTimer / gameDuration;
         if (this.elements.timerFill) {
             this.elements.timerFill.style.width = `${progress * 100}%`;
-        }
-    },
-
-    // ==========================================
-    // COOLDOWN INDICATOR
-    // ==========================================
-
-    /**
-     * Update cooldown indicator
-     * @param {number} elapsed - Time elapsed since last shot
-     * @param {number} cooldown - Total cooldown duration
-     */
-    updateCooldownIndicator(elapsed, cooldown) {
-        const progress = Math.min(elapsed / cooldown, 1);
-        const degrees = progress * 360;
-
-        if (this.elements.cooldownFill) {
-            this.elements.cooldownFill.style.transform = `rotate(${degrees}deg)`;
-            this.elements.cooldownFill.style.borderTopColor = progress >= 1 ? UI.colors.COOLDOWN_READY : UI.colors.COOLDOWN_CHARGING;
         }
     },
 
@@ -302,6 +373,9 @@ const UISystem = {
         if (this.elements.pauseScreen) this.elements.pauseScreen.style.display = 'none';
         if (this.elements.hud) this.elements.hud.style.display = 'none';
         if (this.elements.healthContainer) this.elements.healthContainer.style.display = 'none';
+        if (this.elements.ammoDisplay) this.elements.ammoDisplay.style.display = 'none';
+        this.hideMinimap();
+        this.hideObjective();
     },
 
     /**
@@ -313,6 +387,8 @@ const UISystem = {
         if (this.elements.pauseScreen) this.elements.pauseScreen.style.display = 'none';
         if (this.elements.hud) this.elements.hud.style.display = 'block';
         if (this.elements.healthContainer) this.elements.healthContainer.style.display = 'block';
+        if (this.elements.ammoDisplay) this.elements.ammoDisplay.style.display = 'block';
+        this.showMinimap();
     },
 
     /**
@@ -324,6 +400,8 @@ const UISystem = {
         if (this.elements.pauseScoreValue) this.elements.pauseScoreValue.textContent = score;
         if (this.elements.hud) this.elements.hud.style.display = 'none';
         if (this.elements.healthContainer) this.elements.healthContainer.style.display = 'none';
+        if (this.elements.ammoDisplay) this.elements.ammoDisplay.style.display = 'none';
+        this.hideMinimap();
     },
 
     /**
@@ -333,6 +411,8 @@ const UISystem = {
         if (this.elements.pauseScreen) this.elements.pauseScreen.style.display = 'none';
         if (this.elements.hud) this.elements.hud.style.display = 'block';
         if (this.elements.healthContainer) this.elements.healthContainer.style.display = 'block';
+        if (this.elements.ammoDisplay) this.elements.ammoDisplay.style.display = 'block';
+        this.showMinimap();
     },
 
     /**
@@ -345,6 +425,8 @@ const UISystem = {
         if (this.elements.gameoverScreen) this.elements.gameoverScreen.style.display = 'flex';
         if (this.elements.hud) this.elements.hud.style.display = 'none';
         if (this.elements.healthContainer) this.elements.healthContainer.style.display = 'none';
+        if (this.elements.ammoDisplay) this.elements.ammoDisplay.style.display = 'none';
+        this.hideMinimap();
 
         if (this.elements.finalScoreElement) {
             this.elements.finalScoreElement.textContent = finalScore;
@@ -399,6 +481,18 @@ const UISystem = {
     },
 
     /**
+     * Show boss warning notification
+     * @param {string} text - Warning text (e.g., "DINO BOSS!")
+     */
+    showBossWarning(text) {
+        const warning = document.createElement('div');
+        warning.className = 'boss-warning';
+        warning.textContent = text;
+        document.body.appendChild(warning);
+        setTimeout(() => warning.remove(), 2500);
+    },
+
+    /**
      * Update tension indicator UI
      * @param {number} x - Screen X position (follows crosshair)
      * @param {number} y - Screen Y position
@@ -442,5 +536,185 @@ const UISystem = {
         } else {
             tensionEl.classList.remove('charging', 'medium', 'high', 'max');
         }
+    },
+
+    // ==========================================
+    // OBJECTIVE DISPLAY
+    // ==========================================
+
+    /**
+     * Show the objective text at game start
+     * Automatically fades out after delay
+     */
+    showObjective() {
+        const objectiveEl = document.getElementById('objective-display');
+        if (!objectiveEl) return;
+
+        objectiveEl.classList.add('show');
+        objectiveEl.classList.remove('fade-out');
+
+        // Start fade out after 2 seconds
+        setTimeout(() => {
+            objectiveEl.classList.add('fade-out');
+        }, 2000);
+
+        // Hide completely after fade
+        setTimeout(() => {
+            objectiveEl.classList.remove('show', 'fade-out');
+        }, 3500);
+    },
+
+    /**
+     * Hide objective display immediately
+     */
+    hideObjective() {
+        const objectiveEl = document.getElementById('objective-display');
+        if (objectiveEl) {
+            objectiveEl.classList.remove('show', 'fade-out');
+        }
+    },
+
+    // ==========================================
+    // MINIMAP
+    // ==========================================
+
+    /**
+     * Initialize minimap with room grid
+     * @param {Array} rooms - Array of room data from RoomSystem.getAllRooms()
+     */
+    initMinimap(rooms) {
+        const gridEl = document.getElementById('minimap-grid');
+        if (!gridEl) return;
+
+        // Find grid bounds
+        let minX = Infinity, maxX = -Infinity;
+        let minZ = Infinity, maxZ = -Infinity;
+
+        rooms.forEach(room => {
+            if (room) {
+                minX = Math.min(minX, room.gridX);
+                maxX = Math.max(maxX, room.gridX);
+                minZ = Math.min(minZ, room.gridZ);
+                maxZ = Math.max(maxZ, room.gridZ);
+            }
+        });
+
+        const cols = maxX - minX + 1;
+        const rows = maxZ - minZ + 1;
+
+        // Set grid template
+        gridEl.style.gridTemplateColumns = `repeat(${cols}, 34px)`;
+        gridEl.style.gridTemplateRows = `repeat(${rows}, 34px)`;
+
+        // Clear existing
+        gridEl.innerHTML = '';
+
+        // Create room map for quick lookup
+        const roomMap = new Map();
+        rooms.forEach(room => {
+            if (room) {
+                roomMap.set(`${room.gridX}_${room.gridZ}`, room);
+            }
+        });
+
+        // Create grid cells (top to bottom, left to right)
+        for (let z = minZ; z <= maxZ; z++) {
+            for (let x = minX; x <= maxX; x++) {
+                const room = roomMap.get(`${x}_${z}`);
+                const cell = document.createElement('div');
+                cell.className = 'minimap-room';
+                cell.dataset.gridX = x;
+                cell.dataset.gridZ = z;
+
+                if (room) {
+                    cell.dataset.roomKey = `${x}_${z}`;
+                    if (room.theme === 'ENTRANCE') {
+                        cell.classList.add('entrance');
+                    }
+                } else {
+                    cell.style.visibility = 'hidden';
+                }
+
+                gridEl.appendChild(cell);
+            }
+        }
+    },
+
+    /**
+     * Update minimap with current game state (LIVE data only)
+     * @param {Object} options - Update options
+     * @param {Object} options.currentRoom - Player's current room
+     * @param {Array} options.enemies - Array of active enemy meshes
+     * @param {Object} options.gridSystem - Grid system for room lookup
+     * @param {Object} options.roomConfig - Room config {UNIT}
+     */
+    updateMinimap(options) {
+        const { currentRoom, enemies, gridSystem, roomConfig } = options;
+        const gridEl = document.getElementById('minimap-grid');
+        if (!gridEl) return;
+
+        // Count LIVE enemies per room
+        const roomEnemyCounts = new Map();
+        const roomHasDino = new Map();
+
+        enemies.forEach(enemy => {
+            if (!enemy.userData.active) return;
+
+            const room = gridSystem.getRoomAtWorld(enemy.position.x, enemy.position.z);
+            if (room) {
+                const key = `${room.gridX}_${room.gridZ}`;
+                roomEnemyCounts.set(key, (roomEnemyCounts.get(key) || 0) + 1);
+                if (enemy.userData.type === 'DINOSAUR') {
+                    roomHasDino.set(key, true);
+                }
+            }
+        });
+
+        // Update all room cells
+        const cells = gridEl.querySelectorAll('.minimap-room');
+        cells.forEach(cell => {
+            const roomKey = cell.dataset.roomKey;
+            if (!roomKey) return;
+
+            const gx = parseInt(cell.dataset.gridX);
+            const gz = parseInt(cell.dataset.gridZ);
+            const isCurrent = currentRoom && currentRoom.gridX === gx && currentRoom.gridZ === gz;
+            const enemyCount = roomEnemyCounts.get(roomKey) || 0;
+            const hasDino = roomHasDino.get(roomKey) || false;
+
+            // Reset classes (keep entrance class)
+            cell.classList.remove('current', 'has-enemies', 'has-dino', 'cleared');
+
+            // Current room gets yellow border indicator
+            if (isCurrent) {
+                cell.classList.add('current');
+            }
+
+            // Show enemy count or cleared state
+            if (enemyCount > 0) {
+                cell.classList.add('has-enemies');
+                if (hasDino) cell.classList.add('has-dino');
+                cell.textContent = enemyCount;
+            } else {
+                cell.classList.add('cleared');
+                cell.textContent = '';
+            }
+        });
+    },
+
+    /**
+     * Show status panel (enemy info + minimap)
+     */
+    showMinimap() {
+        const panel = document.getElementById('status-panel');
+        if (panel) panel.style.display = 'flex';
+    },
+
+    /**
+     * Hide status panel
+     */
+    hideMinimap() {
+        const panel = document.getElementById('status-panel');
+        if (panel) panel.style.display = 'none';
     }
 };

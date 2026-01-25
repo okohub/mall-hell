@@ -33,12 +33,21 @@ const VALID_FLAGS = [
     '--quiet', '-q',
     '--failed', '-f',
     '--list', '-l',
+    '--fail-fast', '-x',
     '--only',
     '--test',
     '--group',
     '--domain',
     '--help', '-h'
 ];
+
+// Fail fast if shell redirect passed as argument (common mistake)
+if (args.some(a => a.includes('2>&1') || a.includes('>&'))) {
+    console.error('\n❌ Shell redirect detected in arguments!');
+    console.error('   Do not use: bun run-tests.js 2>&1');
+    console.error('   Just use:   bun run-tests.js');
+    process.exit(1);
+}
 
 // Check for unrecognized flags
 for (let i = 0; i < args.length; i++) {
@@ -53,6 +62,7 @@ for (let i = 0; i < args.length; i++) {
             console.error('  --ui, -i          Run only UI tests');
             console.error('  --quiet, -q       Minimal output');
             console.error('  --failed, -f      Re-run failed tests from last run');
+            console.error('  --fail-fast, -x   Exit immediately on first failure');
             console.error('  --list, -l        List previous test runs');
             console.error('  --test=<name>     Run specific test by name');
             console.error('  --group=<name>    Run specific test group');
@@ -72,6 +82,7 @@ if (args.includes('--help') || args.includes('-h')) {
     console.log('  --ui, -i          Run only UI tests');
     console.log('  --quiet, -q       Minimal output');
     console.log('  --failed, -f      Re-run failed tests from last run');
+    console.log('  --fail-fast, -x   Exit immediately on first failure');
     console.log('  --list, -l        List previous test runs');
     console.log('  --test=<name>     Run specific test by name');
     console.log('  --group=<name>    Run specific test group');
@@ -80,6 +91,7 @@ if (args.includes('--help') || args.includes('-h')) {
     console.log('\nExamples:');
     console.log('  bun run-tests.js --domain=enemy');
     console.log('  bun run-tests.js --failed');
+    console.log('  bun run-tests.js --fail-fast');
     console.log('  bun run-tests.js --test="should spawn skeleton"');
     process.exit(0);
 }
@@ -90,6 +102,7 @@ const UI_ONLY = args.includes('--ui') || args.includes('-i');
 const QUIET = args.includes('--quiet') || args.includes('-q');
 const VERBOSE = !QUIET;
 const RUN_FAILED = args.includes('--failed') || args.includes('-f');
+const FAIL_FAST = args.includes('--fail-fast') || args.includes('-x');
 const LIST_RUNS = args.includes('--list') || args.includes('-l');
 
 // Specific test/group/domain filters
@@ -300,6 +313,12 @@ async function runUnitTests(browser) {
             progress.unit.failed = results.failed;
             progress.unit.total = results.total || progress.unit.total;
 
+            // Fail fast: exit immediately on first failure
+            if (FAIL_FAST && results.failed > 0) {
+                logProgress(`  [Unit] ❌ FAIL FAST: ${results.failed} failure(s) detected, stopping`);
+                break;
+            }
+
             if (results.passed + results.failed >= progress.unit.total && progress.unit.total > 0) {
                 break;
             }
@@ -486,6 +505,12 @@ async function runUITests(browser) {
                 }
             }
 
+            // Fail fast: exit immediately on first failure
+            if (FAIL_FAST && status.failed > 0) {
+                logProgress(`  [UI] ❌ FAIL FAST: ${status.failed} failure(s) detected, stopping`);
+                break;
+            }
+
             if (!status.isRunning && status.completed === status.total && status.total > 0) break;
 
             if (status.completed === lastCompleted) {
@@ -589,6 +614,7 @@ async function runAllTests() {
     if (ONLY_TESTS.length > 0) console.log(`\n🎯 Running only: ${ONLY_TESTS.join(', ')}`);
     if (TEST_GROUPS.length > 0) console.log(`\n📂 Running groups: ${TEST_GROUPS.join(', ')}`);
     if (QUIET) console.log('\n🔇 Quiet mode: compact single-line progress');
+    if (FAIL_FAST) console.log('\n⚡ Fail-fast mode: will exit on first failure');
 
     console.log('\n⚡ Running Unit Tests and UI Tests in parallel...\n');
 

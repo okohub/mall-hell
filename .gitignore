@@ -13,8 +13,9 @@ Thumbs.db
 *.swp
 *.swo
 
-# Claude Code
-.claude/
+# Claude Code (keep docs tracked, ignore rest)
+.claude/*
+!.claude/docs/
 
 # Logs
 *.log

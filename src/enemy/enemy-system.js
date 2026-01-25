@@ -8,6 +8,7 @@ const EnemySystem = {
     // Active enemies
     enemies: [],
 
+
     // Configuration (use Enemy.system defaults if available)
     get maxEnemies() { return (typeof Enemy !== 'undefined' && Enemy.system) ? Enemy.system.MAX_ENEMIES : 10; },
     get spawnChance() { return (typeof Enemy !== 'undefined' && Enemy.system) ? Enemy.system.SPAWN_CHANCE : 0.015; },
@@ -55,6 +56,42 @@ const EnemySystem = {
             }
         });
         this.enemies = [];
+        this._dinoSpawnCount = 0;
+    },
+
+    // Dinosaur spawn config
+    dinoSpawnInterval: 5000,  // Spawn dino every 5000 points
+    _dinoSpawnCount: 0,       // Track how many dinos spawned
+
+    /**
+     * Get enemy type to spawn based on score
+     * Returns 'DINOSAUR' once per 5000 point threshold, otherwise 'SKELETON'
+     * @param {number} currentScore - Current player score
+     * @returns {string} Enemy type ID
+     */
+    getSpawnType(currentScore) {
+        const expectedDinos = Math.floor(currentScore / this.dinoSpawnInterval);
+
+        if (expectedDinos > 0 && this._dinoSpawnCount < expectedDinos) {
+            this._dinoSpawnCount++;
+            return 'DINOSAUR';
+        }
+        return 'SKELETON';
+    },
+
+    /**
+     * Check if a dinosaur should spawn based on score threshold
+     * Returns true once per 5000 point threshold crossed
+     * @param {number} currentScore - Current player score
+     * @returns {boolean} True if dino should spawn
+     */
+    checkDinoSpawn(currentScore) {
+        const expectedDinos = Math.floor(currentScore / this.dinoSpawnInterval);
+        if (expectedDinos > 0 && this._dinoSpawnCount < expectedDinos) {
+            this._dinoSpawnCount++;
+            return true;
+        }
+        return false;
     },
 
     /**
@@ -628,11 +665,18 @@ const EnemySystem = {
                 EnemyVisual.animateEyes(enemy.userData.cart, playerPosition);
             }
 
-            // Animate skeleton walking
-            if (typeof EnemyVisual !== 'undefined' && enemy.userData.skeleton) {
+            // Animate walking (skeleton or dinosaur)
+            if (typeof EnemyVisual !== 'undefined') {
                 const walkSpeed = enemy.userData.config?.walkSpeed || 3.5;
                 enemy.userData.walkTimer = (enemy.userData.walkTimer || 0) + dt * walkSpeed;
-                EnemyVisual.animateSkeletonWalk(enemy.userData.cart, enemy.userData.walkTimer, walkSpeed);
+
+                if (enemy.userData.dinosaur) {
+                    // Dinosaur boss animation
+                    EnemyVisual.animateDinosaurWalk(enemy.userData.cart, enemy.userData.walkTimer, walkSpeed);
+                } else if (enemy.userData.skeleton) {
+                    // Skeleton animation
+                    EnemyVisual.animateSkeletonWalk(enemy.userData.cart, enemy.userData.walkTimer, walkSpeed);
+                }
             }
 
             // Hit flash
@@ -650,11 +694,6 @@ const EnemySystem = {
                         }
                     });
                 }
-            }
-
-            // Remove if too far from player
-            if (distToPlayer > despawnDistance) {
-                enemy.userData.active = false;
             }
 
             // Player collision

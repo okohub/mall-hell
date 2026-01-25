@@ -566,6 +566,63 @@ const RoomSystem = {
         }
     },
 
+    // ==========================================
+    // ROOM UTILITIES (Public API)
+    // ==========================================
+
+    /**
+     * Get room key from room object
+     * @param {Object} room - Room with gridX, gridZ
+     * @returns {string} Room key "gridX_gridZ"
+     */
+    getRoomKey(room) {
+        if (!room) return null;
+        return `${room.gridX}_${room.gridZ}`;
+    },
+
+    /**
+     * Get adjacent rooms (north, south, east, west)
+     * @param {Object} room - Center room
+     * @param {Object} gridSystem - Grid system with getRoomAtWorld
+     * @returns {Array} Array of adjacent room objects (excludes null)
+     */
+    getAdjacentRooms(room, gridSystem) {
+        if (!room || !gridSystem || !this.roomData) return [];
+
+        const ROOM_UNIT = this.roomData.structure.UNIT;
+        const adjacent = [];
+
+        const offsets = [
+            { dx: 0, dz: -1 },  // North
+            { dx: 0, dz: 1 },   // South
+            { dx: -1, dz: 0 },  // West
+            { dx: 1, dz: 0 },   // East
+        ];
+
+        offsets.forEach(({ dx, dz }) => {
+            const adjX = (room.gridX + dx) * ROOM_UNIT + ROOM_UNIT / 2;
+            const adjZ = (room.gridZ + dz) * ROOM_UNIT + ROOM_UNIT / 2;
+            const adjRoom = gridSystem.getRoomAtWorld(adjX, adjZ);
+            if (adjRoom) {
+                adjacent.push(adjRoom);
+            }
+        });
+
+        return adjacent;
+    },
+
+    /**
+     * Get room and its adjacent rooms
+     * @param {Object} room - Center room
+     * @param {Object} gridSystem - Grid system with getRoomAtWorld
+     * @returns {Array} Array including center room + adjacent rooms
+     */
+    getRoomWithAdjacent(room, gridSystem) {
+        if (!room) return [];
+        const adjacent = this.getAdjacentRooms(room, gridSystem);
+        return [room, ...adjacent];
+    },
+
     /**
      * Generate key for room storage
      * @private

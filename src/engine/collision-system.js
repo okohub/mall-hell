@@ -1054,7 +1054,8 @@ const CollisionSystem = {
                         : { hit: true, destroyed: enemy.userData.health <= damage };
 
                     if (result && onSplashHit) {
-                        onSplashHit(enemy, damage, result);
+                        // Pass 4 args to match onEnemyHit signature (enemy, damage, closestPoint, result)
+                        onSplashHit(enemy, damage, impactPos, result);
                     }
                 }
             }
