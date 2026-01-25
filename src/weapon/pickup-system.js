@@ -190,6 +190,8 @@ const PickupSystem = {
                 weaponModule = WeaponManager.weapons[weaponId];
             } else if (weaponId === 'watergun' && typeof WaterGun !== 'undefined') {
                 weaponModule = WaterGun;
+            } else if (weaponId === 'lasergun' && typeof LaserGun !== 'undefined') {
+                weaponModule = LaserGun;
             } else if (weaponId === 'nerfgun' && typeof NerfGun !== 'undefined') {
                 weaponModule = NerfGun;
             } else if (weaponId === 'slingshot' && typeof Slingshot !== 'undefined') {

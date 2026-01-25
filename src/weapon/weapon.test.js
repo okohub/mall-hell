@@ -157,30 +157,31 @@
             WeaponManager.init(null);
             WeaponManager.register(Slingshot);
             WeaponManager.register(WaterGun);
+            WeaponManager.register(LaserGun);
             WeaponManager.register(NerfGun);
         });
 
         test.it('should return fire result from update() for auto-fire weapons', () => {
-            // Setup WaterGun as current weapon
-            WeaponManager.currentWeaponId = 'watergun';
-            WeaponManager.currentWeapon = WaterGun;
-            WaterGun.resetState();
+            // Setup LaserGun as current weapon (auto-fire)
+            WeaponManager.currentWeaponId = 'lasergun';
+            WeaponManager.currentWeapon = LaserGun;
+            LaserGun.resetState();
 
             // Start firing
-            WaterGun.onFireStart(1000);
-            test.assertTrue(WaterGun.state.isFiring, 'WaterGun should be firing');
+            LaserGun.onFireStart(1000);
+            test.assertTrue(LaserGun.state.isFiring, 'LaserGun should be firing');
 
             // update() should return fire result when weapon fires
             const result = WeaponManager.update(0.1, 1000);
             test.assertTrue(result !== null, 'update() should return fire result');
             test.assertTrue(result.speed > 0, 'Fire result should have speed');
-            test.assertEqual(result.projectileType, 'water', 'Should have water projectile type');
+            test.assertEqual(result.projectileType, 'laser', 'Should have laser projectile type');
         });
 
         test.it('should return null from update() when not firing', () => {
-            WeaponManager.currentWeaponId = 'watergun';
-            WeaponManager.currentWeapon = WaterGun;
-            WaterGun.resetState();
+            WeaponManager.currentWeaponId = 'lasergun';
+            WeaponManager.currentWeapon = LaserGun;
+            LaserGun.resetState();
 
             // Don't start firing
             const result = WeaponManager.update(0.1, 1000);
@@ -228,12 +229,12 @@
         });
 
         test.it('should return null from onFireRelease() for auto-fire weapons', () => {
-            WeaponManager.currentWeaponId = 'watergun';
-            WeaponManager.currentWeapon = WaterGun;
-            WaterGun.resetState();
+            WeaponManager.currentWeaponId = 'lasergun';
+            WeaponManager.currentWeapon = LaserGun;
+            LaserGun.resetState();
 
             // Auto-fire weapons don't fire on release
-            WaterGun.onFireStart(1000);
+            LaserGun.onFireStart(1000);
             const result = WeaponManager.onFireRelease(1100);
             test.assertEqual(result, null, 'Auto-fire weapons should return null on release');
         });
@@ -369,45 +370,44 @@
             test.assertEqual(WaterGun.id, 'watergun');
         });
 
-        test.it('should have auto fire mode', () => {
-            test.assertEqual(WaterGun.config.fireMode, 'auto');
+        test.it('should have single fire mode', () => {
+            test.assertEqual(WaterGun.config.fireMode, 'single');
         });
 
         test.it('should have limited ammo', () => {
-            test.assertEqual(WaterGun.config.ammo.max, 60);
+            test.assertEqual(WaterGun.config.ammo.max, 30);
         });
 
         test.it('should have range in config', () => {
-            test.assertEqual(WaterGun.config.range, 80, 'WaterGun range should be 80');
+            test.assertEqual(WaterGun.config.range, 90, 'WaterGun range should be 90');
         });
 
-        test.it('should start firing on fire start', () => {
-            WaterGun.onFireStart(1000);
-            test.assertTrue(WaterGun.state.isFiring);
+        test.it('should have splash damage config', () => {
+            test.assertTrue(WaterGun.config.projectile.splashRadius > 0);
+            test.assertTrue(WaterGun.config.projectile.splashDamage > 0);
         });
 
-        test.it('should stop firing on fire release', () => {
-            WaterGun.onFireStart(1000);
-            WaterGun.onFireRelease(1100);
-            test.assertFalse(WaterGun.state.isFiring);
+        test.it('should fire on fire start (single shot)', () => {
+            const result = WaterGun.onFireStart(1000);
+            test.assertTrue(result !== null, 'Should return fire result');
+            test.assertTrue(WaterGun.state.ammo < 30);
         });
 
         test.it('should consume ammo when firing', () => {
-            WaterGun.onFireStart(1000);
             WaterGun.fire(1000);
-            test.assertTrue(WaterGun.state.ammo < 60);
+            test.assertTrue(WaterGun.state.ammo < 30);
         });
 
         test.it('should add ammo', () => {
-            WaterGun.state.ammo = 50;
-            WaterGun.addAmmo(25);
-            test.assertEqual(WaterGun.state.ammo, 75);
+            WaterGun.state.ammo = 15;
+            WaterGun.addAmmo(10);
+            test.assertEqual(WaterGun.state.ammo, 25);
         });
 
         test.it('should cap ammo at max', () => {
-            WaterGun.state.ammo = 90;
-            WaterGun.addAmmo(50);
-            test.assertEqual(WaterGun.state.ammo, 60);
+            WaterGun.state.ammo = 25;
+            WaterGun.addAmmo(20);
+            test.assertEqual(WaterGun.state.ammo, 30);
         });
 
         test.it('should have createFPSMesh method', () => {
@@ -416,6 +416,76 @@
 
         test.it('should have createPickupMesh method', () => {
             test.assertTrue(typeof WaterGun.createPickupMesh === 'function');
+        });
+    });
+
+    // ==========================================
+    // LASER GUN MODULE TESTS
+    // ==========================================
+
+    test.describe('LaserGun Module', () => {
+        test.beforeEach(() => {
+            LaserGun.resetState();
+        });
+
+        test.it('should have correct id', () => {
+            test.assertEqual(LaserGun.id, 'lasergun');
+        });
+
+        test.it('should have auto fire mode', () => {
+            test.assertEqual(LaserGun.config.fireMode, 'auto');
+        });
+
+        test.it('should have limited ammo', () => {
+            test.assertEqual(LaserGun.config.ammo.max, 60);
+        });
+
+        test.it('should have range in config', () => {
+            test.assertEqual(LaserGun.config.range, 100, 'LaserGun range should be 100');
+        });
+
+        test.it('should start firing on fire start', () => {
+            LaserGun.onFireStart(1000);
+            test.assertTrue(LaserGun.state.isFiring);
+        });
+
+        test.it('should stop firing on fire release', () => {
+            LaserGun.onFireStart(1000);
+            LaserGun.onFireRelease(1100);
+            test.assertFalse(LaserGun.state.isFiring);
+        });
+
+        test.it('should return fire result during update when firing', () => {
+            LaserGun.onFireStart(1000);
+            const result = LaserGun.update(0.1, 1000);
+            test.assertTrue(result !== null, 'Should return fire result');
+            test.assertEqual(result.projectileType, 'laser');
+        });
+
+        test.it('should consume ammo when firing', () => {
+            LaserGun.onFireStart(1000);
+            LaserGun.fire(1000);
+            test.assertTrue(LaserGun.state.ammo < 60);
+        });
+
+        test.it('should add ammo', () => {
+            LaserGun.state.ammo = 30;
+            LaserGun.addAmmo(20);
+            test.assertEqual(LaserGun.state.ammo, 50);
+        });
+
+        test.it('should cap ammo at max', () => {
+            LaserGun.state.ammo = 50;
+            LaserGun.addAmmo(30);
+            test.assertEqual(LaserGun.state.ammo, 60);
+        });
+
+        test.it('should have createFPSMesh method', () => {
+            test.assertTrue(typeof LaserGun.createFPSMesh === 'function');
+        });
+
+        test.it('should have createPickupMesh method', () => {
+            test.assertTrue(typeof LaserGun.createPickupMesh === 'function');
         });
     });
 
@@ -489,6 +559,11 @@
         test.it('should have NERFGUN pickup defined', () => {
             test.assertTrue(WeaponPickup.types.NERFGUN !== undefined);
             test.assertEqual(WeaponPickup.types.NERFGUN.weaponId, 'nerfgun');
+        });
+
+        test.it('should have LASERGUN pickup defined', () => {
+            test.assertTrue(WeaponPickup.types.LASERGUN !== undefined);
+            test.assertEqual(WeaponPickup.types.LASERGUN.weaponId, 'lasergun');
         });
 
         test.it('should get pickup by id', () => {

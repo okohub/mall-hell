@@ -120,8 +120,9 @@ mall-hell/
 
 ## Version History
 
+- **v4.3** - Weapon redesign: Laser Blaster (rapid-fire energy), Water Blaster (arcing splash damage), balanced weapon roles
 - **v4.2.1** - Analytics integration: provider-agnostic tracking system with detailed game events
-- **v4.2** - Multi-weapon system: WaterGun (auto-fire) and NerfGun (single-shot) now work properly, weapon/ammo pickups, continuous enemy spawning, projectile wall collision
+- **v4.2** - Multi-weapon system, weapon/ammo pickups, continuous enemy spawning, projectile wall collision
 - **v4.1** - Fixed crosshair aiming (removed auto-aim), simplified controls, improved shooting experience
 - **v4.0** - Smart enemy AI (home-return behavior), config-driven architecture, improved collision system
 - **v3.3** - Skeleton enemy with creepy backwards-facing joker skull, fixed movement AI

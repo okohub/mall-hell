@@ -25,18 +25,33 @@ const WeaponPickup = {
             }
         },
 
+        LASERGUN: {
+            id: 'lasergun',
+            weaponId: 'lasergun',
+            name: 'Laser Blaster',
+            isWeapon: true,
+            spawnChance: 0.35,
+            spawnWeight: 4,
+            ammoGrant: 30,          // Energy ammo on same-weapon pickup
+            visual: {
+                color: 0xe74c3c,    // Red
+                glowColor: 0xff6b6b,
+                scale: 2.5
+            }
+        },
+
         NERFGUN: {
             id: 'nerfgun',
             weaponId: 'nerfgun',
             name: 'Nerf Blaster',
-            isWeapon: true,         // This is a weapon pickup
-            spawnChance: 0.35,      // 35% of rooms
-            spawnWeight: 4,         // Higher weight for weapons
+            isWeapon: true,
+            spawnChance: 0.3,
+            spawnWeight: 3,
             ammoGrant: 6,           // Ammo given on same-weapon pickup
             visual: {
-                color: 0xe74c3c,
-                glowColor: 0xf39c12,
-                scale: 2.5           // Larger for visibility
+                color: 0xf39c12,    // Orange (different from laser)
+                glowColor: 0xe67e22,
+                scale: 2.5
             }
         },
 

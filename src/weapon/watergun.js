@@ -1,7 +1,7 @@
 // ============================================
 // WATER GUN - Self-Contained Weapon Module
 // ============================================
-// Auto-fire water gun: hold to spray water droplets
+// Pump-action water blaster: fires arcing water balloons with splash damage
 // Implements the weapon interface for WeaponManager
 
 const WaterGun = {
@@ -10,46 +10,50 @@ const WaterGun = {
     // ==========================================
 
     id: 'watergun',
-    name: 'Water Gun',
+    name: 'Water Blaster',
 
     // ==========================================
     // CONFIGURATION
     // ==========================================
 
     config: {
-        fireMode: 'auto',    // Hold to continuously fire
-        cooldown: 50,        // 20 shots per second
-        range: 80,           // Shorter range for water gun (enemies spawn at 150)
+        fireMode: 'single',   // Tap to fire water balloons
+        cooldown: 350,        // Moderate fire rate
+        range: 90,            // Medium range
         aimAssist: true,
 
         ammo: {
-            max: 60,
-            current: 60,
+            max: 30,
+            current: 30,
             consumePerShot: 1
         },
 
         projectile: {
             type: 'water',
-            speed: { min: 80, max: 80 },  // Constant speed
-            damage: 0.5,                  // Less damage per hit
+            speed: { min: 45, max: 45 },   // Slower - arcs more
+            damage: 1.0,                    // Direct hit damage
             count: 1,
-            spread: 0.1                   // Slight random spread
+            gravity: 18,                    // Strong arc
+            splashRadius: 5,                // Splash damage radius
+            splashDamage: 0.5               // Splash damage to nearby
         },
 
         charge: null  // No charge mechanic
     },
 
     // ==========================================
-    // THEME (Colors)
+    // THEME (Colors - Bright Toy Water Gun)
     // ==========================================
 
     theme: {
-        body: 0x3498db,       // Blue body
+        body: 0x3498db,           // Bright blue
         bodyLight: 0x5dade2,
-        tank: 0x85c1e9,       // Transparent tank
-        tankWater: 0x2980b9,
-        trigger: 0x2c3e50,
-        nozzle: 0x7f8c8d
+        tank: 0x85c1e9,           // Translucent tank
+        tankWater: 0x2980b9,      // Water inside
+        pump: 0xf39c12,           // Orange pump
+        pumpAccent: 0xe67e22,
+        nozzle: 0x7f8c8d,
+        trigger: 0x2c3e50
     },
 
     // ==========================================
@@ -57,12 +61,11 @@ const WaterGun = {
     // ==========================================
 
     state: {
-        isCharging: false,  // Used as "isFiring" for auto weapons
+        isCharging: false,
         chargeAmount: 0,
         lastFireTime: 0,
-        ammo: 60,
+        ammo: 30,
         fireAnimProgress: 0,
-        isFiring: false,
         pumpAnim: 0
     },
 
@@ -75,18 +78,15 @@ const WaterGun = {
     },
 
     onUnequip() {
-        this.state.isFiring = false;
-        this.state.isCharging = false;
+        this.resetState();
     },
 
     resetState() {
         this.state.isCharging = false;
-        this.state.isFiring = false;
         this.state.chargeAmount = 0;
         this.state.lastFireTime = 0;
         this.state.fireAnimProgress = 0;
         this.state.pumpAnim = 0;
-        // Restore ammo to max on equip
         this.state.ammo = this.config.ammo.max;
     },
 
@@ -95,89 +95,55 @@ const WaterGun = {
     // ==========================================
 
     /**
-     * Called when fire button is pressed - start spraying
+     * Fire on button press (single shot)
      */
     onFireStart(time) {
-        if (this.state.ammo <= 0) return;
-        this.state.isFiring = true;
-        this.state.isCharging = true; // For UI compatibility
+        if (this.state.ammo <= 0) return null;
+        if (!this.canFire(time)) return null;
+        return this.fire(time);
     },
 
     /**
-     * Called when fire button is released - stop spraying
-     * @returns {null} Auto weapons fire during update, not on release
+     * Nothing on release
      */
     onFireRelease(time) {
-        this.state.isFiring = false;
-        this.state.isCharging = false;
-        return null; // Auto weapons don't fire on release
-    },
-
-    /**
-     * Update weapon state each frame
-     * @returns {Object|null} Fire result if firing this frame
-     */
-    update(dt, time) {
-        // Auto-fire while holding
-        if (this.state.isFiring && this.state.ammo > 0) {
-            if (this.canFire(time)) {
-                return this.fire(time);
-            }
-        }
-
-        // Update pump animation
-        if (this.state.pumpAnim > 0) {
-            this.state.pumpAnim -= dt * 10;
-            if (this.state.pumpAnim < 0) this.state.pumpAnim = 0;
-        }
-
         return null;
     },
 
     /**
-     * Cancel current action
+     * Update - just animations
      */
+    update(dt, time) {
+        // Update pump animation
+        if (this.state.pumpAnim > 0) {
+            this.state.pumpAnim -= dt * 4;
+            if (this.state.pumpAnim < 0) this.state.pumpAnim = 0;
+        }
+        return null;
+    },
+
     cancelAction() {
-        this.state.isFiring = false;
-        this.state.isCharging = false;
+        // Nothing to cancel for single-shot
     },
 
     // ==========================================
     // FIRING
     // ==========================================
 
-    /**
-     * Check if weapon can fire
-     */
     canFire(time) {
         if (this.state.ammo <= 0) return false;
         return (time - this.state.lastFireTime) >= this.config.cooldown;
     },
 
-    /**
-     * Fire the weapon
-     * @returns {Object|null} Fire result
-     */
     fire(time) {
         if (!this.canFire(time)) return null;
 
-        // Consume ammo
         this.state.ammo -= this.config.ammo.consumePerShot;
         if (this.state.ammo < 0) this.state.ammo = 0;
 
-        // Update state
         this.state.lastFireTime = time;
         this.state.pumpAnim = 1.0;
-
-        // Stop firing if out of ammo
-        if (this.state.ammo <= 0) {
-            this.state.isFiring = false;
-            this.state.isCharging = false;
-        }
-
-        // Calculate spread
-        const spreadX = (Math.random() - 0.5) * this.config.projectile.spread;
-        const spreadY = (Math.random() - 0.5) * this.config.projectile.spread;
+        this.state.fireAnimProgress = 1.0;
 
         return {
             speed: this.config.projectile.speed.max,
@@ -185,13 +151,12 @@ const WaterGun = {
             damage: this.config.projectile.damage,
             projectileType: this.config.projectile.type,
             count: this.config.projectile.count,
-            spread: { x: spreadX, y: spreadY }
+            gravity: this.config.projectile.gravity,
+            splashRadius: this.config.projectile.splashRadius,
+            splashDamage: this.config.projectile.splashDamage
         };
     },
 
-    /**
-     * Add ammo
-     */
     addAmmo(amount) {
         this.state.ammo = Math.min(this.state.ammo + amount, this.config.ammo.max);
     },
@@ -201,7 +166,6 @@ const WaterGun = {
     // ==========================================
 
     getTension() {
-        // Water gun shows ammo percentage as "tension" for UI
         return this.state.ammo / this.config.ammo.max;
     },
 
@@ -220,30 +184,31 @@ const WaterGun = {
     // MESH CREATION
     // ==========================================
 
-    /**
-     * Create FPS weapon mesh
-     */
     createFPSMesh(THREE, materials) {
         const fpsWeapon = new THREE.Group();
         const fpsHands = new THREE.Group();
 
         // Materials
         const skinMat = materials?.skin || new THREE.MeshStandardMaterial({
-            color: 0xffd4c4,
-            roughness: 0.4,
-            metalness: 0.0
+            color: 0xffd4c4, roughness: 0.4, metalness: 0.0
         });
 
         const bodyMat = new THREE.MeshStandardMaterial({
             color: this.theme.body,
-            roughness: 0.4,
+            roughness: 0.5,
+            metalness: 0.1
+        });
+
+        const bodyLightMat = new THREE.MeshStandardMaterial({
+            color: this.theme.bodyLight,
+            roughness: 0.5,
             metalness: 0.1
         });
 
         const tankMat = new THREE.MeshStandardMaterial({
             color: this.theme.tank,
             transparent: true,
-            opacity: 0.6,
+            opacity: 0.5,
             roughness: 0.2,
             metalness: 0.0
         });
@@ -251,113 +216,137 @@ const WaterGun = {
         const waterMat = new THREE.MeshStandardMaterial({
             color: this.theme.tankWater,
             transparent: true,
-            opacity: 0.8,
+            opacity: 0.75,
             roughness: 0.1,
             metalness: 0.0
         });
 
+        const pumpMat = new THREE.MeshStandardMaterial({
+            color: this.theme.pump,
+            roughness: 0.6,
+            metalness: 0.1
+        });
+
         const nozzleMat = new THREE.MeshStandardMaterial({
             color: this.theme.nozzle,
-            roughness: 0.6,
+            roughness: 0.4,
             metalness: 0.3
         });
 
         const sleeveMat = new THREE.MeshStandardMaterial({
-            color: 0x2980b9,
-            roughness: 0.9,
-            metalness: 0.0
+            color: 0x2980b9, roughness: 0.9, metalness: 0.0
         });
 
         // === WATER GUN BODY ===
         const waterGun = new THREE.Group();
 
-        // Main body
-        const bodyGeo = new THREE.BoxGeometry(0.08, 0.12, 0.25);
+        // Main body - chunky toy shape
+        const bodyGeo = new THREE.BoxGeometry(0.1, 0.14, 0.3);
         const body = new THREE.Mesh(bodyGeo, bodyMat);
         body.position.set(0, 0, 0);
         waterGun.add(body);
 
+        // Top ridge
+        const ridgeGeo = new THREE.BoxGeometry(0.08, 0.03, 0.22);
+        const ridge = new THREE.Mesh(ridgeGeo, bodyLightMat);
+        ridge.position.set(0, 0.08, -0.02);
+        waterGun.add(ridge);
+
         // Handle/grip
-        const handleGeo = new THREE.BoxGeometry(0.06, 0.15, 0.08);
+        const handleGeo = new THREE.BoxGeometry(0.07, 0.16, 0.08);
         const handle = new THREE.Mesh(handleGeo, bodyMat);
-        handle.position.set(0, -0.1, 0.05);
+        handle.position.set(0, -0.1, 0.06);
         handle.rotation.x = 0.3;
         waterGun.add(handle);
 
-        // Water tank (on top)
-        const tankGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.12, 16);
+        // Water tank (large, on top)
+        const tankGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.14, 16);
         const tank = new THREE.Mesh(tankGeo, tankMat);
-        tank.position.set(0, 0.1, -0.02);
+        tank.position.set(0, 0.14, 0);
         waterGun.add(tank);
+        waterGun.userData.tank = tank;
 
-        // Water inside tank (animated based on ammo)
-        const waterGeo = new THREE.CylinderGeometry(0.045, 0.045, 0.1, 16);
+        // Water inside tank
+        const waterGeo = new THREE.CylinderGeometry(0.065, 0.065, 0.12, 16);
         const water = new THREE.Mesh(waterGeo, waterMat);
-        water.position.set(0, 0.1, -0.02);
+        water.position.set(0, 0.14, 0);
         waterGun.add(water);
         waterGun.userData.water = water;
 
-        // Nozzle
-        const nozzleGeo = new THREE.CylinderGeometry(0.02, 0.025, 0.1, 12);
+        // Tank cap
+        const capGeo = new THREE.CylinderGeometry(0.04, 0.05, 0.03, 12);
+        const cap = new THREE.Mesh(capGeo, pumpMat);
+        cap.position.set(0, 0.22, 0);
+        waterGun.add(cap);
+
+        // Pump handle (front)
+        const pumpGeo = new THREE.BoxGeometry(0.05, 0.06, 0.12);
+        const pump = new THREE.Mesh(pumpGeo, pumpMat);
+        pump.position.set(0, -0.02, -0.2);
+        waterGun.add(pump);
+        waterGun.userData.pump = pump;
+
+        // Pump rod
+        const rodGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.08, 8);
+        const rod = new THREE.Mesh(rodGeo, nozzleMat);
+        rod.position.set(0, 0, -0.14);
+        rod.rotation.x = Math.PI / 2;
+        waterGun.add(rod);
+
+        // Nozzle - wide opening for "balloons"
+        const nozzleGeo = new THREE.CylinderGeometry(0.025, 0.035, 0.08, 12);
         const nozzle = new THREE.Mesh(nozzleGeo, nozzleMat);
-        nozzle.position.set(0, 0.02, -0.17);
+        nozzle.position.set(0, 0.02, -0.19);
         nozzle.rotation.x = Math.PI / 2;
         waterGun.add(nozzle);
 
-        // Nozzle tip
-        const tipGeo = new THREE.CylinderGeometry(0.015, 0.02, 0.03, 8);
-        const tip = new THREE.Mesh(tipGeo, nozzleMat);
-        tip.position.set(0, 0.02, -0.22);
+        // Nozzle tip (wider for balloon)
+        const tipGeo = new THREE.CylinderGeometry(0.03, 0.025, 0.04, 12);
+        const tip = new THREE.Mesh(tipGeo, bodyLightMat);
+        tip.position.set(0, 0.02, -0.24);
         tip.rotation.x = Math.PI / 2;
         waterGun.add(tip);
 
         // Trigger
-        const triggerMat = new THREE.MeshStandardMaterial({
-            color: this.theme.trigger,
-            roughness: 0.8
-        });
-        const triggerGeo = new THREE.BoxGeometry(0.02, 0.06, 0.02);
-        const trigger = new THREE.Mesh(triggerGeo, triggerMat);
-        trigger.position.set(0, -0.04, 0.04);
+        const triggerGeo = new THREE.BoxGeometry(0.025, 0.06, 0.02);
+        const trigger = new THREE.Mesh(triggerGeo, this.theme.trigger);
+        trigger.position.set(0, -0.05, 0.04);
         trigger.rotation.x = 0.3;
         waterGun.add(trigger);
         waterGun.userData.trigger = trigger;
 
         // Position water gun
-        waterGun.position.set(0.1, -0.08, -0.35);
-        waterGun.rotation.set(0.1, -0.1, 0);
+        waterGun.position.set(0.1, -0.06, -0.35);
+        waterGun.rotation.set(0.08, -0.1, 0);
 
-        // === SIMPLIFIED HANDS ===
-        // Right hand holding grip
+        // === HANDS ===
         const rightHandGeo = new THREE.BoxGeometry(0.08, 0.1, 0.04);
         const rightHand = new THREE.Mesh(rightHandGeo, skinMat);
-        rightHand.position.set(0.1, -0.18, -0.3);
+        rightHand.position.set(0.1, -0.16, -0.28);
         rightHand.rotation.set(0.3, -0.1, 0);
         fpsHands.add(rightHand);
 
-        // Right arm
         const rightArm = new THREE.Mesh(
             new THREE.CylinderGeometry(0.04, 0.05, 0.35, 8),
             sleeveMat
         );
-        rightArm.position.set(0.15, -0.35, -0.2);
+        rightArm.position.set(0.15, -0.34, -0.2);
         rightArm.rotation.set(-0.7, 0.2, 0.3);
         fpsHands.add(rightArm);
 
-        // Left hand supporting
+        // Left hand on pump
         const leftHandGeo = new THREE.BoxGeometry(0.08, 0.08, 0.04);
         const leftHand = new THREE.Mesh(leftHandGeo, skinMat);
-        leftHand.position.set(0.02, -0.1, -0.4);
+        leftHand.position.set(0.02, -0.08, -0.48);
         leftHand.rotation.set(0.2, 0.3, -0.1);
         fpsHands.add(leftHand);
         fpsHands.userData.leftHand = leftHand;
 
-        // Left arm
         const leftArm = new THREE.Mesh(
             new THREE.CylinderGeometry(0.04, 0.05, 0.35, 8),
             sleeveMat
         );
-        leftArm.position.set(-0.08, -0.3, -0.25);
+        leftArm.position.set(-0.08, -0.28, -0.32);
         leftArm.rotation.set(-0.5, -0.3, -0.2);
         fpsHands.add(leftArm);
 
@@ -365,7 +354,7 @@ const WaterGun = {
         fpsHands.userData.waterGun = waterGun;
 
         fpsWeapon.add(fpsHands);
-        fpsWeapon.position.set(0.12, -0.1, -0.4);
+        fpsWeapon.position.set(0.12, -0.08, -0.4);
         fpsWeapon.rotation.set(0.05, -0.1, 0);
 
         return {
@@ -373,57 +362,67 @@ const WaterGun = {
             hands: fpsHands,
             waterGun: waterGun,
             water: water,
+            pump: pump,
             trigger: trigger,
             leftHand: leftHand
         };
     },
 
-    /**
-     * Create pickup mesh
-     */
     createPickupMesh(THREE) {
         const pickup = new THREE.Group();
 
         const bodyMat = new THREE.MeshStandardMaterial({
             color: this.theme.body,
-            roughness: 0.4,
+            roughness: 0.5,
             metalness: 0.1,
             emissive: this.theme.body,
             emissiveIntensity: 0.2
         });
 
-        // Simplified water gun
-        const bodyGeo = new THREE.BoxGeometry(0.2, 0.3, 0.6);
+        const tankMat = new THREE.MeshStandardMaterial({
+            color: this.theme.tank,
+            transparent: true,
+            opacity: 0.6
+        });
+
+        const pumpMat = new THREE.MeshStandardMaterial({
+            color: this.theme.pump,
+            emissive: this.theme.pump,
+            emissiveIntensity: 0.2
+        });
+
+        // Body
+        const bodyGeo = new THREE.BoxGeometry(0.25, 0.35, 0.65);
         const body = new THREE.Mesh(bodyGeo, bodyMat);
         pickup.add(body);
 
         // Tank
-        const tankMat = new THREE.MeshStandardMaterial({
-            color: this.theme.tank,
-            transparent: true,
-            opacity: 0.7
-        });
-        const tankGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.25, 12);
+        const tankGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.3, 12);
         const tank = new THREE.Mesh(tankGeo, tankMat);
-        tank.position.set(0, 0.25, -0.05);
+        tank.position.set(0, 0.3, 0);
         pickup.add(tank);
 
+        // Pump
+        const pumpGeo = new THREE.BoxGeometry(0.12, 0.15, 0.25);
+        const pump = new THREE.Mesh(pumpGeo, pumpMat);
+        pump.position.set(0, -0.05, -0.42);
+        pickup.add(pump);
+
         // Nozzle
-        const nozzleGeo = new THREE.CylinderGeometry(0.05, 0.06, 0.25, 8);
+        const nozzleGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.2, 8);
         const nozzle = new THREE.Mesh(nozzleGeo, bodyMat);
-        nozzle.position.set(0, 0.05, -0.4);
+        nozzle.position.set(0, 0.05, -0.42);
         nozzle.rotation.x = Math.PI / 2;
         pickup.add(nozzle);
 
         // Glow
-        const glowGeo = new THREE.SphereGeometry(0.6, 16, 16);
+        const glowGeo = new THREE.SphereGeometry(0.55, 16, 16);
         const glowMat = new THREE.MeshBasicMaterial({
             color: 0x3498db,
             transparent: true,
             opacity: 0.25
         });
-        const glow = new THREE.Mesh(glowGeo, glowMat);
-        pickup.add(glow);
+        pickup.add(new THREE.Mesh(glowGeo, glowMat));
 
         return pickup;
     },
@@ -432,39 +431,56 @@ const WaterGun = {
     // ANIMATION
     // ==========================================
 
-    /**
-     * Animate FPS weapon
-     */
     animateFPS(refs, dt) {
         if (!refs) return;
 
-        const { water, trigger, waterGun } = refs;
+        const { water, pump, trigger, leftHand, waterGun } = refs;
 
         // Animate water level based on ammo
         if (water) {
             const ammoPercent = this.state.ammo / this.config.ammo.max;
             water.scale.y = Math.max(0.1, ammoPercent);
-            water.position.y = 0.1 - (1 - ammoPercent) * 0.05;
+            water.position.y = 0.14 - (1 - ammoPercent) * 0.06;
         }
 
-        // Animate trigger while firing
+        // Pump animation (pull back on fire)
+        if (pump && this.state.pumpAnim > 0) {
+            const pumpOffset = this.state.pumpAnim * 0.08;
+            pump.position.z = -0.2 + pumpOffset;
+        }
+
+        // Left hand follows pump
+        if (leftHand && this.state.pumpAnim > 0) {
+            const handOffset = this.state.pumpAnim * 0.08;
+            leftHand.position.z = -0.48 + handOffset;
+        }
+
+        // Trigger press on fire
         if (trigger) {
-            if (this.state.isFiring) {
-                trigger.rotation.x = 0.3 + 0.2;  // Pressed
+            if (this.state.fireAnimProgress > 0.5) {
+                trigger.rotation.x = 0.5;
             } else {
-                trigger.rotation.x = 0.3;  // Released
+                trigger.rotation.x = 0.3;
             }
         }
 
-        // Subtle recoil while firing
+        // Fire animation decay
+        if (this.state.fireAnimProgress > 0) {
+            this.state.fireAnimProgress -= dt * 5;
+            if (this.state.fireAnimProgress < 0) this.state.fireAnimProgress = 0;
+        }
+
+        // Slight recoil
         if (waterGun && this.state.pumpAnim > 0) {
-            const recoil = this.state.pumpAnim * 0.01;
-            waterGun.position.z = -0.35 + recoil;
+            waterGun.rotation.x = 0.08 + this.state.pumpAnim * 0.05;
+        } else if (waterGun) {
+            waterGun.rotation.x = 0.08;
         }
     },
 
     triggerFireAnim() {
         this.state.pumpAnim = 1.0;
+        this.state.fireAnimProgress = 1.0;
     },
 
     isFireAnimPlaying() {

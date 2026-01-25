@@ -55,16 +55,33 @@ const Projectile = {
         water: {
             id: 'water',
             geometry: 'sphere',
-            size: 0.35,           // Larger water droplet for visibility
-            color: 0x3498db,      // Blue water droplet
+            size: 0.5,            // Larger water balloon
+            color: 0x3498db,      // Blue
             glow: true,
             glowColor: 0x5dade2,
-            emissiveIntensity: { min: 0.6, max: 1.0 },  // Brighter glow
-            gravity: 1.5,         // Slightly less gravity for longer arc
-            lifetime: 2500,       // Longer lifetime
+            emissiveIntensity: { min: 0.5, max: 0.8 },
+            gravity: 18,          // Strong arc - water balloon physics
+            lifetime: 3000,
             piercing: false,
-            trail: true,          // Leave water trail
-            trailColor: 0x85c1e9
+            splash: true,         // Has splash damage
+            splashRadius: 5,
+            splashDamage: 0.5
+        },
+
+        laser: {
+            id: 'laser',
+            geometry: 'cylinder',  // Elongated bolt shape
+            size: 0.12,
+            length: 0.6,          // Long energy bolt
+            color: 0xe74c3c,      // Red
+            glow: true,
+            glowColor: 0xff6b6b,
+            emissiveIntensity: { min: 0.8, max: 1.2 },  // Bright glow
+            gravity: 0,           // No drop - straight line
+            lifetime: 2000,
+            piercing: false,
+            trail: true,
+            trailColor: 0xff6b6b
         },
 
         dart: {
