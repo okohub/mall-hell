@@ -55,12 +55,12 @@ const Projectile = {
         water: {
             id: 'water',
             geometry: 'sphere',
-            size: 0.1,
+            size: 0.15,           // Visible water droplet
             color: 0x3498db,      // Blue water droplet
             glow: true,
             glowColor: 0x5dade2,
-            emissiveIntensity: { min: 0.3, max: 0.7 },
-            gravity: 0.5,         // Slight arc for water
+            emissiveIntensity: { min: 0.4, max: 0.8 },
+            gravity: 2,           // Noticeable arc for water spray
             lifetime: 2000,       // Shorter lifetime
             piercing: false,
             trail: true,          // Leave water trail
@@ -70,15 +70,16 @@ const Projectile = {
         dart: {
             id: 'dart',
             geometry: 'cylinder',  // Elongated dart shape
-            size: 0.15,
-            length: 0.4,          // Longer than wide
-            color: 0xe74c3c,      // Orange/red foam dart
-            glow: false,
-            emissiveIntensity: { min: 0, max: 0.1 },
-            gravity: 0.2,         // Slight drop
+            size: 0.18,            // Visible foam dart
+            length: 0.5,           // Longer than wide
+            color: 0xe67e22,       // Orange foam dart
+            glow: true,            // Add subtle glow for visibility
+            glowColor: 0xf39c12,
+            emissiveIntensity: { min: 0.2, max: 0.4 },
+            gravity: 1,            // Noticeable drop
             lifetime: 4000,
             piercing: false,
-            spin: true            // Dart spins in flight
+            spin: true             // Dart spins in flight
         }
     },
 

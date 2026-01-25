@@ -22,10 +22,47 @@
             test.assertTrue(stone.glow);
         });
 
+        test.it('should have water type defined', () => {
+            test.assertTrue(Projectile.types.water !== undefined);
+        });
+
+        test.it('should have correct water properties', () => {
+            const water = Projectile.types.water;
+            test.assertEqual(water.id, 'water');
+            test.assertEqual(water.geometry, 'sphere');
+            test.assertEqual(water.color, 0x3498db);
+            test.assertTrue(water.glow);
+            test.assertTrue(water.gravity > 0);  // Water has gravity for arc
+        });
+
+        test.it('should have dart type defined', () => {
+            test.assertTrue(Projectile.types.dart !== undefined);
+        });
+
+        test.it('should have correct dart properties', () => {
+            const dart = Projectile.types.dart;
+            test.assertEqual(dart.id, 'dart');
+            test.assertEqual(dart.geometry, 'cylinder');
+            test.assertTrue(dart.length > 0);  // Darts have length for elongated shape
+            test.assertTrue(dart.gravity > 0);  // Darts have gravity for drop
+        });
+
         test.it('should get projectile by id', () => {
             const proj = Projectile.get('stone');
             test.assertTrue(proj !== null);
             test.assertEqual(proj.id, 'stone');
+        });
+
+        test.it('should get water projectile by id', () => {
+            const proj = Projectile.get('water');
+            test.assertTrue(proj !== null);
+            test.assertEqual(proj.id, 'water');
+        });
+
+        test.it('should get dart projectile by id', () => {
+            const proj = Projectile.get('dart');
+            test.assertTrue(proj !== null);
+            test.assertEqual(proj.id, 'dart');
         });
 
         test.it('should return stone for unknown type', () => {
@@ -175,6 +212,68 @@
             );
             ProjectileSystem.onHit(p, {});
             test.assertEqual(ProjectileSystem.getCount(), 0);
+        });
+    });
+
+    // ==========================================
+    // PROJECTILE SYSTEM MESH CREATION TESTS
+    // ==========================================
+
+    test.describe('Projectile System - Mesh Creation', () => {
+        test.it('should create stone projectile mesh with correct userData', () => {
+            if (typeof THREE === 'undefined') {
+                test.skip('THREE.js not available');
+                return;
+            }
+            const dir = new THREE.Vector3(0, 0, -1);
+            const pos = new THREE.Vector3(0, 1, 0);
+            const mesh = ProjectileSystem.createMesh(THREE, dir, pos, 100, {
+                projectileType: 'stone'
+            });
+            test.assertTrue(mesh instanceof THREE.Group);
+            test.assertEqual(mesh.userData.projectileType, 'stone');
+            test.assertEqual(mesh.userData.gravity, 0);  // Stone has no gravity
+        });
+
+        test.it('should create water projectile mesh with gravity', () => {
+            if (typeof THREE === 'undefined') {
+                test.skip('THREE.js not available');
+                return;
+            }
+            const dir = new THREE.Vector3(0, 0, -1);
+            const pos = new THREE.Vector3(0, 1, 0);
+            const mesh = ProjectileSystem.createMesh(THREE, dir, pos, 80, {
+                projectileType: 'water'
+            });
+            test.assertTrue(mesh instanceof THREE.Group);
+            test.assertEqual(mesh.userData.projectileType, 'water');
+            test.assertTrue(mesh.userData.gravity > 0);  // Water has gravity
+        });
+
+        test.it('should create dart projectile mesh with gravity', () => {
+            if (typeof THREE === 'undefined') {
+                test.skip('THREE.js not available');
+                return;
+            }
+            const dir = new THREE.Vector3(0, 0, -1);
+            const pos = new THREE.Vector3(0, 1, 0);
+            const mesh = ProjectileSystem.createMesh(THREE, dir, pos, 100, {
+                projectileType: 'dart'
+            });
+            test.assertTrue(mesh instanceof THREE.Group);
+            test.assertEqual(mesh.userData.projectileType, 'dart');
+            test.assertTrue(mesh.userData.gravity > 0);  // Dart has gravity
+        });
+
+        test.it('should default to stone if projectileType not specified', () => {
+            if (typeof THREE === 'undefined') {
+                test.skip('THREE.js not available');
+                return;
+            }
+            const dir = new THREE.Vector3(0, 0, -1);
+            const pos = new THREE.Vector3(0, 1, 0);
+            const mesh = ProjectileSystem.createMesh(THREE, dir, pos, 100, {});
+            test.assertEqual(mesh.userData.projectileType, 'stone');
         });
     });
 

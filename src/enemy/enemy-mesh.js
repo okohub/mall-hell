@@ -442,10 +442,10 @@ const EnemyVisual = {
                 color: 0xffff00  // Yellow-hot center
             });
             const core = new THREE.Mesh(
-                new THREE.SphereGeometry(0.015, 6, 6),
+                new THREE.SphereGeometry(0.025, 8, 8),
                 coreMat
             );
-            core.position.set(x, 0.05, -0.34);
+            core.position.set(x, 0.05, -0.33);
             skull.add(core);
 
             // ANGRY EYEBROWS (bone ridges)

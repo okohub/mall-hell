@@ -52,9 +52,11 @@ const PickupSystem = {
      * @param {Object} roomPosition - Room center position {x, z}
      * @param {number} roomWidth - Room width
      * @param {number} roomLength - Room length
+     * @param {Array} obstacles - Optional array of obstacles to avoid
+     * @param {Array} shelves - Optional array of shelves to avoid
      * @returns {boolean} Whether a pickup was spawned
      */
-    trySpawnForRoom(roomPosition, roomWidth, roomLength) {
+    trySpawnForRoom(roomPosition, roomWidth, roomLength, obstacles = [], shelves = []) {
         // Check spawn chance
         if (Math.random() > WeaponPickup.spawn.chancePerRoom) {
             return false;
@@ -74,11 +76,57 @@ const PickupSystem = {
         // Select random pickup type
         const pickupType = WeaponPickup.selectRandom();
 
-        // Random position within room
-        const spawnX = roomPosition.x + (Math.random() - 0.5) * (roomWidth * 0.6);
-        const spawnZ = roomPosition.z + (Math.random() - 0.5) * (roomLength * 0.4);
-        const spawnY = WeaponPickup.spawn.heightOffset;
+        // Try multiple positions to find a clear spot
+        const maxAttempts = 5;
+        const pickupRadius = 1.2; // Collision radius for pickup placement
 
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            // Random position within room center (avoid edges where shelves are)
+            const spawnX = roomPosition.x + (Math.random() - 0.5) * (roomWidth * 0.4);
+            const spawnZ = roomPosition.z + (Math.random() - 0.5) * (roomLength * 0.3);
+            const spawnY = WeaponPickup.spawn.heightOffset;
+
+            // Check collision with obstacles
+            let collides = false;
+
+            for (const obs of obstacles) {
+                if (!obs.userData?.active) continue;
+                const dx = spawnX - obs.position.x;
+                const dz = spawnZ - obs.position.z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+                const obsRadius = obs.userData?.collisionRadius || 1.5;
+                if (dist < pickupRadius + obsRadius) {
+                    collides = true;
+                    break;
+                }
+            }
+
+            // Check collision with shelves (rectangular bounds)
+            if (!collides) {
+                for (const shelf of shelves) {
+                    const shelfWidth = shelf.userData?.width || 8;
+                    const shelfDepth = shelf.userData?.depth || 2;
+                    const halfW = shelfWidth / 2 + pickupRadius;
+                    const halfD = shelfDepth / 2 + pickupRadius;
+
+                    if (Math.abs(spawnX - shelf.position.x) < halfW &&
+                        Math.abs(spawnZ - shelf.position.z) < halfD) {
+                        collides = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!collides) {
+                this.spawn(pickupType.id, { x: spawnX, y: spawnY, z: spawnZ });
+                return true;
+            }
+        }
+
+        // All attempts failed, spawn anyway at room center
+        const spawnX = roomPosition.x;
+        const spawnZ = roomPosition.z;
+        const spawnY = WeaponPickup.spawn.heightOffset;
         this.spawn(pickupType.id, { x: spawnX, y: spawnY, z: spawnZ });
         return true;
     },

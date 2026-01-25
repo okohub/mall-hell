@@ -284,32 +284,50 @@ const ProjectileSystem = {
         const {
             speedMin = 60,
             speedMax = 180,
-            fallbackCamera = null
+            fallbackCamera = null,
+            projectileType = 'stone'
         } = options;
 
         const group = new THREE.Group();
 
-        // Get projectile config from WeaponSystem
-        const projConfig = typeof WeaponSystem !== 'undefined'
-            ? WeaponSystem.getProjectileConfig()
-            : { size: 0.2, color: 0xf39c12, glow: true };
+        // Get projectile config from Projectile data definitions
+        const projConfig = (typeof Projectile !== 'undefined' && Projectile.get)
+            ? Projectile.get(projectileType)
+            : { size: 0.2, color: 0xf39c12, glow: true, geometry: 'sphere' };
 
         const baseSize = projConfig.size || 0.2;
         const baseColor = projConfig.color || 0xf39c12;
         const hasGlow = projConfig.glow !== false;
         const emissiveMin = projConfig.emissiveIntensity?.min || 0.2;
         const emissiveMax = projConfig.emissiveIntensity?.max || 0.6;
+        const geometry = projConfig.geometry || 'sphere';
 
-        // Stone/ball projectile - size scales slightly with power
+        // Size scales slightly with power
         const sizeScale = this.sizeScaleBase + (speed / speedMax) * this.sizeScalePower;
-        const stoneGeo = new THREE.SphereGeometry(baseSize * sizeScale, 12, 12);
-        const stoneMat = new THREE.MeshStandardMaterial({
+
+        // Create geometry based on type
+        let geo;
+        if (geometry === 'cylinder' && projConfig.length) {
+            // Dart-style elongated projectile
+            geo = new THREE.CylinderGeometry(baseSize * sizeScale * 0.5, baseSize * sizeScale * 0.3, projConfig.length * sizeScale, 8);
+        } else {
+            // Default sphere
+            geo = new THREE.SphereGeometry(baseSize * sizeScale, 12, 12);
+        }
+
+        const projMat = new THREE.MeshStandardMaterial({
             color: baseColor,
-            emissive: baseColor,
+            emissive: hasGlow ? (projConfig.glowColor || baseColor) : 0x000000,
             emissiveIntensity: emissiveMin + (speed / speedMax) * (emissiveMax - emissiveMin)
         });
-        const stone = new THREE.Mesh(stoneGeo, stoneMat);
-        group.add(stone);
+        const projMesh = new THREE.Mesh(geo, projMat);
+
+        // Rotate dart to face forward
+        if (geometry === 'cylinder') {
+            projMesh.rotation.x = Math.PI / 2;
+        }
+
+        group.add(projMesh);
 
         // Glow - brighter for faster projectiles (if enabled)
         if (hasGlow) {
@@ -335,14 +353,16 @@ const ProjectileSystem = {
         // Calculate power (0-1) based on speed
         const power = (speed - speedMin) / (speedMax - speedMin);
 
+        // Get gravity from projectile config (default 0 for arcade feel)
+        const gravity = projConfig.gravity || 0;
+
         group.userData = {
             velocity: direction.clone().multiplyScalar(speed),
             active: true,
-            prevPosition: group.position.clone(), // For sweep collision detection
-            power: Math.max(0, Math.min(1, power)), // Clamped 0-1
-            projectileType: typeof WeaponSystem !== 'undefined'
-                ? WeaponSystem.getWeaponConfig()?.projectile || 'STONE'
-                : 'STONE'
+            prevPosition: group.position.clone(),
+            power: Math.max(0, Math.min(1, power)),
+            projectileType: projectileType,
+            gravity: gravity  // Store per-projectile gravity
         };
 
         return group;
@@ -428,8 +448,7 @@ const ProjectileSystem = {
             cameraPosition,
             maxDistance = this.updateMaxDistance,
             minY = this.updateMinY,
-            maxY = this.updateMaxY,
-            gravity = 8  // Default gravity for ballistic arc
+            maxY = this.updateMaxY
         } = options;
 
         projectiles.forEach(proj => {
@@ -442,7 +461,8 @@ const ProjectileSystem = {
                 proj.userData.prevPosition.copy(proj.position);
             }
 
-            // Apply gravity to velocity (ballistic arc)
+            // Apply per-projectile gravity (from projectile config)
+            const gravity = proj.userData.gravity || 0;
             if (gravity > 0) {
                 proj.userData.velocity.y -= gravity * dt;
             }

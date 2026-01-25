@@ -333,9 +333,15 @@
             return g;
         }
 
-        function createProjectile(direction, spawnPos, speed) {
+        function createProjectile(direction, spawnPos, speed, fireResult = null) {
             const ps = WeaponManager.getProjectileSpeed();
-            const g = ProjectileSystem.createMesh(THREE, direction, spawnPos, speed ?? ps.max, { speedMin: ps.min, speedMax: ps.max, fallbackCamera: camera });
+            const projectileType = fireResult?.projectileType || 'stone';
+            const g = ProjectileSystem.createMesh(THREE, direction, spawnPos, speed ?? ps.max, {
+                speedMin: ps.min,
+                speedMax: ps.max,
+                fallbackCamera: camera,
+                projectileType: projectileType
+            });
             scene.add(g); projectiles.push(g);
             return g;
         }
@@ -450,11 +456,13 @@
                 createObstacle: (x, z, type) => createObstacle(x, z, type)
             });
 
-            // Try to spawn weapon pickup in this room
+            // Try to spawn weapon pickup in this room (avoid obstacles and shelves)
             PickupSystem.trySpawnForRoom(
                 { x: room.worldX, z: room.worldZ },
                 Room.structure.UNIT,
-                Room.structure.UNIT
+                Room.structure.UNIT,
+                obstacles,
+                shelves
             );
         }
 
