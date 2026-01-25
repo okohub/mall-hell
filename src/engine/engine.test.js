@@ -455,6 +455,89 @@
     });
 
     // ==========================================
+    // SPLASH DAMAGE TESTS
+    // ==========================================
+
+    test.describe('Engine Collision: Splash Damage', () => {
+        test.it('should have processSplashDamage method', () => {
+            test.assertTrue(typeof CollisionSystem.processSplashDamage === 'function');
+        });
+
+        test.it('should damage enemies within splash radius', () => {
+            const impactPos = { x: 10, y: 2, z: 10 };
+            const enemies = [
+                { position: { x: 12, z: 12 }, userData: { active: true, health: 10 } },  // Within radius
+                { position: { x: 100, z: 100 }, userData: { active: true, health: 10 } }  // Outside radius
+            ];
+            let hitCount = 0;
+
+            CollisionSystem.processSplashDamage(impactPos, 5, 2, enemies, null, (enemy, damage, result) => {
+                hitCount++;
+            });
+
+            test.assertEqual(hitCount, 1, 'Should hit 1 enemy within radius');
+        });
+
+        test.it('should apply falloff damage based on distance', () => {
+            const impactPos = { x: 0, y: 2, z: 0 };
+            const enemies = [
+                { position: { x: 1, z: 0 }, userData: { active: true, health: 10 } },  // Close
+                { position: { x: 4, z: 0 }, userData: { active: true, health: 10 } }   // Far
+            ];
+            const damages = [];
+
+            CollisionSystem.processSplashDamage(impactPos, 5, 2, enemies, null, (enemy, damage, result) => {
+                damages.push(damage);
+            });
+
+            test.assertEqual(damages.length, 2, 'Should hit both enemies');
+            test.assertTrue(damages[0] > damages[1], 'Closer enemy should take more damage');
+        });
+
+        test.it('should skip directly hit enemy', () => {
+            const impactPos = { x: 10, y: 2, z: 10 };
+            const directHit = { position: { x: 10, z: 10 }, userData: { active: true, health: 10 } };
+            const enemies = [
+                directHit,
+                { position: { x: 12, z: 12 }, userData: { active: true, health: 10 } }
+            ];
+            let hitCount = 0;
+
+            CollisionSystem.processSplashDamage(impactPos, 5, 2, enemies, directHit, (enemy, damage, result) => {
+                hitCount++;
+            });
+
+            test.assertEqual(hitCount, 1, 'Should skip directly hit enemy');
+        });
+
+        test.it('should skip inactive enemies', () => {
+            const impactPos = { x: 10, y: 2, z: 10 };
+            const enemies = [
+                { position: { x: 11, z: 11 }, userData: { active: false, health: 10 } },
+                { position: { x: 12, z: 12 }, userData: { active: true, health: 10 } }
+            ];
+            let hitCount = 0;
+
+            CollisionSystem.processSplashDamage(impactPos, 5, 2, enemies, null, (enemy, damage, result) => {
+                hitCount++;
+            });
+
+            test.assertEqual(hitCount, 1, 'Should skip inactive enemy');
+        });
+
+        test.it('should not damage if splashRadius is 0', () => {
+            const impactPos = { x: 10, y: 2, z: 10 };
+            const enemies = [
+                { position: { x: 11, z: 11 }, userData: { active: true, health: 10 } }
+            ];
+            let hitCount = 0;
+
+            CollisionSystem.processSplashDamage(impactPos, 0, 2, enemies, null, () => { hitCount++; });
+            test.assertEqual(hitCount, 0, 'Should not damage with 0 radius');
+        });
+    });
+
+    // ==========================================
     // INPUT TESTS
     // ==========================================
 

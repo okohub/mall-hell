@@ -110,10 +110,16 @@
                 attempts++;
             }
 
-            // Reset weapon state
-            if (runner.gameWindow.WeaponManager?.currentWeapon?.state) {
-                runner.gameWindow.WeaponManager.currentWeapon.state.isCharging = false;
-                runner.gameWindow.WeaponManager.currentWeapon.state.chargeAmount = 0;
+            // Reset weapon state and ensure ammo
+            if (runner.gameWindow.WeaponManager?.currentWeapon) {
+                const weapon = runner.gameWindow.WeaponManager.currentWeapon;
+                weapon.state.isCharging = false;
+                weapon.state.chargeAmount = 0;
+                weapon.state.lastFireTime = 0;
+                // Ensure ammo is available (slingshot now has limited ammo)
+                if (weapon.config?.ammo?.max && weapon.config.ammo.max !== Infinity) {
+                    weapon.state.ammo = weapon.config.ammo.max;
+                }
             }
 
             runner.gameWindow.startCharging();
@@ -147,10 +153,15 @@
 
             // Reset weapon state completely
             runner.gameWindow.lastShootTime = 0;
-            if (runner.gameWindow.WeaponManager?.currentWeapon?.state) {
-                runner.gameWindow.WeaponManager.currentWeapon.state.lastFireTime = 0;
-                runner.gameWindow.WeaponManager.currentWeapon.state.chargeAmount = 0;
-                runner.gameWindow.WeaponManager.currentWeapon.state.isCharging = false;
+            if (runner.gameWindow.WeaponManager?.currentWeapon) {
+                const weapon = runner.gameWindow.WeaponManager.currentWeapon;
+                weapon.state.lastFireTime = 0;
+                weapon.state.chargeAmount = 0;
+                weapon.state.isCharging = false;
+                // Ensure ammo is available
+                if (weapon.config?.ammo?.max && weapon.config.ammo.max !== Infinity) {
+                    weapon.state.ammo = weapon.config.ammo.max;
+                }
             }
 
             // Get initial tension (should be 0 after reset)
@@ -233,11 +244,17 @@
                 throw new Error(`Game not in PLAYING state: ${runner.gameWindow.gameState}`);
             }
 
-            // Reset all cooldowns
+            // Reset all cooldowns and ensure ammo
             runner.gameWindow.lastShootTime = 0;
-            if (runner.gameWindow.WeaponManager?.currentWeapon?.state) {
-                runner.gameWindow.WeaponManager.currentWeapon.state.lastFireTime = 0;
-                runner.gameWindow.WeaponManager.currentWeapon.state.chargeAmount = 0;
+            if (runner.gameWindow.WeaponManager?.currentWeapon) {
+                const weapon = runner.gameWindow.WeaponManager.currentWeapon;
+                weapon.state.lastFireTime = 0;
+                weapon.state.chargeAmount = 0;
+                weapon.state.isCharging = false;
+                // Ensure ammo is available
+                if (weapon.config?.ammo?.max && weapon.config.ammo.max !== Infinity) {
+                    weapon.state.ammo = weapon.config.ammo.max;
+                }
             }
 
             const initialProjectiles = runner.gameWindow.projectiles?.length || 0;
@@ -289,12 +306,17 @@
             // Additional wait for full initialization
             await runner.wait(200);
 
-            // Reset all cooldowns and state
+            // Reset all cooldowns and state with ammo
             runner.gameWindow.lastShootTime = 0;
-            if (runner.gameWindow.WeaponManager?.currentWeapon?.state) {
-                runner.gameWindow.WeaponManager.currentWeapon.state.lastFireTime = 0;
-                runner.gameWindow.WeaponManager.currentWeapon.state.chargeAmount = 0;
-                runner.gameWindow.WeaponManager.currentWeapon.state.isCharging = false;
+            if (runner.gameWindow.WeaponManager?.currentWeapon) {
+                const weapon = runner.gameWindow.WeaponManager.currentWeapon;
+                weapon.state.lastFireTime = 0;
+                weapon.state.chargeAmount = 0;
+                weapon.state.isCharging = false;
+                // Ensure ammo is available
+                if (weapon.config?.ammo?.max && weapon.config.ammo.max !== Infinity) {
+                    weapon.state.ammo = weapon.config.ammo.max;
+                }
             }
 
             const initialCount = runner.gameWindow.projectiles?.length || 0;
@@ -338,11 +360,16 @@
                 attempts++;
             }
 
-            // Reset cooldowns
+            // Reset cooldowns with ammo
             runner.gameWindow.lastShootTime = 0;
-            if (runner.gameWindow.WeaponManager?.currentWeapon?.state) {
-                runner.gameWindow.WeaponManager.currentWeapon.state.lastFireTime = 0;
-                runner.gameWindow.WeaponManager.currentWeapon.state.chargeAmount = 0;
+            if (runner.gameWindow.WeaponManager?.currentWeapon) {
+                const weapon = runner.gameWindow.WeaponManager.currentWeapon;
+                weapon.state.lastFireTime = 0;
+                weapon.state.chargeAmount = 0;
+                // Ensure ammo is available
+                if (weapon.config?.ammo?.max && weapon.config.ammo.max !== Infinity) {
+                    weapon.state.ammo = weapon.config.ammo.max;
+                }
             }
 
             // Create projectile using charging system
@@ -397,11 +424,17 @@
                 throw new Error(`Game not in PLAYING state: ${runner.gameWindow.gameState}`);
             }
 
-            // Reset cooldowns
+            // Reset cooldowns and ensure ammo
             runner.gameWindow.lastShootTime = 0;
-            if (runner.gameWindow.WeaponManager?.currentWeapon?.state) {
-                runner.gameWindow.WeaponManager.currentWeapon.state.lastFireTime = 0;
-                runner.gameWindow.WeaponManager.currentWeapon.state.chargeAmount = 0;
+            if (runner.gameWindow.WeaponManager?.currentWeapon) {
+                const weapon = runner.gameWindow.WeaponManager.currentWeapon;
+                weapon.state.lastFireTime = 0;
+                weapon.state.chargeAmount = 0;
+                weapon.state.isCharging = false;
+                // Ensure ammo is available
+                if (weapon.config?.ammo?.max && weapon.config.ammo.max !== Infinity) {
+                    weapon.state.ammo = weapon.config.ammo.max;
+                }
             }
 
             const initialCount = runner.gameWindow.projectiles?.length || 0;
@@ -499,6 +532,17 @@
             runner.gameWindow.lastShootTime = 0;
             if (runner.gameWindow.weapon) {
                 runner.gameWindow.weapon.lastFireTime = 0;
+            }
+            // Also reset via WeaponManager
+            if (runner.gameWindow.WeaponManager?.currentWeapon) {
+                const weapon = runner.gameWindow.WeaponManager.currentWeapon;
+                weapon.state.lastFireTime = 0;
+                weapon.state.chargeAmount = 0;
+                weapon.state.isCharging = false;
+                // Ensure ammo is available
+                if (weapon.config?.ammo?.max && weapon.config.ammo.max !== Infinity) {
+                    weapon.state.ammo = weapon.config.ammo.max;
+                }
             }
 
             const initialProjCount = runner.gameWindow.projectiles?.length || 0;

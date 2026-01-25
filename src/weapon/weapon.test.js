@@ -287,8 +287,9 @@
             test.assertEqual(Slingshot.config.fireMode, 'charge');
         });
 
-        test.it('should have infinite ammo', () => {
-            test.assertEqual(Slingshot.config.ammo.max, Infinity);
+        test.it('should have limited ammo', () => {
+            test.assertEqual(Slingshot.config.ammo.max, 25);
+            test.assertEqual(Slingshot.state.ammo, 25);
         });
 
         test.it('should have range in config', () => {
@@ -342,6 +343,40 @@
             Slingshot.cancelAction();
             test.assertFalse(Slingshot.state.isCharging);
             test.assertEqual(Slingshot.state.chargeAmount, 0);
+        });
+
+        test.it('should consume ammo when firing', () => {
+            const startAmmo = Slingshot.state.ammo;
+            Slingshot.onFireStart(1000);
+            Slingshot.update(0.5, 1500);
+            Slingshot.fire(1500);
+            test.assertEqual(Slingshot.state.ammo, startAmmo - 1);
+        });
+
+        test.it('should not fire when out of ammo', () => {
+            Slingshot.state.ammo = 0;
+            test.assertFalse(Slingshot.canFire(1000));
+
+            Slingshot.onFireStart(2000);
+            test.assertFalse(Slingshot.state.isCharging, 'Should not start charging with no ammo');
+        });
+
+        test.it('should add ammo up to max', () => {
+            Slingshot.state.ammo = 20;
+            Slingshot.addAmmo(10);
+            test.assertEqual(Slingshot.state.ammo, 25, 'Should cap at max ammo');
+        });
+
+        test.it('should show ammo display', () => {
+            const display = Slingshot.getAmmoDisplay();
+            test.assertTrue(display.includes('STONES'), 'Display should show STONES');
+            test.assertTrue(display.includes('25'), 'Display should show ammo count');
+        });
+
+        test.it('should show EMPTY when out of ammo', () => {
+            Slingshot.state.ammo = 0;
+            const display = Slingshot.getAmmoDisplay();
+            test.assertEqual(display, 'EMPTY');
         });
 
         test.it('should have createFPSMesh method', () => {

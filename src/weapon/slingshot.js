@@ -23,9 +23,9 @@ const Slingshot = {
         aimAssist: true,
 
         ammo: {
-            max: Infinity,
-            current: Infinity,
-            consumePerShot: 0   // Infinite ammo
+            max: 25,
+            current: 25,
+            consumePerShot: 1
         },
 
         projectile: {
@@ -69,7 +69,7 @@ const Slingshot = {
         isCharging: false,
         chargeAmount: 0,
         lastFireTime: 0,
-        ammo: Infinity,
+        ammo: 25,
         fireAnimProgress: 0
     },
 
@@ -90,7 +90,7 @@ const Slingshot = {
         this.state.chargeAmount = 0;
         this.state.lastFireTime = 0;
         this.state.fireAnimProgress = 0;
-        // Don't reset ammo (infinite anyway)
+        this.state.ammo = this.config.ammo.max;
     },
 
     // ==========================================
@@ -148,6 +148,7 @@ const Slingshot = {
      * Check if weapon can fire
      */
     canFire(time) {
+        if (this.state.ammo <= 0) return false;
         return (time - this.state.lastFireTime) >= this.config.cooldown;
     },
 
@@ -168,6 +169,10 @@ const Slingshot = {
         const speed = this.config.projectile.speed.min +
             (this.config.projectile.speed.max - this.config.projectile.speed.min) * tension;
 
+        // Consume ammo
+        this.state.ammo -= this.config.ammo.consumePerShot;
+        if (this.state.ammo < 0) this.state.ammo = 0;
+
         // Update state
         this.state.lastFireTime = time;
         this.state.isCharging = false;
@@ -183,10 +188,10 @@ const Slingshot = {
     },
 
     /**
-     * Add ammo (no-op for infinite ammo)
+     * Add ammo
      */
     addAmmo(amount) {
-        // Slingshot has infinite ammo
+        this.state.ammo = Math.min(this.state.ammo + amount, this.config.ammo.max);
     },
 
     // ==========================================
@@ -198,11 +203,14 @@ const Slingshot = {
     },
 
     getAmmoDisplay() {
-        return 'SLINGSHOT READY';
+        if (this.state.ammo <= 0) {
+            return 'EMPTY';
+        }
+        return `STONES: ${this.state.ammo}/${this.config.ammo.max}`;
     },
 
     isReloading(time) {
-        return !this.canFire(time);
+        return this.state.ammo <= 0;
     },
 
     // ==========================================

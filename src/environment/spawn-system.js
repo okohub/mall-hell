@@ -282,6 +282,131 @@ const SpawnSystem = {
     },
 
     // ==========================================
+    // RUNTIME PICKUP SPAWNING
+    // ==========================================
+
+    /**
+     * Runtime pickup spawning configuration
+     */
+    pickupRuntimeConfig: {
+        maxPickups: 5,              // Max pickups on map at once
+        spawnInterval: 4.0,         // Seconds between spawn attempts
+        minDistanceFromPlayer: 10,  // Don't spawn too close
+        maxDistanceFromPlayer: 50,  // Don't spawn too far
+        spawnChancePerAttempt: 0.3  // 30% chance per attempt
+    },
+
+    // Runtime pickup state
+    _lastPickupSpawnTime: 0,
+
+    /**
+     * Try to spawn pickups at runtime to maintain availability
+     * @param {Object} options - Spawn options
+     * @param {Object} options.currentRoom - Player's current room
+     * @param {Object} options.playerPosition - Player position {x, z}
+     * @param {Array} options.visitedRooms - Set of visited room keys
+     * @param {Object} options.gridSystem - Grid system for room lookup
+     * @param {Object} options.roomConfig - Room config {UNIT, DOOR_WIDTH}
+     * @param {number} options.currentPickupCount - Current active pickup count
+     * @param {number} options.dt - Delta time
+     * @param {Object} options.pickupSystem - PickupSystem reference
+     * @param {Array} options.obstacles - Obstacles array for collision avoidance
+     * @param {Array} options.shelves - Shelves array for collision avoidance
+     * @returns {boolean} True if a pickup was spawned
+     */
+    tryRuntimePickupSpawn(options) {
+        const {
+            currentRoom,
+            playerPosition,
+            visitedRooms,
+            gridSystem,
+            roomConfig,
+            currentPickupCount,
+            dt,
+            pickupSystem,
+            obstacles = [],
+            shelves = []
+        } = options;
+
+        // Track spawn timing
+        this._lastPickupSpawnTime = (this._lastPickupSpawnTime || 0) + dt;
+        if (this._lastPickupSpawnTime < this.pickupRuntimeConfig.spawnInterval) {
+            return false;
+        }
+        this._lastPickupSpawnTime = 0;
+
+        // Check if we need more pickups
+        if (currentPickupCount >= this.pickupRuntimeConfig.maxPickups) {
+            return false;
+        }
+
+        // Random chance to spawn
+        if (Math.random() > this.pickupRuntimeConfig.spawnChancePerAttempt) {
+            return false;
+        }
+
+        // Find candidate rooms
+        const ROOM_UNIT = roomConfig.UNIT;
+        const candidateRooms = [];
+
+        // Check all visited rooms as candidates
+        visitedRooms.forEach(roomKey => {
+            const [gx, gz] = roomKey.split('_').map(Number);
+            const roomCenterX = gx * ROOM_UNIT + ROOM_UNIT / 2;
+            const roomCenterZ = gz * ROOM_UNIT + ROOM_UNIT / 2;
+
+            // Skip player's current room
+            if (currentRoom && gx === currentRoom.gridX && gz === currentRoom.gridZ) {
+                return;
+            }
+
+            // Check distance from player
+            const dx = roomCenterX - playerPosition.x;
+            const dz = roomCenterZ - playerPosition.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+
+            if (dist >= this.pickupRuntimeConfig.minDistanceFromPlayer &&
+                dist <= this.pickupRuntimeConfig.maxDistanceFromPlayer) {
+                const room = gridSystem.getRoomAtWorld(roomCenterX, roomCenterZ);
+                if (room && room.theme !== 'ENTRANCE') {
+                    candidateRooms.push(room);
+                }
+            }
+        });
+
+        // If no candidate rooms, try to spawn ahead of player
+        if (candidateRooms.length === 0) {
+            for (let i = 1; i <= 3; i++) {
+                const aheadZ = playerPosition.z - (i * ROOM_UNIT);
+                const room = gridSystem.getRoomAtWorld(playerPosition.x, aheadZ);
+                if (room && room !== currentRoom && room.theme !== 'ENTRANCE') {
+                    candidateRooms.push(room);
+                }
+            }
+        }
+
+        if (candidateRooms.length === 0) {
+            return false;
+        }
+
+        // Pick a random candidate room
+        const targetRoom = candidateRooms[Math.floor(Math.random() * candidateRooms.length)];
+
+        // Use PickupSystem to spawn
+        if (pickupSystem) {
+            return pickupSystem.trySpawnForRoom(
+                { x: targetRoom.worldX, z: targetRoom.worldZ },
+                ROOM_UNIT * 0.7,
+                ROOM_UNIT * 0.7,
+                obstacles,
+                shelves
+            );
+        }
+
+        return false;
+    },
+
+    // ==========================================
     // UTILITY
     // ==========================================
 

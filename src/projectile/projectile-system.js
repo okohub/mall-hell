@@ -307,23 +307,35 @@ const ProjectileSystem = {
 
         // Create geometry based on type
         let geo;
-        if (geometry === 'cylinder' && projConfig.length) {
-            // Dart-style elongated projectile
+        const isLaser = projectileType === 'laser';
+        const isDart = projectileType === 'dart';
+
+        if (isLaser && projConfig.length) {
+            // Laser beam: thin, uniform width, very elongated
+            const laserRadius = baseSize * sizeScale * 0.4;
+            const laserLength = projConfig.length * sizeScale * 1.5;
+            geo = new THREE.CylinderGeometry(laserRadius, laserRadius, laserLength, 8);
+        } else if (isDart && projConfig.length) {
+            // Dart-style: tapered elongated projectile
             geo = new THREE.CylinderGeometry(baseSize * sizeScale * 0.5, baseSize * sizeScale * 0.3, projConfig.length * sizeScale, 8);
+        } else if (geometry === 'cylinder' && projConfig.length) {
+            // Generic cylinder: uniform width
+            geo = new THREE.CylinderGeometry(baseSize * sizeScale * 0.5, baseSize * sizeScale * 0.5, projConfig.length * sizeScale, 8);
         } else {
             // Default sphere
             geo = new THREE.SphereGeometry(baseSize * sizeScale, 12, 12);
         }
 
+        const emissiveIntensity = emissiveMin + (speed / speedMax) * (emissiveMax - emissiveMin);
         const projMat = new THREE.MeshStandardMaterial({
             color: baseColor,
             emissive: hasGlow ? (projConfig.glowColor || baseColor) : 0x000000,
-            emissiveIntensity: emissiveMin + (speed / speedMax) * (emissiveMax - emissiveMin)
+            emissiveIntensity: isLaser ? emissiveIntensity * 1.5 : emissiveIntensity  // Brighter for laser
         });
         const projMesh = new THREE.Mesh(geo, projMat);
 
-        // Rotate dart to face forward
-        if (geometry === 'cylinder') {
+        // Rotate cylinder to face forward
+        if (geometry === 'cylinder' || isLaser || isDart) {
             projMesh.rotation.x = Math.PI / 2;
         }
 
@@ -332,13 +344,27 @@ const ProjectileSystem = {
         // Glow - brighter for faster projectiles (if enabled)
         if (hasGlow) {
             const glowColor = projConfig.glowColor || baseColor;
-            const glowGeo = new THREE.SphereGeometry(baseSize * 1.5 * sizeScale, 12, 12);
+            let glowGeo;
+            if (isLaser) {
+                // Elongated glow for laser beams
+                const glowRadius = baseSize * 2.5 * sizeScale;
+                const glowLength = projConfig.length * sizeScale * 1.3;
+                glowGeo = new THREE.CylinderGeometry(glowRadius, glowRadius, glowLength, 8);
+            } else {
+                // Spherical glow for other projectiles
+                glowGeo = new THREE.SphereGeometry(baseSize * 1.5 * sizeScale, 12, 12);
+            }
             const glowMat = new THREE.MeshBasicMaterial({
                 color: glowColor,
                 transparent: true,
-                opacity: this.glowOpacityBase + (speed / speedMax) * this.glowOpacityPower
+                opacity: isLaser
+                    ? (this.glowOpacityBase + (speed / speedMax) * this.glowOpacityPower) * 1.5
+                    : this.glowOpacityBase + (speed / speedMax) * this.glowOpacityPower
             });
             const glow = new THREE.Mesh(glowGeo, glowMat);
+            if (isLaser) {
+                glow.rotation.x = Math.PI / 2;  // Match laser orientation
+            }
             group.add(glow);
         }
 
@@ -362,6 +388,7 @@ const ProjectileSystem = {
             prevPosition: group.position.clone(),
             power: Math.max(0, Math.min(1, power)),
             projectileType: projectileType,
+            projectileConfig: projConfig,  // Store config for splash damage detection
             gravity: gravity  // Store per-projectile gravity
         };
 

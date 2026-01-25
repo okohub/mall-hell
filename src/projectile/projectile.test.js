@@ -35,6 +35,20 @@
             test.assertTrue(water.gravity > 0);  // Water has gravity for arc
         });
 
+        test.it('should have laser type defined', () => {
+            test.assertTrue(Projectile.types.laser !== undefined);
+        });
+
+        test.it('should have correct laser properties', () => {
+            const laser = Projectile.types.laser;
+            test.assertEqual(laser.id, 'laser');
+            test.assertEqual(laser.geometry, 'cylinder');
+            test.assertTrue(laser.length > 0, 'Laser should have length for beam shape');
+            test.assertEqual(laser.gravity, 0, 'Laser should have no gravity');
+            test.assertTrue(laser.glow, 'Laser should glow');
+            test.assertTrue(laser.emissiveIntensity.max > 0.5, 'Laser should be bright');
+        });
+
         test.it('should have dart type defined', () => {
             test.assertTrue(Projectile.types.dart !== undefined);
         });
@@ -45,6 +59,13 @@
             test.assertEqual(dart.geometry, 'cylinder');
             test.assertTrue(dart.length > 0);  // Darts have length for elongated shape
             test.assertTrue(dart.gravity > 0);  // Darts have gravity for drop
+        });
+
+        test.it('should have water splash properties', () => {
+            const water = Projectile.types.water;
+            test.assertTrue(water.splash, 'Water should have splash enabled');
+            test.assertTrue(water.splashRadius > 0, 'Water should have splash radius');
+            test.assertTrue(water.splashDamage > 0, 'Water should have splash damage');
         });
 
         test.it('should get projectile by id', () => {
@@ -63,6 +84,12 @@
             const proj = Projectile.get('dart');
             test.assertTrue(proj !== null);
             test.assertEqual(proj.id, 'dart');
+        });
+
+        test.it('should get laser projectile by id', () => {
+            const proj = Projectile.get('laser');
+            test.assertTrue(proj !== null);
+            test.assertEqual(proj.id, 'laser');
         });
 
         test.it('should return stone for unknown type', () => {

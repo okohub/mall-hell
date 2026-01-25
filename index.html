@@ -71,7 +71,7 @@
                     <div class="title-wrapper">
                         <div class="title">MALL HELL</div>
                     </div>
-                    <div class="version">VERSION 4.3</div>
+                    <div class="version">VERSION 4.4</div>
                     <div class="subtitle">SUPERMARKET MAYHEM</div>
                     <div class="instructions" id="instructions">
                         <div class="control-item">
@@ -604,6 +604,20 @@
                     if (enemy) { scene.add(enemy); enemies.push(enemy); }
                     return enemy;
                 }
+            });
+
+            // Runtime pickup spawning - maintains pickup availability
+            SpawnSystem.tryRuntimePickupSpawn({
+                currentRoom,
+                playerPosition: PlayerSystem.position,
+                visitedRooms,
+                gridSystem: mallGrid,
+                roomConfig: Room.structure,
+                currentPickupCount: PickupSystem.getCount(),
+                dt,
+                pickupSystem: PickupSystem,
+                obstacles,
+                shelves
             });
 
             // Collision detection

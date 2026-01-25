@@ -252,4 +252,70 @@
         });
     });
 
+    // ==========================================
+    // SPAWN SYSTEM TESTS
+    // ==========================================
+
+    test.describe('Spawn System - Runtime Pickup Spawning', () => {
+        test.it('should have tryRuntimePickupSpawn method', () => {
+            test.assertTrue(typeof SpawnSystem.tryRuntimePickupSpawn === 'function');
+        });
+
+        test.it('should have pickupRuntimeConfig defined', () => {
+            test.assertTrue(SpawnSystem.pickupRuntimeConfig !== undefined);
+            test.assertTrue(SpawnSystem.pickupRuntimeConfig.maxPickups > 0);
+            test.assertTrue(SpawnSystem.pickupRuntimeConfig.spawnInterval > 0);
+        });
+
+        test.it('should not spawn if max pickups reached', () => {
+            const mockPickupSystem = {
+                getCount: () => 10,  // More than max
+                trySpawnForRoom: () => true
+            };
+
+            const result = SpawnSystem.tryRuntimePickupSpawn({
+                currentRoom: { gridX: 0, gridZ: 0 },
+                playerPosition: { x: 15, z: 15 },
+                visitedRooms: new Set(['0_0', '1_0']),
+                gridSystem: { getRoomAtWorld: () => ({ gridX: 1, gridZ: 0, theme: 'NORMAL', worldX: 45, worldZ: 15 }) },
+                roomConfig: { UNIT: 30, DOOR_WIDTH: 6 },
+                currentPickupCount: 10,  // >= max
+                dt: 5.0,  // Exceed interval
+                pickupSystem: mockPickupSystem,
+                obstacles: [],
+                shelves: []
+            });
+
+            test.assertEqual(result, false, 'Should not spawn when max reached');
+        });
+
+        test.it('should respect spawn interval timing', () => {
+            SpawnSystem._lastPickupSpawnTime = 0;
+
+            const result = SpawnSystem.tryRuntimePickupSpawn({
+                currentRoom: null,
+                playerPosition: { x: 15, z: 15 },
+                visitedRooms: new Set(),
+                gridSystem: { getRoomAtWorld: () => null },
+                roomConfig: { UNIT: 30, DOOR_WIDTH: 6 },
+                currentPickupCount: 0,
+                dt: 0.1,  // Less than interval
+                pickupSystem: null,
+                obstacles: [],
+                shelves: []
+            });
+
+            test.assertEqual(result, false, 'Should not spawn before interval');
+        });
+
+        test.it('should have valid config values', () => {
+            test.assertTrue(SpawnSystem.pickupRuntimeConfig.maxPickups >= 1);
+            test.assertTrue(SpawnSystem.pickupRuntimeConfig.spawnInterval >= 1);
+            test.assertTrue(SpawnSystem.pickupRuntimeConfig.minDistanceFromPlayer > 0);
+            test.assertTrue(SpawnSystem.pickupRuntimeConfig.maxDistanceFromPlayer > SpawnSystem.pickupRuntimeConfig.minDistanceFromPlayer);
+            test.assertTrue(SpawnSystem.pickupRuntimeConfig.spawnChancePerAttempt > 0);
+            test.assertTrue(SpawnSystem.pickupRuntimeConfig.spawnChancePerAttempt <= 1);
+        });
+    });
+
 })(window.TestFramework || { describe: () => {}, it: () => {}, beforeEach: () => {} });

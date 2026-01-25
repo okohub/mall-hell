@@ -806,6 +806,7 @@ const CollisionSystem = {
             onEnemyHit = null,
             onObstacleHit = null,
             onWallHit = null,
+            onSplashHit = null,
             gridSystem = null,
             roomConfig = null,
             shelves = null,
@@ -829,19 +830,35 @@ const CollisionSystem = {
             // Check wall collision (using 2D line check + room boundary check)
             // Only check if projectile has moved a meaningful distance (not just spawned)
             if (gridSystem && roomConfig && proj.userData.active && projLen > 0.5) {
+                let hitWall = false;
                 // Check if LOS is blocked between prev and current position (room-to-room)
                 if (!this.hasLineOfSight(prevPos.x, prevPos.z, currPos.x, currPos.z, gridSystem, roomConfig)) {
-                    proj.userData.active = false;
-                    if (onWallHit) {
-                        onWallHit(currPos.clone());
-                    }
+                    hitWall = true;
                 }
                 // Also check if projectile hit a room wall (within same room)
                 // Use small margin (0.2) to catch wall impacts
                 else if (this.isHittingRoomWall(currPos.x, currPos.z, gridSystem, roomConfig, 0.2)) {
+                    hitWall = true;
+                }
+
+                if (hitWall) {
                     proj.userData.active = false;
                     if (onWallHit) {
                         onWallHit(currPos.clone());
+                    }
+                    // Process splash damage on wall hit
+                    const projConfig = proj.userData.projectileConfig ||
+                        (typeof Projectile !== 'undefined' && proj.userData.projectileType
+                            ? Projectile.get(proj.userData.projectileType) : null);
+                    if (projConfig?.splash && projConfig.splashRadius > 0) {
+                        this.processSplashDamage(
+                            { x: currPos.x, y: currPos.y, z: currPos.z },
+                            projConfig.splashRadius,
+                            projConfig.splashDamage || 0.5,
+                            enemies,
+                            null,
+                            onSplashHit || onEnemyHit
+                        );
                     }
                 }
             }
@@ -869,6 +886,20 @@ const CollisionSystem = {
                         proj.userData.active = false;
                         if (onWallHit) {
                             onWallHit(currPos.clone());
+                        }
+                        // Process splash damage on shelf hit
+                        const projConfig = proj.userData.projectileConfig ||
+                            (typeof Projectile !== 'undefined' && proj.userData.projectileType
+                                ? Projectile.get(proj.userData.projectileType) : null);
+                        if (projConfig?.splash && projConfig.splashRadius > 0) {
+                            this.processSplashDamage(
+                                { x: currPos.x, y: currPos.y, z: currPos.z },
+                                projConfig.splashRadius,
+                                projConfig.splashDamage || 0.5,
+                                enemies,
+                                null,
+                                onSplashHit || onEnemyHit
+                            );
                         }
                         break;
                     }
@@ -912,6 +943,21 @@ const CollisionSystem = {
                         if (result && onEnemyHit) {
                             onEnemyHit(enemy, damage, closestPoint, result);
                         }
+
+                        // Process splash damage if projectile has splash properties
+                        const projConfig = proj.userData.projectileConfig ||
+                            (typeof Projectile !== 'undefined' && proj.userData.projectileType
+                                ? Projectile.get(proj.userData.projectileType) : null);
+                        if (projConfig?.splash && projConfig.splashRadius > 0) {
+                            this.processSplashDamage(
+                                closestPoint,
+                                projConfig.splashRadius,
+                                projConfig.splashDamage || 0.5,
+                                enemies,
+                                enemy,
+                                onSplashHit || onEnemyHit
+                            );
+                        }
                     }
                 }
             }
@@ -948,6 +994,21 @@ const CollisionSystem = {
                         if (onObstacleHit) {
                             onObstacleHit(obs, closestPoint);
                         }
+
+                        // Process splash damage if projectile has splash properties
+                        const projConfig = proj.userData.projectileConfig ||
+                            (typeof Projectile !== 'undefined' && proj.userData.projectileType
+                                ? Projectile.get(proj.userData.projectileType) : null);
+                        if (projConfig?.splash && projConfig.splashRadius > 0) {
+                            this.processSplashDamage(
+                                closestPoint,
+                                projConfig.splashRadius,
+                                projConfig.splashDamage || 0.5,
+                                enemies,
+                                null,
+                                onSplashHit || onEnemyHit
+                            );
+                        }
                     }
                 }
             }
@@ -955,6 +1016,49 @@ const CollisionSystem = {
             // Store current position for next frame's sweep check
             proj.userData.prevPosition = proj.position.clone();
         });
+    },
+
+    /**
+     * Process splash damage from a projectile impact
+     * @param {Object} impactPos - Impact position {x, y, z}
+     * @param {number} splashRadius - Splash damage radius
+     * @param {number} splashDamage - Damage dealt to targets in splash zone
+     * @param {Array} enemies - Enemy meshes to check
+     * @param {Object} hitEnemy - The enemy that was directly hit (to exclude)
+     * @param {Function} onSplashHit - Callback(enemy, damage, result)
+     */
+    processSplashDamage(impactPos, splashRadius, splashDamage, enemies, hitEnemy, onSplashHit) {
+        if (!enemies || splashRadius <= 0 || splashDamage <= 0) return;
+
+        const splashRadiusSq = splashRadius * splashRadius;
+
+        for (const enemy of enemies) {
+            // Skip inactive enemies and the one that was directly hit
+            if (!enemy.userData?.active || enemy === hitEnemy) continue;
+
+            // Calculate distance from impact
+            const dx = enemy.position.x - impactPos.x;
+            const dz = enemy.position.z - impactPos.z;
+            const distSq = dx * dx + dz * dz;
+
+            // Check if within splash radius
+            if (distSq < splashRadiusSq) {
+                // Apply damage with falloff (closer = more damage)
+                const dist = Math.sqrt(distSq);
+                const falloff = 1 - (dist / splashRadius);
+                const damage = Math.ceil(splashDamage * falloff);
+
+                if (damage > 0) {
+                    const result = typeof EnemySystem !== 'undefined'
+                        ? EnemySystem.damage(enemy, damage)
+                        : { hit: true, destroyed: enemy.userData.health <= damage };
+
+                    if (result && onSplashHit) {
+                        onSplashHit(enemy, damage, result);
+                    }
+                }
+            }
+        }
     },
 
     /**
