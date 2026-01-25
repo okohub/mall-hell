@@ -808,4 +808,99 @@
         });
     });
 
+    // ==========================================
+    // ANALYTICS SYSTEM TESTS
+    // ==========================================
+
+    test.describe('Engine AnalyticsSystem - Initialization', () => {
+        test.it('should have init method', () => {
+            test.assertTrue(typeof AnalyticsSystem.init === 'function');
+        });
+
+        test.it('should have track method', () => {
+            test.assertTrue(typeof AnalyticsSystem.track === 'function');
+        });
+
+        test.it('should initialize without errors', () => {
+            // Should not throw even with no gtag
+            AnalyticsSystem.init({ provider: 'none', debug: false });
+            test.assertTrue(AnalyticsSystem.initialized);
+        });
+
+        test.it('should support disabling analytics', () => {
+            AnalyticsSystem.init({ enabled: true });
+            test.assertTrue(AnalyticsSystem.config.enabled);
+            AnalyticsSystem.disable();
+            test.assertFalse(AnalyticsSystem.config.enabled);
+            AnalyticsSystem.enable();
+            test.assertTrue(AnalyticsSystem.config.enabled);
+        });
+    });
+
+    test.describe('Engine AnalyticsSystem - Failsafe Tracking', () => {
+        test.beforeEach(() => {
+            AnalyticsSystem.init({ provider: 'none', debug: false });
+        });
+
+        test.it('should track events without throwing', () => {
+            // All these should complete without errors
+            let errorThrown = false;
+            try {
+                AnalyticsSystem.track('test_event', { value: 1 });
+                AnalyticsSystem.gameStart();
+                AnalyticsSystem.gameOver({ score: 1000, playTime: 60, died: false, rating: 'test' });
+                AnalyticsSystem.weaponSwitch('watergun', 'slingshot');
+                AnalyticsSystem.enemyKill('skeleton', 300);
+                AnalyticsSystem.damageTaken(20, 'enemy', 80);
+                AnalyticsSystem.pickupCollected('weapon', 'nerfgun');
+                AnalyticsSystem.obstacleHit('barrel', 150);
+            } catch (e) {
+                errorThrown = true;
+            }
+            test.assertFalse(errorThrown, 'No errors should be thrown');
+        });
+
+        test.it('should handle missing provider gracefully', () => {
+            AnalyticsSystem.config.provider = 'nonexistent';
+            let errorThrown = false;
+            try {
+                AnalyticsSystem.track('test_event');
+            } catch (e) {
+                errorThrown = true;
+            }
+            test.assertFalse(errorThrown);
+        });
+
+        test.it('should handle disabled state gracefully', () => {
+            AnalyticsSystem.disable();
+            let errorThrown = false;
+            try {
+                AnalyticsSystem.gameStart();
+                AnalyticsSystem.gameOver({ score: 500 });
+            } catch (e) {
+                errorThrown = true;
+            }
+            test.assertFalse(errorThrown);
+        });
+    });
+
+    test.describe('Engine AnalyticsSystem - Custom Provider', () => {
+        test.it('should register custom provider', () => {
+            const events = [];
+            const customProvider = {
+                isReady: () => true,
+                track: (name, params) => events.push({ name, params })
+            };
+
+            const result = AnalyticsSystem.registerProvider('custom', customProvider);
+            test.assertTrue(result);
+            test.assertTrue(AnalyticsSystem.providers['custom'] !== undefined);
+        });
+
+        test.it('should reject invalid provider', () => {
+            const result = AnalyticsSystem.registerProvider('invalid', { foo: 'bar' });
+            test.assertFalse(result);
+        });
+    });
+
 })();

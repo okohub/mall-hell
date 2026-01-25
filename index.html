@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mall Hell</title>
     <link rel="stylesheet" href="./src/styles/main.css">
+    <!-- Google Analytics (async, non-blocking) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-1GQ02MKM01"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-1GQ02MKM01');
+    </script>
 </head>
 <body>
     <div id="game-container">
@@ -63,7 +71,7 @@
                     <div class="title-wrapper">
                         <div class="title">MALL HELL</div>
                     </div>
-                    <div class="version">VERSION 4.2</div>
+                    <div class="version">VERSION 4.2.1</div>
                     <div class="subtitle">SUPERMARKET MAYHEM</div>
                     <div class="instructions" id="instructions">
                         <div class="control-item">
@@ -155,6 +163,7 @@
     <script src="./src/engine/entity-system.js"></script>
     <script src="./src/engine/game-session.js"></script>
     <script src="./src/engine/post-process-system.js"></script>
+    <script src="./src/engine/analytics-system.js"></script>
 
     <!-- Room Domain -->
     <script src="./src/room/room.js"></script>
@@ -290,7 +299,9 @@
         function initThree() {
             SceneSystem.init(THREE, container);
             scene = SceneSystem.scene; camera = SceneSystem.camera; renderer = SceneSystem.renderer;
-            MaterialsTheme.init(THREE); UISystem.init(); initSceneGroups();
+            MaterialsTheme.init(THREE); UISystem.init();
+            AnalyticsSystem.init({ measurementId: 'G-1GQ02MKM01', provider: 'gtag', debug: false });
+            initSceneGroups();
 
             // Lighting
             ambientLight = new THREE.AmbientLight(0xfff8f0, 0.6); scene.add(ambientLight);
@@ -393,19 +404,23 @@
             resetGame(); GameSession.start(); StateSystem.forceTransition('PLAYING'); UISystem.showGameplay();
             crosshairX = window.innerWidth / 2; crosshairY = window.innerHeight / 2;
             updateCursor(); spawnInitialObjects();
+            AnalyticsSystem.gameStart();
         }
 
         function endGame(died = false) {
             StateSystem.forceTransition('GAME_OVER');
             const s = GameSession.getScore();
+            const playTime = GameSession.DURATION - GameSession.getTimer();
             UISystem.showGameOver(s, UI.getScoreRating(s), died); updateCursor();
+            AnalyticsSystem.gameOver({ score: s, playTime: Math.round(playTime), died, rating: UI.getScoreRating(s) });
         }
 
-        function damagePlayer(amount) {
+        function damagePlayer(amount, source = 'unknown') {
             if (!StateSystem.is('PLAYING') || !PlayerSystem.damage(amount)) return;
             UISystem.updateHealthBar(PlayerSystem.getHealth(), PLAYER_MAX_HEALTH);
             UISystem.showDamageOverlay();
             damageVignetteStrength = Math.min(1.0, damageVignetteStrength + amount / 50);
+            AnalyticsSystem.damageTaken(amount, source, PlayerSystem.getHealth());
             if (PlayerSystem.isDead()) endGame(true);
         }
 
@@ -536,9 +551,16 @@
 
             // Pickups
             PickupSystem.update(dt, { x: PlayerSystem.position.x, y: 0, z: PlayerSystem.position.z }, Date.now()).forEach(p => {
+                const prevWeapon = WeaponManager.getCurrentId();
                 const r = PickupSystem.collect(p, WeaponManager, THREE, MaterialsTheme, camera);
-                if (r?.switched) UISystem.showPickupNotification?.(p.config.name);
-                else if (r?.ammoAdded > 0) UISystem.showPickupNotification?.(`+${r.ammoAdded} Ammo`);
+                if (r?.switched) {
+                    UISystem.showPickupNotification?.(p.config.name);
+                    AnalyticsSystem.weaponSwitch(r.weaponId, prevWeapon);
+                    AnalyticsSystem.pickupCollected('weapon', r.weaponId);
+                } else if (r?.ammoAdded > 0) {
+                    UISystem.showPickupNotification?.(`+${r.ammoAdded} Ammo`);
+                    AnalyticsSystem.pickupCollected(p.config.isAmmo ? 'ammo' : 'weapon_ammo', p.config.id);
+                }
             });
             PickupSystem.cleanupBehind(PlayerSystem.position.z);
 
@@ -554,7 +576,7 @@
                 dt,
                 baseSpeed: CART_SPEED,
                 isInvulnerable: PlayerSystem.getIsInvulnerable(),
-                onPlayerCollision: () => damagePlayer(Player.health.ENEMY_DAMAGE),
+                onPlayerCollision: () => damagePlayer(Player.health.ENEMY_DAMAGE, 'enemy'),
                 collisionCheck: (nX, nZ, oX, oZ) => CollisionSystem.checkAllCollisions(nX, nZ, oX, oZ, { gridSystem: mallGrid, roomConfig: Room.structure, obstacles, shelves, playerRadius: 1.5 }),
                 hasLineOfSight: (fX, fZ, tX, tZ) => CollisionSystem.hasLineOfSight(fX, fZ, tX, tZ, mallGrid, Room.structure),
                 clampToRoomBounds: (pos) => CollisionSystem.clampToRoomBounds(pos, mallGrid, Room.structure, 1.5),
@@ -593,10 +615,18 @@
                     const hb = enemy.userData.healthBar;
                     if (hb && typeof EnemyVisual !== 'undefined') EnemyVisual.updateHealthBar(hb, EnemySystem.getHealthPercent(enemy));
                     const color = (enemy.userData.config || ENEMY_TYPES.CART).visual?.bodyColor || 0xe94560;
-                    if (result.destroyed) { addScore(result.scoreDestroy, enemy.position); spawnParticles(enemy.position, color, 15); }
-                    else { addScore(result.scoreHit, enemy.position); spawnParticles(closestPoint, 0xf39c12, 3); }
+                    const enemyType = enemy.userData.config?.id || 'cart';
+                    if (result.destroyed) {
+                        addScore(result.scoreDestroy, enemy.position); spawnParticles(enemy.position, color, 15);
+                        AnalyticsSystem.enemyKill(enemyType, result.scoreDestroy);
+                    } else {
+                        addScore(result.scoreHit, enemy.position); spawnParticles(closestPoint, 0xf39c12, 3);
+                    }
                 },
-                onObstacleHit: (obs) => { UISystem.showHitMarker(); addScore(150, obs.position); spawnParticles(obs.position, 0xf1c40f, 10); },
+                onObstacleHit: (obs) => {
+                    UISystem.showHitMarker(); addScore(150, obs.position); spawnParticles(obs.position, 0xf1c40f, 10);
+                    AnalyticsSystem.obstacleHit(obs.userData?.type || 'unknown', 150);
+                },
                 onWallHit: (pos) => { spawnParticles(pos, 0x888888, 5); }
             });
 

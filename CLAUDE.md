@@ -332,7 +332,7 @@ UISystem.showGameOver(score, UI.getScoreRating(score), died);
 ## Overview
 
 **Title:** Mall Hell
-**Version:** 4.2
+**Version:** 4.2.1
 **Platform:** Desktop Browser
 **Tech Stack:** HTML5, CSS3, JavaScript, Three.js (r128)
 **Delivery:** Single `index.html` file with domain modules in `src/`
