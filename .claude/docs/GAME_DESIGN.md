@@ -5,7 +5,7 @@
 | Attribute | Value |
 |-----------|-------|
 | **Title** | Mall Hell |
-| **Version** | 5.0 |
+| **Version** | 5.1 |
 | **Genre** | Arcade Score-Chaser / Mall Crawler |
 | **Session** | 3 minutes |
 | **Objective** | Clear all enemies before time expires |

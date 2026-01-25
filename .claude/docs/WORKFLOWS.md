@@ -121,29 +121,31 @@ updateMyElement(value) {
 
 ## Releasing a Version
 
-### Step 1: Update version numbers
-- `index.html` - VERSION display
-- `package.json` - version field
-- `CLAUDE.md` - Version line
+### Step 1: Update ALL version locations (5 files!)
+| File | Location | Example |
+|------|----------|---------|
+| `index.html` | Line ~94, `.version` div | `VERSION 5.1` |
+| `package.json` | Line 3, `version` field | `"5.1.0"` |
+| `CLAUDE.md` | Line 3, header | `**Version 5.1**` |
+| `README.md` | Version History section | `- **v5.1** - ...` |
+| `.claude/docs/GAME_DESIGN.md` | Overview table | `| **Version** | 5.1 |` |
 
-### Step 2: Update version history
-- `README.md`
-- `.claude/docs/GAME_DESIGN.md`
-
-### Step 3: Run full test suite
+### Step 2: Run full test suite
 ```bash
 bun run test
 ```
+Note: `tests/ui/menu.tests.js` has a version format test that checks the main screen.
 
-### Step 4: Manual smoke test (30 seconds)
+### Step 3: Manual smoke test (30 seconds)
 1. Open index.html
-2. Click Start
-3. Shoot, hit enemy, check score
+2. Verify version shows on main menu
+3. Click Start, shoot enemy, check score
 4. ESC to pause, resume
 5. No console errors
 
-### Step 5: Commit
+### Step 4: Commit and push
 ```bash
 git add -A
 git commit -m "Release vX.Y: <summary>"
+git push
 ```

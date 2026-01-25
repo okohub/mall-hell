@@ -1,6 +1,6 @@
 {
   "name": "mall-hell",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "description": "A chaotic first-person browser game",
   "main": "index.html",
   "directories": {
