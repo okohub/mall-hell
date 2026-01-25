@@ -374,7 +374,7 @@
         });
 
         test.it('should have limited ammo', () => {
-            test.assertEqual(WaterGun.config.ammo.max, 100);
+            test.assertEqual(WaterGun.config.ammo.max, 60);
         });
 
         test.it('should have range in config', () => {
@@ -395,7 +395,7 @@
         test.it('should consume ammo when firing', () => {
             WaterGun.onFireStart(1000);
             WaterGun.fire(1000);
-            test.assertTrue(WaterGun.state.ammo < 100);
+            test.assertTrue(WaterGun.state.ammo < 60);
         });
 
         test.it('should add ammo', () => {
@@ -407,7 +407,7 @@
         test.it('should cap ammo at max', () => {
             WaterGun.state.ammo = 90;
             WaterGun.addAmmo(50);
-            test.assertEqual(WaterGun.state.ammo, 100);
+            test.assertEqual(WaterGun.state.ammo, 60);
         });
 
         test.it('should have createFPSMesh method', () => {

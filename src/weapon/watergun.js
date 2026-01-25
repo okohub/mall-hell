@@ -23,8 +23,8 @@ const WaterGun = {
         aimAssist: true,
 
         ammo: {
-            max: 100,
-            current: 100,
+            max: 60,
+            current: 60,
             consumePerShot: 1
         },
 
@@ -60,7 +60,7 @@ const WaterGun = {
         isCharging: false,  // Used as "isFiring" for auto weapons
         chargeAmount: 0,
         lastFireTime: 0,
-        ammo: 100,
+        ammo: 60,
         fireAnimProgress: 0,
         isFiring: false,
         pumpAnim: 0
