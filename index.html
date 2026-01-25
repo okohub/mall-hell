@@ -301,6 +301,7 @@
             scene = SceneSystem.scene; camera = SceneSystem.camera; renderer = SceneSystem.renderer;
             MaterialsTheme.init(THREE); UISystem.init();
             AnalyticsSystem.init({ measurementId: 'G-1GQ02MKM01', provider: 'gtag', debug: false });
+            AnalyticsSystem.gamePageView();
             initSceneGroups();
 
             // Lighting

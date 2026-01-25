@@ -137,6 +137,21 @@ const AnalyticsSystem = {
     // ==========================================
 
     /**
+     * Track game page view (called on load)
+     */
+    gamePageView() {
+        try {
+            this.track('game_page_view', {
+                event_category: 'game',
+                event_label: 'mall_hell',
+                page_type: 'game'
+            });
+        } catch (e) {
+            this._handleError('gamePageView', e);
+        }
+    },
+
+    /**
      * Track game start
      */
     gameStart() {
