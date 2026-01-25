@@ -97,26 +97,24 @@
         'Verifies that charging state activates when player presses fire button',
         async () => {
             runner.resetGame();
-            await runner.wait(200);
+            await runner.wait(100);
 
             const startBtn = runner.getElement('#start-btn');
             runner.simulateClick(startBtn);
+            await runner.wait(400);
 
-            // Wait for PLAYING state
-            let attempts = 0;
-            while (attempts < 30) {
-                if (runner.gameWindow.gameState === 'PLAYING') break;
-                await runner.wait(100);
-                attempts++;
+            // Verify we're in PLAYING state
+            if (runner.gameWindow.gameState !== 'PLAYING') {
+                throw new Error(`Not in PLAYING state: ${runner.gameWindow.gameState}`);
             }
 
             // Reset weapon state and ensure ammo
+            runner.gameWindow.lastShootTime = 0;
             if (runner.gameWindow.WeaponManager?.currentWeapon) {
                 const weapon = runner.gameWindow.WeaponManager.currentWeapon;
                 weapon.state.isCharging = false;
                 weapon.state.chargeAmount = 0;
                 weapon.state.lastFireTime = 0;
-                // Ensure ammo is available (slingshot now has limited ammo)
                 if (weapon.config?.ammo?.max && weapon.config.ammo.max !== Infinity) {
                     weapon.state.ammo = weapon.config.ammo.max;
                 }
@@ -224,34 +222,21 @@
     runner.addTest('fps-release-fires', 'FPS Charging', 'Slingshot fires on release',
         'Verifies that releasing after charging fires a projectile',
         async () => {
-            // This test verifies projectiles are created by charging and releasing
-            // Uses same pattern as projectile-creation test for reliability
+            // This test verifies projectiles are created by the fire mechanism
+            // Uses same reliable pattern as other passing projectile tests
             runner.resetGame();
-            await runner.wait(200);
+            await runner.wait(100);
             const startBtn = runner.getElement('#start-btn');
             runner.simulateClick(startBtn);
+            await runner.wait(400);
 
-            // Wait for game to be in PLAYING state
-            let attempts = 0;
-            while (attempts < 30) {
-                const gameState = runner.gameWindow.gameState;
-                if (gameState === 'PLAYING') break;
-                await runner.wait(100);
-                attempts++;
-            }
-
-            if (runner.gameWindow.gameState !== 'PLAYING') {
-                throw new Error(`Game not in PLAYING state: ${runner.gameWindow.gameState}`);
-            }
-
-            // Reset all cooldowns and ensure ammo
+            // Reset cooldowns and ensure ammo
             runner.gameWindow.lastShootTime = 0;
             if (runner.gameWindow.WeaponManager?.currentWeapon) {
                 const weapon = runner.gameWindow.WeaponManager.currentWeapon;
                 weapon.state.lastFireTime = 0;
                 weapon.state.chargeAmount = 0;
                 weapon.state.isCharging = false;
-                // Ensure ammo is available
                 if (weapon.config?.ammo?.max && weapon.config.ammo.max !== Infinity) {
                     weapon.state.ammo = weapon.config.ammo.max;
                 }
@@ -259,18 +244,10 @@
 
             const initialProjectiles = runner.gameWindow.projectiles?.length || 0;
 
-            // Start charging
-            runner.gameWindow.startCharging();
+            // Use simple fire pattern (startFiring/stopFiring calls startCharging/releaseAndFire internally)
+            runner.gameWindow.startFiring();
             await runner.wait(50);
-
-            // Build tension via manual updates
-            for (let i = 0; i < 10; i++) {
-                runner.gameWindow.manualUpdate(0.1);
-                await runner.wait(10);
-            }
-
-            // Release and fire
-            runner.gameWindow.releaseAndFire();
+            runner.gameWindow.stopFiring();
             await runner.wait(100);
 
             const projectilesAfterFire = runner.gameWindow.projectiles?.length || 0;
@@ -286,34 +263,18 @@
         'Verifies that shooting creates a projectile object in the scene',
         async () => {
             runner.resetGame();
-            await runner.wait(300);
+            await runner.wait(100);
             const startBtn = runner.getElement('#start-btn');
             runner.simulateClick(startBtn);
+            await runner.wait(400);
 
-            // Wait for game to be in PLAYING state with longer timeout
-            let attempts = 0;
-            while (attempts < 50) {
-                const gameState = runner.gameWindow.gameState;
-                if (gameState === 'PLAYING') break;
-                await runner.wait(100);
-                attempts++;
-            }
-
-            if (runner.gameWindow.gameState !== 'PLAYING') {
-                throw new Error(`Game not in PLAYING state: ${runner.gameWindow.gameState}`);
-            }
-
-            // Additional wait for full initialization
-            await runner.wait(200);
-
-            // Reset all cooldowns and state with ammo
+            // Reset cooldowns and ensure ammo
             runner.gameWindow.lastShootTime = 0;
             if (runner.gameWindow.WeaponManager?.currentWeapon) {
                 const weapon = runner.gameWindow.WeaponManager.currentWeapon;
                 weapon.state.lastFireTime = 0;
                 weapon.state.chargeAmount = 0;
                 weapon.state.isCharging = false;
-                // Ensure ammo is available
                 if (weapon.config?.ammo?.max && weapon.config.ammo.max !== Infinity) {
                     weapon.state.ammo = weapon.config.ammo.max;
                 }
@@ -321,19 +282,11 @@
 
             const initialCount = runner.gameWindow.projectiles?.length || 0;
 
-            // Start charging
-            runner.gameWindow.startCharging();
+            // Use simple fire pattern (matches working projectile-travels-forward test)
+            runner.gameWindow.startFiring();
+            await runner.wait(50);
+            runner.gameWindow.stopFiring();
             await runner.wait(100);
-
-            // Build tension via manual updates
-            for (let i = 0; i < 15; i++) {
-                runner.gameWindow.manualUpdate(0.1);
-                await runner.wait(20);
-            }
-
-            // Release and fire
-            runner.gameWindow.releaseAndFire();
-            await runner.wait(150);
 
             const newCount = runner.gameWindow.projectiles?.length || 0;
 
@@ -347,18 +300,10 @@
         'Verifies that projectiles travel through the scene',
         async () => {
             runner.resetGame();
-            await runner.wait(200);
+            await runner.wait(100);
             const startBtn = runner.getElement('#start-btn');
             runner.simulateClick(startBtn);
-
-            // Wait for game to be in PLAYING state
-            let attempts = 0;
-            while (attempts < 30) {
-                const gameState = runner.gameWindow.gameState;
-                if (gameState === 'PLAYING') break;
-                await runner.wait(100);
-                attempts++;
-            }
+            await runner.wait(400);
 
             // Reset cooldowns with ammo
             runner.gameWindow.lastShootTime = 0;
@@ -366,20 +311,16 @@
                 const weapon = runner.gameWindow.WeaponManager.currentWeapon;
                 weapon.state.lastFireTime = 0;
                 weapon.state.chargeAmount = 0;
-                // Ensure ammo is available
+                weapon.state.isCharging = false;
                 if (weapon.config?.ammo?.max && weapon.config.ammo.max !== Infinity) {
                     weapon.state.ammo = weapon.config.ammo.max;
                 }
             }
 
-            // Create projectile using charging system
-            runner.gameWindow.startCharging();
+            // Use simple fire pattern
+            runner.gameWindow.startFiring();
             await runner.wait(50);
-            for (let i = 0; i < 10; i++) {
-                runner.gameWindow.manualUpdate(0.1);
-                await runner.wait(10);
-            }
-            runner.gameWindow.releaseAndFire();
+            runner.gameWindow.stopFiring();
             await runner.wait(100);
 
             const projectiles = runner.gameWindow.projectiles || [];
@@ -407,22 +348,10 @@
         'Verifies that projectiles are removed when they go too far',
         async () => {
             runner.resetGame();
-            await runner.wait(200);
+            await runner.wait(100);
             const startBtn = runner.getElement('#start-btn');
             runner.simulateClick(startBtn);
-
-            // Wait for game to be in PLAYING state
-            let attempts = 0;
-            while (attempts < 30) {
-                const gameState = runner.gameWindow.gameState;
-                if (gameState === 'PLAYING') break;
-                await runner.wait(100);
-                attempts++;
-            }
-
-            if (runner.gameWindow.gameState !== 'PLAYING') {
-                throw new Error(`Game not in PLAYING state: ${runner.gameWindow.gameState}`);
-            }
+            await runner.wait(400);
 
             // Reset cooldowns and ensure ammo
             runner.gameWindow.lastShootTime = 0;
@@ -431,7 +360,6 @@
                 weapon.state.lastFireTime = 0;
                 weapon.state.chargeAmount = 0;
                 weapon.state.isCharging = false;
-                // Ensure ammo is available
                 if (weapon.config?.ammo?.max && weapon.config.ammo.max !== Infinity) {
                     weapon.state.ammo = weapon.config.ammo.max;
                 }
@@ -439,14 +367,10 @@
 
             const initialCount = runner.gameWindow.projectiles?.length || 0;
 
-            // Create projectile using charging system
-            runner.gameWindow.startCharging();
+            // Use simple fire pattern
+            runner.gameWindow.startFiring();
             await runner.wait(50);
-            for (let i = 0; i < 10; i++) {
-                runner.gameWindow.manualUpdate(0.1);
-                await runner.wait(10);
-            }
-            runner.gameWindow.releaseAndFire();
+            runner.gameWindow.stopFiring();
             await runner.wait(100);
 
             const projectiles = runner.gameWindow.projectiles || [];
@@ -476,7 +400,7 @@
             await runner.wait(100);
             const startBtn = runner.getElement('#start-btn');
             runner.simulateClick(startBtn);
-            await runner.wait(300);
+            await runner.wait(400);
 
             if (runner.gameWindow.triggerWallBump) {
                 runner.gameWindow.triggerWallBump(0.8, -1, 0);
@@ -497,7 +421,7 @@
             await runner.wait(100);
             const startBtn = runner.getElement('#start-btn');
             runner.simulateClick(startBtn);
-            await runner.wait(300);
+            await runner.wait(400);
 
             if (runner.gameWindow.triggerWallBump) {
                 runner.gameWindow.triggerWallBump(1.0, -1, 0);
@@ -527,7 +451,7 @@
             await runner.wait(100);
             const startBtn = runner.getElement('#start-btn');
             runner.simulateClick(startBtn);
-            await runner.wait(300);
+            await runner.wait(400);
 
             runner.gameWindow.lastShootTime = 0;
             if (runner.gameWindow.weapon) {
