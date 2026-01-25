@@ -18,7 +18,7 @@
             const skeleton = Enemy.types.SKELETON;
             test.assertEqual(skeleton.id, 'skeleton');
             test.assertEqual(skeleton.health, 4);
-            test.assertEqual(skeleton.speed, 0.45);
+            test.assertEqual(skeleton.speed, 0.30);  // Slower for better gameplay
             test.assertEqual(skeleton.damage, 25);
             test.assertEqual(skeleton.behavior, 'chase');
             test.assertEqual(skeleton.scoreHit, 150);

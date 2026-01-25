@@ -130,7 +130,8 @@
                 runner.gameWindow.WeaponManager.currentWeapon.state.lastFireTime = 0;
             }
 
-            const initialTension = runner.gameWindow.slingshotTension || 0;
+            // Get initial tension via WeaponManager
+            const initialTension = runner.gameWindow.WeaponManager?.getTension() || 0;
 
             runner.gameWindow.startCharging();
             await runner.wait(50);
@@ -140,7 +141,8 @@
                 await runner.wait(10);
             }
 
-            const finalTension = runner.gameWindow.slingshotTension || 0;
+            // Get final tension via WeaponManager
+            const finalTension = runner.gameWindow.WeaponManager?.getTension() || 0;
 
             runner.gameWindow.cancelCharging();
 

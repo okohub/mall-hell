@@ -414,6 +414,8 @@ const EnemyVisual = {
         const socketMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
 
         [-0.1, 0.1].forEach((x, i) => {
+            const side = i === 0 ? -1 : 1;
+
             // Socket depression
             const socket = new THREE.Mesh(
                 new THREE.SphereGeometry(0.09, 8, 8),
@@ -422,16 +424,44 @@ const EnemyVisual = {
             socket.position.set(x, 0.05, -0.28);
             skull.add(socket);
 
-            // Glowing pupil
+            // Glowing angry pupil (slightly elongated for menacing look)
             const eyeMat = new THREE.MeshBasicMaterial({
                 color: v.eyeColor || 0xff0000
             });
             const eye = new THREE.Mesh(
-                new THREE.SphereGeometry(0.04, 8, 8),
+                new THREE.SphereGeometry(0.045, 8, 8),
                 eyeMat
             );
+            eye.scale.set(1.2, 0.7, 1); // Squashed for angry look
             eye.position.set(x, 0.05, -0.32);
+            eye.rotation.z = side * 0.2; // Slight slant for angry expression
             skull.add(eye);
+
+            // Inner bright core (intense glow center)
+            const coreMat = new THREE.MeshBasicMaterial({
+                color: 0xffff00  // Yellow-hot center
+            });
+            const core = new THREE.Mesh(
+                new THREE.SphereGeometry(0.015, 6, 6),
+                coreMat
+            );
+            core.position.set(x, 0.05, -0.34);
+            skull.add(core);
+
+            // ANGRY EYEBROWS (bone ridges)
+            const browMat = new THREE.MeshStandardMaterial({
+                color: v.boneColor || 0xf5f5dc,
+                roughness: 0.6
+            });
+            const brow = new THREE.Mesh(
+                new THREE.BoxGeometry(0.12, 0.025, 0.04),
+                browMat
+            );
+            // Angled inward for angry expression (\ /)
+            brow.position.set(x, 0.14, -0.29);
+            brow.rotation.z = side * 0.35; // Angle down toward center
+            brow.rotation.x = 0.15; // Slight forward tilt
+            skull.add(brow);
 
             if (i === 0) skull.userData.leftEye = eye;
             else skull.userData.rightEye = eye;

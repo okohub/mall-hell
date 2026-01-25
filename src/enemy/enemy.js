@@ -11,7 +11,7 @@ const Enemy = {
             id: 'skeleton',
             name: 'Skeleton Driver',
             health: 4,
-            speed: 0.45,
+            speed: 0.30,  // Slower for better gameplay
             damage: 25,
             behavior: 'chase',
             scoreHit: 150,

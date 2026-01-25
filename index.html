@@ -449,6 +449,13 @@
                 createEnemy: (x, z) => createEnemyCart(x, z, 'SKELETON'),
                 createObstacle: (x, z, type) => createObstacle(x, z, type)
             });
+
+            // Try to spawn weapon pickup in this room
+            PickupSystem.trySpawnForRoom(
+                { x: room.worldX, z: room.worldZ },
+                Room.structure.UNIT,
+                Room.structure.UNIT
+            );
         }
 
         function updateCooldownIndicator() {

@@ -114,6 +114,55 @@ const UISystem = {
         }
     },
 
+    /**
+     * Show pickup notification at center-bottom of screen
+     * @param {string} text - Notification text (e.g., "Water Gun" or "+50 Ammo")
+     */
+    showPickupNotification(text) {
+        const notification = document.createElement('div');
+        notification.className = 'pickup-notification';
+        notification.textContent = text;
+        notification.style.cssText = `
+            position: fixed;
+            bottom: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff88;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border: 2px solid #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+            z-index: 1000;
+            animation: pickupPop 0.3s ease-out, pickupFade 0.5s ease-in 1.2s forwards;
+            pointer-events: none;
+        `;
+
+        // Add animation keyframes if not exists
+        if (!document.getElementById('pickup-animation-style')) {
+            const style = document.createElement('style');
+            style.id = 'pickup-animation-style';
+            style.textContent = `
+                @keyframes pickupPop {
+                    0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
+                    100% { transform: translateX(-50%) scale(1); opacity: 1; }
+                }
+                @keyframes pickupFade {
+                    0% { opacity: 1; }
+                    100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 1700);
+    },
+
     // ==========================================
     // TIMER DISPLAY
     // ==========================================

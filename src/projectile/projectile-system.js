@@ -428,11 +428,24 @@ const ProjectileSystem = {
             cameraPosition,
             maxDistance = this.updateMaxDistance,
             minY = this.updateMinY,
-            maxY = this.updateMaxY
+            maxY = this.updateMaxY,
+            gravity = 8  // Default gravity for ballistic arc
         } = options;
 
         projectiles.forEach(proj => {
             if (!proj.userData.active) return;
+
+            // Store previous position for sweep collision
+            if (!proj.userData.prevPosition) {
+                proj.userData.prevPosition = proj.position.clone();
+            } else {
+                proj.userData.prevPosition.copy(proj.position);
+            }
+
+            // Apply gravity to velocity (ballistic arc)
+            if (gravity > 0) {
+                proj.userData.velocity.y -= gravity * dt;
+            }
 
             // Move projectile based on velocity
             proj.position.add(proj.userData.velocity.clone().multiplyScalar(dt));
