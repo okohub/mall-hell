@@ -14,13 +14,14 @@ const WeaponPickup = {
             id: 'watergun',
             weaponId: 'watergun',
             name: 'Water Gun',
-            spawnChance: 0.35,      // 35% of rooms
-            spawnWeight: 3,         // Relative weight
+            isWeapon: true,         // This is a weapon pickup (not just ammo)
+            spawnChance: 0.4,       // 40% of rooms
+            spawnWeight: 5,         // Higher weight for weapons
             ammoGrant: 50,          // Ammo given on same-weapon pickup
             visual: {
                 color: 0x3498db,
                 glowColor: 0x5dade2,
-                scale: 0.8
+                scale: 2.5           // Larger for visibility
             }
         },
 
@@ -28,13 +29,45 @@ const WeaponPickup = {
             id: 'nerfgun',
             weaponId: 'nerfgun',
             name: 'Nerf Blaster',
-            spawnChance: 0.25,      // 25% of rooms
-            spawnWeight: 2,         // Less common
+            isWeapon: true,         // This is a weapon pickup
+            spawnChance: 0.35,      // 35% of rooms
+            spawnWeight: 4,         // Higher weight for weapons
             ammoGrant: 6,           // Ammo given on same-weapon pickup
             visual: {
                 color: 0xe74c3c,
                 glowColor: 0xf39c12,
-                scale: 0.8
+                scale: 2.5           // Larger for visibility
+            }
+        },
+
+        // Ammo pickups - grants ammo to current weapon
+        AMMO_SMALL: {
+            id: 'ammo_small',
+            weaponId: null,          // Applies to current weapon
+            name: 'Small Ammo',
+            isAmmo: true,
+            spawnChance: 0.3,        // 30% of rooms (reduced)
+            spawnWeight: 2,          // Lower weight than weapons
+            ammoGrant: 15,           // Small ammo refill
+            visual: {
+                color: 0xf1c40f,     // Yellow
+                glowColor: 0xf39c12,
+                scale: 1.5
+            }
+        },
+
+        AMMO_LARGE: {
+            id: 'ammo_large',
+            weaponId: null,          // Applies to current weapon
+            name: 'Large Ammo',
+            isAmmo: true,
+            spawnChance: 0.2,        // 20% of rooms (reduced)
+            spawnWeight: 1,          // Rare
+            ammoGrant: 40,           // Large ammo refill
+            visual: {
+                color: 0xe67e22,     // Orange
+                glowColor: 0xf39c12,
+                scale: 1.8
             }
         }
     },
@@ -44,14 +77,14 @@ const WeaponPickup = {
     // ==========================================
 
     spawn: {
-        chancePerRoom: 0.25,        // 25% base chance per room
-        maxPerRoom: 1,              // Only one pickup per room
+        chancePerRoom: 0.6,         // 60% base chance per room (more frequent)
+        maxPerRoom: 2,              // Allow up to 2 pickups per room
         minDistanceFromPlayer: 10,  // Don't spawn too close
         maxDistanceFromPlayer: 60,  // Don't spawn too far ahead
-        heightOffset: 1.5,          // Float above ground
-        bobAmplitude: 0.3,          // Floating bob height
-        bobSpeed: 2,                // Bob speed
-        rotationSpeed: 1.5          // Rotation speed
+        heightOffset: 1.8,          // Float above ground (higher for visibility)
+        bobAmplitude: 0.4,          // Floating bob height
+        bobSpeed: 2.5,              // Bob speed
+        rotationSpeed: 2.0          // Faster rotation for attention
     },
 
     // ==========================================

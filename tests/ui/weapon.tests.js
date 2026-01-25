@@ -94,24 +94,37 @@
 
     // FPS Weapon State Tests
     runner.addTest('fps-charging-starts', 'FPS Charging', 'Firing state activates on button press',
-        'Verifies that firing state activates when player presses fire button',
+        'Verifies that charging state activates when player presses fire button',
         async () => {
             runner.resetGame();
-            await runner.wait(100);
+            await runner.wait(200);
 
             const startBtn = runner.getElement('#start-btn');
             runner.simulateClick(startBtn);
-            await runner.wait(500);
 
-            runner.gameWindow.startFiring();
-            await runner.wait(50);
-
-            const isFiring = runner.gameWindow.isFiring;
-            if (!isFiring) {
-                throw new Error('isFiring should be true when startFiring() is called');
+            // Wait for PLAYING state
+            let attempts = 0;
+            while (attempts < 30) {
+                if (runner.gameWindow.gameState === 'PLAYING') break;
+                await runner.wait(100);
+                attempts++;
             }
 
-            runner.gameWindow.stopFiring();
+            // Reset weapon state
+            if (runner.gameWindow.WeaponManager?.currentWeapon?.state) {
+                runner.gameWindow.WeaponManager.currentWeapon.state.isCharging = false;
+                runner.gameWindow.WeaponManager.currentWeapon.state.chargeAmount = 0;
+            }
+
+            runner.gameWindow.startCharging();
+            await runner.wait(50);
+
+            const isCharging = runner.gameWindow.WeaponManager?.isCharging() || runner.gameWindow.isFiring;
+            if (!isCharging) {
+                throw new Error('Weapon should be in charging state when startCharging() is called');
+            }
+
+            runner.gameWindow.cancelCharging();
         }
     );
 
@@ -119,18 +132,28 @@
         'Verifies that holding fire builds slingshot tension over time',
         async () => {
             runner.resetGame();
-            await runner.wait(100);
+            await runner.wait(200);
 
             const startBtn = runner.getElement('#start-btn');
             runner.simulateClick(startBtn);
-            await runner.wait(500);
 
+            // Wait for PLAYING state
+            let attempts = 0;
+            while (attempts < 30) {
+                if (runner.gameWindow.gameState === 'PLAYING') break;
+                await runner.wait(100);
+                attempts++;
+            }
+
+            // Reset weapon state completely
             runner.gameWindow.lastShootTime = 0;
             if (runner.gameWindow.WeaponManager?.currentWeapon?.state) {
                 runner.gameWindow.WeaponManager.currentWeapon.state.lastFireTime = 0;
+                runner.gameWindow.WeaponManager.currentWeapon.state.chargeAmount = 0;
+                runner.gameWindow.WeaponManager.currentWeapon.state.isCharging = false;
             }
 
-            // Get initial tension via WeaponManager
+            // Get initial tension (should be 0 after reset)
             const initialTension = runner.gameWindow.WeaponManager?.getTension() || 0;
 
             runner.gameWindow.startCharging();
@@ -246,6 +269,117 @@
         'Verifies that shooting creates a projectile object in the scene',
         async () => {
             runner.resetGame();
+            await runner.wait(300);
+            const startBtn = runner.getElement('#start-btn');
+            runner.simulateClick(startBtn);
+
+            // Wait for game to be in PLAYING state with longer timeout
+            let attempts = 0;
+            while (attempts < 50) {
+                const gameState = runner.gameWindow.gameState;
+                if (gameState === 'PLAYING') break;
+                await runner.wait(100);
+                attempts++;
+            }
+
+            if (runner.gameWindow.gameState !== 'PLAYING') {
+                throw new Error(`Game not in PLAYING state: ${runner.gameWindow.gameState}`);
+            }
+
+            // Additional wait for full initialization
+            await runner.wait(200);
+
+            // Reset all cooldowns and state
+            runner.gameWindow.lastShootTime = 0;
+            if (runner.gameWindow.WeaponManager?.currentWeapon?.state) {
+                runner.gameWindow.WeaponManager.currentWeapon.state.lastFireTime = 0;
+                runner.gameWindow.WeaponManager.currentWeapon.state.chargeAmount = 0;
+                runner.gameWindow.WeaponManager.currentWeapon.state.isCharging = false;
+            }
+
+            const initialCount = runner.gameWindow.projectiles?.length || 0;
+
+            // Start charging
+            runner.gameWindow.startCharging();
+            await runner.wait(100);
+
+            // Build tension via manual updates
+            for (let i = 0; i < 15; i++) {
+                runner.gameWindow.manualUpdate(0.1);
+                await runner.wait(20);
+            }
+
+            // Release and fire
+            runner.gameWindow.releaseAndFire();
+            await runner.wait(150);
+
+            const newCount = runner.gameWindow.projectiles?.length || 0;
+
+            if (newCount <= initialCount) {
+                throw new Error(`Projectile not created: before=${initialCount}, after=${newCount}`);
+            }
+        }
+    );
+
+    runner.addTest('projectile-movement', 'Projectile System', 'Projectiles move after creation',
+        'Verifies that projectiles travel through the scene',
+        async () => {
+            runner.resetGame();
+            await runner.wait(200);
+            const startBtn = runner.getElement('#start-btn');
+            runner.simulateClick(startBtn);
+
+            // Wait for game to be in PLAYING state
+            let attempts = 0;
+            while (attempts < 30) {
+                const gameState = runner.gameWindow.gameState;
+                if (gameState === 'PLAYING') break;
+                await runner.wait(100);
+                attempts++;
+            }
+
+            // Reset cooldowns
+            runner.gameWindow.lastShootTime = 0;
+            if (runner.gameWindow.WeaponManager?.currentWeapon?.state) {
+                runner.gameWindow.WeaponManager.currentWeapon.state.lastFireTime = 0;
+                runner.gameWindow.WeaponManager.currentWeapon.state.chargeAmount = 0;
+            }
+
+            // Create projectile using charging system
+            runner.gameWindow.startCharging();
+            await runner.wait(50);
+            for (let i = 0; i < 10; i++) {
+                runner.gameWindow.manualUpdate(0.1);
+                await runner.wait(10);
+            }
+            runner.gameWindow.releaseAndFire();
+            await runner.wait(100);
+
+            const projectiles = runner.gameWindow.projectiles || [];
+            if (projectiles.length === 0) {
+                throw new Error('No projectile created');
+            }
+
+            const proj = projectiles[projectiles.length - 1];
+            const initialZ = proj.position.z;
+
+            // Update to move projectile
+            if (runner.gameWindow.manualUpdate) {
+                runner.gameWindow.manualUpdate(0.1);
+            }
+            await runner.wait(50);
+
+            const newZ = proj.position.z;
+            if (Math.abs(newZ - initialZ) < 0.5) {
+                throw new Error(`Projectile did not move: initial=${initialZ}, current=${newZ}`);
+            }
+        }
+    );
+
+    runner.addTest('projectile-cleanup', 'Projectile System', 'Projectiles are cleaned up when out of bounds',
+        'Verifies that projectiles are removed when they go too far',
+        async () => {
+            runner.resetGame();
             await runner.wait(200);
             const startBtn = runner.getElement('#start-btn');
             runner.simulateClick(startBtn);
@@ -263,7 +397,7 @@
                 throw new Error(`Game not in PLAYING state: ${runner.gameWindow.gameState}`);
             }
 
-            // Reset all cooldowns
+            // Reset cooldowns
             runner.gameWindow.lastShootTime = 0;
             if (runner.gameWindow.WeaponManager?.currentWeapon?.state) {
                 runner.gameWindow.WeaponManager.currentWeapon.state.lastFireTime = 0;
@@ -272,99 +406,18 @@
 
             const initialCount = runner.gameWindow.projectiles?.length || 0;
 
-            // Start charging
+            // Create projectile using charging system
             runner.gameWindow.startCharging();
             await runner.wait(50);
-
-            // Build tension via manual updates
             for (let i = 0; i < 10; i++) {
                 runner.gameWindow.manualUpdate(0.1);
                 await runner.wait(10);
             }
-
-            // Release and fire
             runner.gameWindow.releaseAndFire();
-            await runner.wait(100);
-
-            const newCount = runner.gameWindow.projectiles?.length || 0;
-
-            if (newCount <= initialCount) {
-                throw new Error(`Projectile not created: before=${initialCount}, after=${newCount}`);
-            }
-        }
-    );
-
-    runner.addTest('projectile-movement', 'Projectile System', 'Projectiles move after creation',
-        'Verifies that projectiles travel through the scene',
-        async () => {
-            runner.resetGame();
-            await runner.wait(100);
-            const startBtn = runner.getElement('#start-btn');
-            runner.simulateClick(startBtn);
-            await runner.wait(300);
-
-            runner.gameWindow.lastShootTime = 0;
-            if (runner.gameWindow.weapon) {
-                runner.gameWindow.weapon.lastFireTime = 0;
-            }
-
-            runner.gameWindow.startFiring();
-            await runner.wait(50);
-            runner.gameWindow.stopFiring();
-            await runner.wait(50);
-
-            const projectiles = runner.gameWindow.projectiles || [];
-            if (projectiles.length === 0) {
-                throw new Error('No projectile created');
-            }
-
-            const proj = projectiles[projectiles.length - 1];
-            const initialZ = proj.position.z;
-
-            await runner.wait(200);
-
-            if (runner.gameWindow.manualUpdate) {
-                runner.gameWindow.manualUpdate(0.1);
-            }
-            await runner.wait(50);
-
-            const newZ = proj.position.z;
-            if (Math.abs(newZ - initialZ) < 0.5) {
-                throw new Error(`Projectile did not move: initial=${initialZ}, current=${newZ}`);
-            }
-        }
-    );
-
-    runner.addTest('projectile-cleanup', 'Projectile System', 'Projectiles are cleaned up when out of bounds',
-        'Verifies that projectiles are removed when they go too far',
-        async () => {
-            runner.resetGame();
-            await runner.wait(100);
-            const startBtn = runner.getElement('#start-btn');
-            runner.simulateClick(startBtn);
-            await runner.wait(500);
-
-            runner.gameWindow.lastShootTime = 0;
-            if (runner.gameWindow.weapon) {
-                runner.gameWindow.weapon.lastFireTime = 0;
-            }
-
-            const initialCount = runner.gameWindow.projectiles?.length || 0;
-
-            runner.gameWindow.startFiring();
-            await runner.wait(100);
-            runner.gameWindow.stopFiring();
             await runner.wait(100);
 
             const projectiles = runner.gameWindow.projectiles || [];
             if (projectiles.length <= initialCount) {
-                if (runner.gameWindow.fireWeapon) {
-                    runner.gameWindow.fireWeapon(200);
-                    await runner.wait(50);
-                }
-            }
-
-            if (projectiles.length === 0) {
                 throw new Error('No projectile created');
             }
 

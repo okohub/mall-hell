@@ -641,6 +641,59 @@ const CollisionSystem = {
     },
 
     /**
+     * Check if a position is hitting a room wall (for projectile collision)
+     * Unlike hasLineOfSight which checks room-to-room transitions, this checks
+     * if a position is at/past a wall boundary within a room.
+     * @param {number} x - X position
+     * @param {number} z - Z position
+     * @param {Object} gridSystem - Grid system for room lookup
+     * @param {Object} roomConfig - Room configuration {UNIT, DOOR_WIDTH}
+     * @param {number} margin - How close to wall counts as hitting (default 0.2)
+     * @returns {boolean} True if position is hitting a wall
+     */
+    isHittingRoomWall(x, z, gridSystem, roomConfig, margin = 0.2) {
+        const ROOM_UNIT = roomConfig.UNIT;
+        const DOOR_WIDTH = roomConfig.DOOR_WIDTH;
+        const room = gridSystem.getRoomAtWorld(x, z);
+
+        // Outside grid entirely - hitting outer wall
+        if (!room) return true;
+
+        const roomMinX = room.gridX * ROOM_UNIT + margin;
+        const roomMaxX = (room.gridX + 1) * ROOM_UNIT - margin;
+        const roomMinZ = room.gridZ * ROOM_UNIT + margin;
+        const roomMaxZ = (room.gridZ + 1) * ROOM_UNIT - margin;
+
+        const doorCenterX = room.gridX * ROOM_UNIT + ROOM_UNIT / 2;
+        const doorCenterZ = room.gridZ * ROOM_UNIT + ROOM_UNIT / 2;
+        const doorHalf = DOOR_WIDTH / 2;
+        const doors = room.doors || [];
+
+        // Check west wall
+        if (x <= roomMinX) {
+            const inDoor = doors.includes('west') && z > doorCenterZ - doorHalf && z < doorCenterZ + doorHalf;
+            if (!inDoor) return true;
+        }
+        // Check east wall
+        if (x >= roomMaxX) {
+            const inDoor = doors.includes('east') && z > doorCenterZ - doorHalf && z < doorCenterZ + doorHalf;
+            if (!inDoor) return true;
+        }
+        // Check north wall
+        if (z <= roomMinZ) {
+            const inDoor = doors.includes('north') && x > doorCenterX - doorHalf && x < doorCenterX + doorHalf;
+            if (!inDoor) return true;
+        }
+        // Check south wall
+        if (z >= roomMaxZ) {
+            const inDoor = doors.includes('south') && x > doorCenterX - doorHalf && x < doorCenterX + doorHalf;
+            if (!inDoor) return true;
+        }
+
+        return false;
+    },
+
+    /**
      * Hard clamp position to stay within room bounds (last resort safety)
      * @param {Object} position - Entity position {x, z} - will be modified
      * @param {Object} gridSystem - Grid system for room lookup
@@ -773,10 +826,19 @@ const CollisionSystem = {
                 projDir.normalize();
             }
 
-            // Check wall collision (using 2D line check)
-            if (gridSystem && roomConfig && proj.userData.active) {
-                // Check if LOS is blocked between prev and current position
+            // Check wall collision (using 2D line check + room boundary check)
+            // Only check if projectile has moved a meaningful distance (not just spawned)
+            if (gridSystem && roomConfig && proj.userData.active && projLen > 0.5) {
+                // Check if LOS is blocked between prev and current position (room-to-room)
                 if (!this.hasLineOfSight(prevPos.x, prevPos.z, currPos.x, currPos.z, gridSystem, roomConfig)) {
+                    proj.userData.active = false;
+                    if (onWallHit) {
+                        onWallHit(currPos.clone());
+                    }
+                }
+                // Also check if projectile hit a room wall (within same room)
+                // Use small margin (0.2) to catch wall impacts
+                else if (this.isHittingRoomWall(currPos.x, currPos.z, gridSystem, roomConfig, 0.2)) {
                     proj.userData.active = false;
                     if (onWallHit) {
                         onWallHit(currPos.clone());

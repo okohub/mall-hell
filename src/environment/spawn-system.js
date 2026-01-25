@@ -160,6 +160,128 @@ const SpawnSystem = {
     },
 
     // ==========================================
+    // RUNTIME SPAWNING
+    // ==========================================
+
+    /**
+     * Runtime enemy spawning configuration
+     */
+    runtimeConfig: {
+        maxEnemies: 8,              // Max enemies alive at once
+        spawnInterval: 2.0,         // Seconds between spawn attempts
+        minDistanceFromPlayer: 15,  // Don't spawn too close
+        maxDistanceFromPlayer: 60,  // Don't spawn too far
+        spawnChancePerAttempt: 0.4  // 40% chance per attempt
+    },
+
+    // Runtime state
+    _lastSpawnTime: 0,
+
+    /**
+     * Try to spawn enemies at runtime to maintain max count
+     * Only spawns in rooms the player is NOT currently in
+     * @param {Object} options - Spawn options
+     * @param {Object} options.currentRoom - Player's current room
+     * @param {Object} options.playerPosition - Player position {x, z}
+     * @param {Array} options.visitedRooms - Set of visited room keys
+     * @param {Object} options.gridSystem - Grid system for room lookup
+     * @param {Object} options.roomConfig - Room config {UNIT, DOOR_WIDTH}
+     * @param {number} options.currentEnemyCount - Current active enemy count
+     * @param {number} options.dt - Delta time
+     * @param {Function} options.createEnemy - Callback to create enemy (x, z) => enemy
+     * @returns {Array} Array of spawned enemies
+     */
+    tryRuntimeSpawn(options) {
+        const {
+            currentRoom,
+            playerPosition,
+            visitedRooms,
+            gridSystem,
+            roomConfig,
+            currentEnemyCount,
+            dt,
+            createEnemy
+        } = options;
+
+        // Track spawn timing
+        this._lastSpawnTime = (this._lastSpawnTime || 0) + dt;
+        if (this._lastSpawnTime < this.runtimeConfig.spawnInterval) {
+            return [];
+        }
+        this._lastSpawnTime = 0;
+
+        // Check if we need more enemies
+        if (currentEnemyCount >= this.runtimeConfig.maxEnemies) {
+            return [];
+        }
+
+        // Random chance to spawn
+        if (Math.random() > this.runtimeConfig.spawnChancePerAttempt) {
+            return [];
+        }
+
+        // Find rooms that are NOT the player's current room and are within distance
+        const ROOM_UNIT = roomConfig.UNIT;
+        const spawned = [];
+        const candidateRooms = [];
+
+        // Check all visited rooms as candidates
+        visitedRooms.forEach(roomKey => {
+            const [gx, gz] = roomKey.split('_').map(Number);
+            const roomCenterX = gx * ROOM_UNIT + ROOM_UNIT / 2;
+            const roomCenterZ = gz * ROOM_UNIT + ROOM_UNIT / 2;
+
+            // Skip player's current room
+            if (currentRoom && gx === currentRoom.gridX && gz === currentRoom.gridZ) {
+                return;
+            }
+
+            // Check distance from player
+            const dx = roomCenterX - playerPosition.x;
+            const dz = roomCenterZ - playerPosition.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+
+            if (dist >= this.runtimeConfig.minDistanceFromPlayer &&
+                dist <= this.runtimeConfig.maxDistanceFromPlayer) {
+                const room = gridSystem.getRoomAtWorld(roomCenterX, roomCenterZ);
+                if (room && room.theme !== 'ENTRANCE') {
+                    candidateRooms.push(room);
+                }
+            }
+        });
+
+        // If no candidate rooms, try to spawn ahead of player
+        if (candidateRooms.length === 0) {
+            // Look for rooms ahead (in negative Z direction typically)
+            for (let i = 1; i <= 3; i++) {
+                const aheadZ = playerPosition.z - (i * ROOM_UNIT);
+                const room = gridSystem.getRoomAtWorld(playerPosition.x, aheadZ);
+                if (room && room !== currentRoom && room.theme !== 'ENTRANCE') {
+                    candidateRooms.push(room);
+                }
+            }
+        }
+
+        if (candidateRooms.length === 0) {
+            return [];
+        }
+
+        // Pick a random candidate room
+        const targetRoom = candidateRooms[Math.floor(Math.random() * candidateRooms.length)];
+
+        // Find a valid spawn position in that room
+        const pos = this.findValidPosition(targetRoom, roomConfig, [], this.config.enemySpacing);
+        if (pos && createEnemy) {
+            const enemy = createEnemy(pos.x, pos.z);
+            if (enemy) {
+                spawned.push(enemy);
+            }
+        }
+
+        return spawned;
+    },
+
+    // ==========================================
     // UTILITY
     // ==========================================
 

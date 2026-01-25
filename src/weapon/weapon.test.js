@@ -148,6 +148,97 @@
         });
     });
 
+    // ==========================================
+    // FIRE RESULT DELEGATION TESTS
+    // ==========================================
+
+    test.describe('WeaponManager - Fire Result Returns', () => {
+        test.beforeEach(() => {
+            WeaponManager.init(null);
+            WeaponManager.register(Slingshot);
+            WeaponManager.register(WaterGun);
+            WeaponManager.register(NerfGun);
+        });
+
+        test.it('should return fire result from update() for auto-fire weapons', () => {
+            // Setup WaterGun as current weapon
+            WeaponManager.currentWeaponId = 'watergun';
+            WeaponManager.currentWeapon = WaterGun;
+            WaterGun.resetState();
+
+            // Start firing
+            WaterGun.onFireStart(1000);
+            test.assertTrue(WaterGun.state.isFiring, 'WaterGun should be firing');
+
+            // update() should return fire result when weapon fires
+            const result = WeaponManager.update(0.1, 1000);
+            test.assertTrue(result !== null, 'update() should return fire result');
+            test.assertTrue(result.speed > 0, 'Fire result should have speed');
+            test.assertEqual(result.projectileType, 'water', 'Should have water projectile type');
+        });
+
+        test.it('should return null from update() when not firing', () => {
+            WeaponManager.currentWeaponId = 'watergun';
+            WeaponManager.currentWeapon = WaterGun;
+            WaterGun.resetState();
+
+            // Don't start firing
+            const result = WeaponManager.update(0.1, 1000);
+            test.assertEqual(result, null, 'Should return null when not firing');
+        });
+
+        test.it('should return fire result from onFireStart() for single-shot weapons', () => {
+            // Setup NerfGun as current weapon
+            WeaponManager.currentWeaponId = 'nerfgun';
+            WeaponManager.currentWeapon = NerfGun;
+            NerfGun.resetState();
+
+            // onFireStart() should return fire result immediately for single-shot
+            const result = WeaponManager.onFireStart(1000);
+            test.assertTrue(result !== null, 'onFireStart() should return fire result');
+            test.assertTrue(result.speed > 0, 'Fire result should have speed');
+            test.assertEqual(result.projectileType, 'dart', 'Should have dart projectile type');
+        });
+
+        test.it('should return no fire result from onFireStart() for charge weapons', () => {
+            WeaponManager.currentWeaponId = 'slingshot';
+            WeaponManager.currentWeapon = Slingshot;
+            Slingshot.resetState();
+
+            // Charge weapons don't fire on start (return null or undefined)
+            const result = WeaponManager.onFireStart(1000);
+            test.assertTrue(!result, 'Charge weapons should not return fire result on fire start');
+            test.assertTrue(Slingshot.state.isCharging, 'Slingshot should start charging');
+        });
+
+        test.it('should return fire result from onFireRelease() for charge weapons', () => {
+            WeaponManager.currentWeaponId = 'slingshot';
+            WeaponManager.currentWeapon = Slingshot;
+            Slingshot.resetState();
+
+            // Start charging
+            WeaponManager.onFireStart(1000);
+            WeaponManager.update(0.5, 1500);
+
+            // Release should fire
+            const result = WeaponManager.onFireRelease(1500);
+            test.assertTrue(result !== null, 'onFireRelease() should return fire result');
+            test.assertTrue(result.speed > 60, 'Fire result should have proper speed');
+            test.assertEqual(result.projectileType, 'stone', 'Should have stone projectile type');
+        });
+
+        test.it('should return null from onFireRelease() for auto-fire weapons', () => {
+            WeaponManager.currentWeaponId = 'watergun';
+            WeaponManager.currentWeapon = WaterGun;
+            WaterGun.resetState();
+
+            // Auto-fire weapons don't fire on release
+            WaterGun.onFireStart(1000);
+            const result = WeaponManager.onFireRelease(1100);
+            test.assertEqual(result, null, 'Auto-fire weapons should return null on release');
+        });
+    });
+
     test.describe('WeaponManager - Crosshair', () => {
         test.beforeEach(() => {
             WeaponManager.init(null);

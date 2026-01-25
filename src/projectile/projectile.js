@@ -55,13 +55,13 @@ const Projectile = {
         water: {
             id: 'water',
             geometry: 'sphere',
-            size: 0.15,           // Visible water droplet
+            size: 0.35,           // Larger water droplet for visibility
             color: 0x3498db,      // Blue water droplet
             glow: true,
             glowColor: 0x5dade2,
-            emissiveIntensity: { min: 0.4, max: 0.8 },
-            gravity: 2,           // Noticeable arc for water spray
-            lifetime: 2000,       // Shorter lifetime
+            emissiveIntensity: { min: 0.6, max: 1.0 },  // Brighter glow
+            gravity: 1.5,         // Slightly less gravity for longer arc
+            lifetime: 2500,       // Longer lifetime
             piercing: false,
             trail: true,          // Leave water trail
             trailColor: 0x85c1e9

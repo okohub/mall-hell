@@ -174,34 +174,89 @@ const PickupSystem = {
         const THREE = this.THREE;
         if (!THREE) return null;
 
-        // Get weapon module to create pickup mesh
-        const weaponId = instance.config.weaponId;
-        let weaponModule = null;
-
-        // Find the weapon module
-        if (typeof WeaponManager !== 'undefined' && WeaponManager.weapons[weaponId]) {
-            weaponModule = WeaponManager.weapons[weaponId];
-        } else if (weaponId === 'watergun' && typeof WaterGun !== 'undefined') {
-            weaponModule = WaterGun;
-        } else if (weaponId === 'nerfgun' && typeof NerfGun !== 'undefined') {
-            weaponModule = NerfGun;
-        } else if (weaponId === 'slingshot' && typeof Slingshot !== 'undefined') {
-            weaponModule = Slingshot;
-        }
-
+        const config = instance.config;
+        const weaponId = config.weaponId;
         let mesh;
-        if (weaponModule && weaponModule.createPickupMesh) {
-            mesh = weaponModule.createPickupMesh(THREE);
+
+        // Ammo pickups use generic ammo mesh
+        if (config.isAmmo || weaponId === null) {
+            mesh = this._createAmmoMesh(instance, THREE);
         } else {
-            // Fallback: generic pickup mesh
-            mesh = this._createGenericMesh(instance, THREE);
+            // Weapon pickups use weapon-specific mesh
+            let weaponModule = null;
+
+            // Find the weapon module
+            if (typeof WeaponManager !== 'undefined' && WeaponManager.weapons[weaponId]) {
+                weaponModule = WeaponManager.weapons[weaponId];
+            } else if (weaponId === 'watergun' && typeof WaterGun !== 'undefined') {
+                weaponModule = WaterGun;
+            } else if (weaponId === 'nerfgun' && typeof NerfGun !== 'undefined') {
+                weaponModule = NerfGun;
+            } else if (weaponId === 'slingshot' && typeof Slingshot !== 'undefined') {
+                weaponModule = Slingshot;
+            }
+
+            if (weaponModule && weaponModule.createPickupMesh) {
+                mesh = weaponModule.createPickupMesh(THREE);
+            } else {
+                // Fallback: generic pickup mesh
+                mesh = this._createGenericMesh(instance, THREE);
+            }
         }
+
+        // Add outer glow sphere for visibility
+        this._addGlowEffect(mesh, instance, THREE);
 
         // Scale
-        const scale = instance.config.visual.scale || 0.8;
+        const scale = config.visual.scale || 1.5;
         mesh.scale.set(scale, scale, scale);
 
         return mesh;
+    },
+
+    /**
+     * Create ammo pickup mesh (simplified for performance)
+     * @private
+     */
+    _createAmmoMesh(instance, THREE) {
+        const pickup = new THREE.Group();
+
+        const color = instance.config.visual.color || 0xf1c40f;
+
+        // Simple glowing ammo box - single material for performance
+        const boxMat = new THREE.MeshStandardMaterial({
+            color: color,
+            roughness: 0.3,
+            metalness: 0.4,
+            emissive: color,
+            emissiveIntensity: 0.6
+        });
+
+        // Main ammo box
+        const boxGeo = new THREE.BoxGeometry(0.6, 0.4, 0.5);
+        const box = new THREE.Mesh(boxGeo, boxMat);
+        pickup.add(box);
+
+        return pickup;
+    },
+
+    /**
+     * Add glow effect to pickup (no PointLight for performance)
+     * @private
+     */
+    _addGlowEffect(mesh, instance, THREE) {
+        const glowColor = instance.config.visual.glowColor || instance.config.visual.color || 0x00ff00;
+
+        // Outer glow sphere only - NO PointLight (causes lag)
+        const glowMat = new THREE.MeshBasicMaterial({
+            color: glowColor,
+            transparent: true,
+            opacity: 0.4,
+            side: THREE.BackSide
+        });
+        const glowGeo = new THREE.SphereGeometry(1.0, 8, 8);  // Larger glow, fewer segments
+        const glow = new THREE.Mesh(glowGeo, glowMat);
+        mesh.add(glow);
     },
 
     /**
@@ -317,31 +372,45 @@ const PickupSystem = {
      * @param {Object} THREE - THREE.js library
      * @param {Object} materials - Materials for mesh creation
      * @param {Object} camera - Camera for FPS mesh attachment
-     * @returns {Object} Result {switched, ammoAdded, weaponId}
+     * @returns {Object} Result {switched, ammoAdded, weaponId, isAmmo}
      */
     collect(pickup, weaponManager, THREE, materials, camera) {
         if (!pickup || !weaponManager) return null;
 
-        const weaponId = pickup.config.weaponId;
+        const config = pickup.config;
+        const weaponId = config.weaponId;
         const currentWeaponId = weaponManager.getCurrentId();
 
-        if (currentWeaponId === weaponId) {
-            // Same weapon - add ammo
-            weaponManager.addAmmo(pickup.config.ammoGrant);
+        // Ammo pickup - always adds ammo to current weapon
+        if (config.isAmmo || weaponId === null) {
+            weaponManager.addAmmo(config.ammoGrant);
             return {
                 switched: false,
-                ammoAdded: pickup.config.ammoGrant,
-                weaponId: weaponId
-            };
-        } else {
-            // Different weapon - switch
-            weaponManager.equip(weaponId, THREE, materials, camera);
-            return {
-                switched: true,
-                ammoAdded: 0,
-                weaponId: weaponId
+                ammoAdded: config.ammoGrant,
+                weaponId: currentWeaponId,
+                isAmmo: true
             };
         }
+
+        // Weapon pickup - same weapon adds ammo
+        if (currentWeaponId === weaponId) {
+            weaponManager.addAmmo(config.ammoGrant);
+            return {
+                switched: false,
+                ammoAdded: config.ammoGrant,
+                weaponId: weaponId,
+                isAmmo: false
+            };
+        }
+
+        // Weapon pickup - different weapon switches
+        weaponManager.equip(weaponId, THREE, materials, camera);
+        return {
+            switched: true,
+            ammoAdded: 0,
+            weaponId: weaponId,
+            isAmmo: false
+        };
     },
 
     // ==========================================

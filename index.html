@@ -63,7 +63,7 @@
                     <div class="title-wrapper">
                         <div class="title">MALL HELL</div>
                     </div>
-                    <div class="version">VERSION 4.1</div>
+                    <div class="version">VERSION 4.2</div>
                     <div class="subtitle">SUPERMARKET MAYHEM</div>
                     <div class="instructions" id="instructions">
                         <div class="control-item">
@@ -349,7 +349,7 @@
         function spawnParticles(pos, color, count) { ParticleSystem.spawn(THREE, pos, color, count, particles, scene); }
 
         const addScore = (pts, pos) => GameSession.addScore(pts, pos);
-        const startCharging = () => StateSystem.is('PLAYING') && WeaponManager.onFireStart(Date.now());
+        const startCharging = () => { if (!StateSystem.is('PLAYING')) return; const r = WeaponManager.onFireStart(Date.now()); if (r) shoot(r.speed, r); };
         const updateCharging = (dt) => { const r = WeaponManager.update(dt, Date.now()); if (r) shoot(r.speed, r); };
         const cancelCharging = () => WeaponManager.cancelAction();
         const releaseAndFire = () => { const r = WeaponManager.onFireRelease(Date.now()); if (r) shoot(r.speed, r); };
@@ -564,6 +564,23 @@
             // Update obstacles (no damage - player collides via movement check above)
             EnvironmentSystem.updateObstaclesArray(obstacles, { playerCart, dt });
             ParticleSystem.updateAll(particles, dt, { gravity: 15, fadeRate: 2 });
+
+            // Runtime enemy spawning - maintains max count, spawns in other rooms
+            const activeEnemyCount = enemies.filter(e => e.userData.active).length;
+            const spawned = SpawnSystem.tryRuntimeSpawn({
+                currentRoom,
+                playerPosition: PlayerSystem.position,
+                visitedRooms,
+                gridSystem: mallGrid,
+                roomConfig: Room.structure,
+                currentEnemyCount: activeEnemyCount,
+                dt,
+                createEnemy: (x, z) => {
+                    const enemy = EnemySystem.createMesh(THREE, 'SKELETON', x, z);
+                    if (enemy) { scene.add(enemy); enemies.push(enemy); }
+                    return enemy;
+                }
+            });
 
             // Collision detection
             CollisionSystem.processProjectileHits(projectiles, enemies, obstacles, {

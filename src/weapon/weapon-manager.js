@@ -141,12 +141,14 @@ const WeaponManager = {
     /**
      * Handle fire button press
      * @param {number} time - Current timestamp
+     * @returns {Object|null} Fire result if weapon fires immediately (single-shot weapons)
      */
     onFireStart(time) {
-        if (!this.currentWeapon) return;
+        if (!this.currentWeapon) return null;
         if (this.currentWeapon.onFireStart) {
-            this.currentWeapon.onFireStart(time);
+            return this.currentWeapon.onFireStart(time);
         }
+        return null;
     },
 
     /**
@@ -166,12 +168,14 @@ const WeaponManager = {
      * Update weapon (called each frame)
      * @param {number} dt - Delta time in seconds
      * @param {number} time - Current timestamp
+     * @returns {Object|null} Fire result if weapon fired this frame (for auto-fire weapons)
      */
     update(dt, time) {
-        if (!this.currentWeapon) return;
+        if (!this.currentWeapon) return null;
         if (this.currentWeapon.update) {
-            this.currentWeapon.update(dt, time);
+            return this.currentWeapon.update(dt, time);
         }
+        return null;
     },
 
     /**

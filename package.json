@@ -13,6 +13,11 @@
     "test:quick": "bun run-tests.js --unit -q",
     "test:failed": "bun run-tests.js --failed",
     "test:list": "bun run-tests.js --list",
+    "playtest": "bun playtest/playtest-runner.js",
+    "playtest:all": "bun playtest/playtest-runner.js --all",
+    "playtest:watch": "bun playtest/playtest-runner.js --show --verbose",
+    "playtest:vision": "bun playtest/vision-agent.js",
+    "playtest:vision:save": "bun playtest/vision-agent.js --save-screenshots",
     "serve": "bun x serve . -p 3000",
     "open": "open index.html"
   },
