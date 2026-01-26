@@ -26,9 +26,10 @@
 
 1. **Read before write** - Never modify code you haven't read
 2. **Fix code, not tests** - If tests fail, implementation is wrong
-3. **Domain isolation** - Each domain is self-contained
-4. **No hardcoding** - Use constants from `<domain>.js` files
+3. **Domain boundaries** - Each domain is self-contained (not pure DDD, but domain-inspired)
+4. **Single source of truth** - Use constants from `<domain>.js` files, never hardcode
 5. **Managers over instances** - Use `WeaponManager`, `EnemySystem`, not specific implementations
+6. **Stateless helpers** - Mesh/animation modules receive all data as parameters (no internal state)
 
 ## Domain Quick Reference
 

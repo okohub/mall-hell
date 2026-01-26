@@ -12,17 +12,73 @@ const Weapon = {
             name: 'Slingshot',
             fireMode: 'charge',      // 'single', 'auto', 'charge', 'burst'
             cooldown: 300,           // ms between shots
-            chargeRate: 1.2,         // tension gained per second
-            minTension: 0.2,         // minimum tension (quick tap)
-            maxTension: 1.0,         // maximum tension (fully charged)
-            projectile: 'stone',     // projectile type to fire
-            projectileSpeed: {
-                min: 60,             // speed at min tension
-                max: 180             // speed at max tension
-            },
-            damage: 1,
             range: 120,              // targeting range in units (enemies spawn at 150)
-            aimAssist: true
+            aimAssist: true,
+
+            projectile: {
+                type: 'stone',
+                speed: { min: 60, max: 180 },
+                damage: 1,
+                count: 1
+            },
+
+            charge: {
+                rate: 1.2,           // Tension per second
+                minTension: 0.2,     // Quick tap minimum
+                maxTension: 1.0      // Full charge
+            }
+        },
+
+        NERFGUN: {
+            id: 'nerfgun',
+            name: 'Nerf Blaster',
+            fireMode: 'single',      // Tap to fire
+            cooldown: 500,           // Slower but powerful
+            range: 140,              // Longest range
+            aimAssist: true,
+
+            projectile: {
+                type: 'dart',
+                speed: { min: 100, max: 100 },  // Constant speed
+                damage: 2.0,
+                count: 1
+            }
+        },
+
+        WATERGUN: {
+            id: 'watergun',
+            name: 'Water Gun',
+            fireMode: 'single',
+            cooldown: 350,
+            range: 90,
+            aimAssist: true,
+
+            projectile: {
+                type: 'water',
+                speed: { min: 45, max: 45 },
+                damage: 1.0,
+                count: 1,
+                gravity: 18,
+                splashRadius: 5,
+                splashDamage: 0.5
+            }
+        },
+
+        LASERGUN: {
+            id: 'lasergun',
+            name: 'Laser Gun',
+            fireMode: 'auto',        // Hold to fire continuously
+            cooldown: 50,            // Fast fire rate
+            range: 100,
+            aimAssist: true,
+
+            projectile: {
+                type: 'laser',
+                speed: { min: 120, max: 120 },
+                damage: 0.5,
+                count: 1,
+                spread: 0.05         // Spread for auto-fire
+            }
         }
     },
 

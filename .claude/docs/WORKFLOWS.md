@@ -47,29 +47,128 @@ getSpawnType(score) {
 
 ## Adding a New Weapon
 
-### Step 1: Create weapon module `src/weapon/<weapon>.js`
-Implement the weapon interface:
+**Note**: Weapons use a split-file pattern for better organization. See existing weapons (slingshot, nerfgun) as reference.
+
+### Step 1: Add config in `src/weapon/weapon.js`
 ```javascript
-const MyWeapon = {
-    config: { id: 'myweapon', name: '...', ammo: 50, ... },
-    state: { ... },
-    theme: { ... },
-    createMesh(THREE, materials) { ... },
-    onFireStart(time) { ... },
-    onFireRelease(time) { ... },
-    update(dt, time) { ... },
-    animateFPS(dt) { ... }
+MYWEAPON: {
+    id: 'myweapon',
+    name: 'My Weapon',
+    fireMode: 'single',  // 'single', 'auto', 'charge', 'burst'
+    cooldown: 300,
+    range: 100,
+    aimAssist: true,
+    projectile: {
+        type: 'myprojectile',
+        speed: { min: 80, max: 80 },
+        damage: 1.5,
+        count: 1
+    },
+    charge: null  // Or { rate, minTension, maxTension }
+}
+```
+
+### Step 2: Create mesh file `src/weapon/myweapon-mesh.js`
+```javascript
+const MyWeaponMesh = {
+    createFPSMesh(THREE, materials, theme) {
+        // Create FPS viewmodel mesh
+        // Return { weapon, hands, ...refs }
+    },
+    createPickupMesh(THREE, theme) {
+        // Create world pickup mesh
+    }
 };
 ```
 
-### Step 2: Register in `index.html`
+### Step 3: Create animation file `src/weapon/myweapon-animation.js`
+```javascript
+const MyWeaponAnimation = {
+    animateFPS(refs, state, dt, config) {
+        // Animate based on state (charging, firing, etc.)
+    },
+    updateTransform(weapon, turnRate) {
+        // Handle weapon sway/lean
+    }
+};
+```
+
+### Step 4: Create behavioral module `src/weapon/myweapon.js`
+```javascript
+const MyWeapon = {
+    id: 'myweapon',
+    name: 'My Weapon',
+
+    // Config getter (references Weapon.types.MYWEAPON)
+    get config() {
+        return {
+            ...Weapon.types.MYWEAPON,
+            ammo: { max: 30, current: 30, consumePerShot: 1 }
+        };
+    },
+
+    theme: { /* colors */ },
+    state: { /* runtime state */ },
+
+    // Lifecycle
+    onEquip() { ... },
+    onUnequip() { ... },
+    resetState() { ... },
+
+    // Input handlers
+    onFireStart(time) { ... },
+    onFireRelease(time) { ... },
+    update(dt, time) { ... },
+
+    // Firing logic
+    canFire(time) { ... },
+    fire(time) { ... },
+
+    // Mesh delegation
+    createFPSMesh(THREE, materials) {
+        return MyWeaponMesh.createFPSMesh(THREE, materials, this.theme);
+    },
+    createPickupMesh(THREE) {
+        return MyWeaponMesh.createPickupMesh(THREE, this.theme);
+    },
+
+    // Animation delegation
+    animateFPS(refs, dt) {
+        MyWeaponAnimation.animateFPS(refs, this.state, dt, this.config);
+    },
+    updateTransform(weapon, turnRate) {
+        MyWeaponAnimation.updateTransform(weapon, turnRate);
+    }
+};
+```
+
+### Step 5: Add script tags in `index.html`
+```html
+<!-- MyWeapon -->
+<script src="./src/weapon/myweapon-mesh.js"></script>
+<script src="./src/weapon/myweapon-animation.js"></script>
+<script src="./src/weapon/myweapon.js"></script>
+```
+**Order matters**: mesh → animation → behavior
+
+### Step 6: Register in game initialization
 ```javascript
 WeaponManager.register(MyWeapon);
 ```
 
-### Step 3: Add pickup in `src/weapon/pickup.js`
+### Step 7: Add pickup in `src/weapon/pickup.js`
+```javascript
+MYWEAPON_AMMO: {
+    weaponId: 'myweapon',
+    ammoAmount: 15,
+    spawnWeight: 0.3
+}
+```
 
-### Step 4: Add tests in `src/weapon/weapon.test.js`
+### Step 8: Add tests in `src/weapon/weapon.test.js`
+- Test config structure
+- Test firing mechanics
+- Test state management
 
 ---
 
