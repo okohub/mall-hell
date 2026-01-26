@@ -9,6 +9,8 @@
 | Run failed tests | `bun run-tests.js --failed` |
 | Test domain | `bun run-tests.js --domain=enemy` |
 | Test group | `bun run-tests.js --group=weapon` |
+| Test single | `bun run-tests.js --test=<id>` |
+| Stop on fail | `bun run-tests.js --fail-fast` |
 | Full suite | `bun run test` (only when asked) |
 
 ## Documentation
@@ -38,6 +40,8 @@
 | environment | `obstacle.js` | `spawn-system.js` | Obstacles, lazy loading |
 | ui | `ui.js` | `ui-system.js` | HUD, menus, minimap |
 | player | `player.js` | `player-system.js` | Movement, health |
+| projectile | `projectile.js` | `projectile-system.js` | Projectile physics |
+| engine | - | `state-system.js`, etc. | Core game systems |
 
 ## File Ownership
 
