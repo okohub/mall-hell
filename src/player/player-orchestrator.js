@@ -447,7 +447,7 @@ const PlayerOrchestrator = {
     /**
      * Full update including movement, visuals, and camera
      * @param {Object} options - Update options
-     * @param {Object} options.keys - Input state from InputSystem
+     * @param {Object} options.keys - Input state from InputOrchestrator
      * @param {number} options.dt - Delta time
      * @param {Function} options.collisionCheck - Collision check function
      * @param {Object} options.cart - Player cart mesh (optional)

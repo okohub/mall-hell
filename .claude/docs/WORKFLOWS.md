@@ -14,23 +14,65 @@ GHOST: {
     damage: 15,
     scoreHit: 200,
     scoreDestroy: 600,
-    // ... visual config
+    // ... size and behavior config
 }
 ```
 
-### Step 2: Create mesh in `src/enemy/enemy-mesh.js`
+### Step 2: Create theme in `src/enemy/ghost.js`
 ```javascript
-createGhostMesh(THREE, config) {
-    // Build the 3D model
+const Ghost = {
+    theme: {
+        bodyColor: 0xaaaaaa,
+        eyeColor: 0x00ff00,
+        // ... visual theme
+    }
+};
+```
+
+### Step 3: Create mesh module in `src/enemy/ghost-mesh.js`
+```javascript
+const GhostMesh = {
+    createEnemy(THREE, config) {
+        // Create full enemy with health bar
+        const group = new THREE.Group();
+        const visual = this.createMesh(THREE, config);
+        group.add(visual);
+
+        // Add health bar, copy userData
+        // Return complete enemy
+    },
+
+    createMesh(THREE, config) {
+        // Build the 3D model
+    },
+
+    updateHealthBar(healthBar, percent) {
+        // Update health bar colors/scale
+    },
+
+    applyHitFlash(enemyMesh, intensity) {
+        // Apply hit effect
+    }
+};
+```
+
+### Step 4: Update orchestrator dispatch in `enemy-orchestrator.js`
+Add to spawn() and createMesh():
+```javascript
+if (typeId === 'GHOST' && typeof GhostMesh !== 'undefined') {
+    mesh = GhostMesh.createEnemy(THREE, config);
 }
 ```
 
-### Step 3: Update dispatch in `EnemyVisual.createEnemy()`
+Add to health bar and hit flash updates:
 ```javascript
-if (config.id === 'ghost') return this.createGhostMesh(THREE, config);
+if (enemy.type === 'GHOST' && typeof GhostMesh !== 'undefined') {
+    GhostMesh.updateHealthBar(...);
+    GhostMesh.applyHitFlash(...);
+}
 ```
 
-### Step 4: Update spawn logic in `EnemySystem.getSpawnType()`
+### Step 5: Update spawn logic in `EnemyOrchestrator.getSpawnType()`
 ```javascript
 getSpawnType(score) {
     // Your spawn condition
@@ -39,7 +81,14 @@ getSpawnType(score) {
 }
 ```
 
-### Step 5: Add tests
+### Step 6: Add scripts to `index.html`
+```html
+<script src="./src/enemy/ghost.js"></script>
+<script src="./src/enemy/ghost-mesh.js"></script>
+<script src="./src/enemy/ghost-animation.js"></script> <!-- if needed -->
+```
+
+### Step 7: Add tests
 - Unit tests in `src/enemy/enemy.test.js`
 - UI tests in `tests/ui/enemy.tests.js`
 
@@ -153,7 +202,7 @@ const MyWeapon = {
 
 ### Step 6: Register in game initialization
 ```javascript
-WeaponManager.register(MyWeapon);
+WeaponOrchestrator.register(MyWeapon);
 ```
 
 ### Step 7: Add pickup in `src/weapon/pickup.js`
@@ -180,7 +229,7 @@ MYWEAPON_AMMO: {
 
 ### Step 2: Locate
 - Identify which domain owns the bug
-- Read relevant `-system.js` file
+- Read relevant `-orchestrator.js` file
 
 ### Step 3: Fix
 - Make minimal change to fix the issue
@@ -204,7 +253,7 @@ MYWEAPON_AMMO: {
 
 ### Step 2: Add styles in `src/styles/main.css`
 
-### Step 3: Add logic in `src/ui/ui-system.js`
+### Step 3: Add logic in `src/ui/ui-orchestrator.js`
 ```javascript
 updateMyElement(value) {
     const el = document.getElementById('my-element');

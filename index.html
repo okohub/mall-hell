@@ -234,8 +234,19 @@
 
     <!-- Enemy Domain -->
     <script src="./src/enemy/enemy.js"></script>
-    <script src="./src/enemy/enemy-theme.js"></script>
-    <script src="./src/enemy/enemy-mesh.js"></script>
+
+    <!-- Skeleton -->
+    <script src="./src/enemy/skeleton-mesh.js"></script>
+    <script src="./src/enemy/skeleton-animation.js"></script>
+    <script src="./src/enemy/skeleton.js"></script>
+
+    <!-- Dinosaur -->
+    <script src="./src/enemy/dinosaur-mesh.js"></script>
+    <script src="./src/enemy/dinosaur-animation.js"></script>
+    <script src="./src/enemy/dinosaur.js"></script>
+
+
+    <!-- Enemy orchestrator -->
     <script src="./src/enemy/enemy-orchestrator.js"></script>
 
     <!-- Environment Domain (Obstacles + Shelves) -->
@@ -254,7 +265,7 @@
         // - Player: Player, PlayerTheme, PlayerMesh, PlayerOrchestrator
         // - Weapon: Weapon, WeaponOrchestrator, Slingshot, WaterGun, LaserGun, NerfGun, WeaponPickup, PickupOrchestrator
         // - Projectile: Projectile, ProjectileTheme, ProjectileMesh (as ProjectileVisual), ProjectileOrchestrator
-        // - Enemy: Enemy, EnemyTheme, EnemyMesh (as EnemyVisual), EnemyOrchestrator
+        // - Enemy: Enemy, Skeleton/Dinosaur (themes, mesh, animation), EnemyOrchestrator
         // - Environment: Obstacle, ObstacleTheme, ObstacleMesh (as ObstacleVisual), Shelf, ShelfTheme, ShelfMesh, EnvironmentOrchestrator
 
         // ============================================
@@ -368,7 +379,7 @@
         }
 
         function createEnvironment() {
-            RoomOrchestrator.getAllRooms().forEach(room => room && RoomOrchestrator.createRoomMeshes(THREE, room, { scene, shelfArray: shelves, shelfSystem: ShelfSystem }));
+            RoomOrchestrator.getAllRooms().forEach(room => room && RoomOrchestrator.createRoomMeshes(THREE, room, { scene, shelfArray: shelves, shelfOrchestrator: EnvironmentOrchestrator }));
         }
 
         function createEnemy(x, z, enemyType = 'SKELETON') {
@@ -553,6 +564,7 @@
                 endGame(false); // Time's up
                 return;
             }
+            updateTimerDisplay();
 
             RoomOrchestrator.updateAmbientLighting(ambientLight, PlayerOrchestrator.position, mallGrid, THREE);
             // Player movement with collision against walls, obstacles, and shelves
@@ -560,7 +572,7 @@
                 keys: InputOrchestrator.keys,
                 dt,
                 collisionCheck: (nX, nZ, oX, oZ) => CollisionOrchestrator.checkAllCollisions(nX, nZ, oX, oZ, {
-                    gridSystem: mallGrid,
+                    gridOrchestrator: mallGrid,
                     roomConfig: Room.structure,
                     obstacles,
                     shelves,
@@ -602,7 +614,7 @@
             updateCharging(dt); WeaponOrchestrator.animateFPS(dt); updateAmmoDisplay(); updateCurrentRoom();
 
             // Auto-aim
-            const aim = WeaponOrchestrator.updateAim({ camera, playerPosition: PlayerOrchestrator.position, enemies, obstacles, shelves, collisionSystem: CollisionOrchestrator, gridSystem: mallGrid, roomConfig: Room.structure, playerRadius: Player.visual.COLLISION_RADIUS, boundsMargin: CROSSHAIR_BOUNDS_MARGIN });
+            const aim = WeaponOrchestrator.updateAim({ camera, playerPosition: PlayerOrchestrator.position, enemies, obstacles, shelves, collisionOrchestrator: CollisionOrchestrator, gridOrchestrator: mallGrid, roomConfig: Room.structure, playerRadius: Player.visual.COLLISION_RADIUS, boundsMargin: CROSSHAIR_BOUNDS_MARGIN });
             crosshairX = aim.crosshairX; crosshairY = aim.crosshairY; lockedTarget = WeaponOrchestrator.getLockedTarget();
 
             // Pickups
@@ -634,7 +646,7 @@
             UIOrchestrator.updateMinimap({
                 currentRoom,
                 enemies: activeEnemies,
-                gridSystem: mallGrid,
+                gridOrchestrator: mallGrid,
                 roomConfig: Room.structure
             });
 
@@ -648,7 +660,7 @@
                 baseSpeed: CART_SPEED,
                 isInvulnerable: PlayerOrchestrator.getIsInvulnerable(),
                 onPlayerCollision: () => damagePlayer(Player.health.ENEMY_DAMAGE, 'enemy'),
-                collisionCheck: (nX, nZ, oX, oZ) => CollisionOrchestrator.checkAllCollisions(nX, nZ, oX, oZ, { gridSystem: mallGrid, roomConfig: Room.structure, obstacles, shelves, playerRadius: 1.5 }),
+                collisionCheck: (nX, nZ, oX, oZ) => CollisionOrchestrator.checkAllCollisions(nX, nZ, oX, oZ, { gridOrchestrator: mallGrid, roomConfig: Room.structure, obstacles, shelves, playerRadius: 1.5 }),
                 hasLineOfSight: (fX, fZ, tX, tZ) => CollisionOrchestrator.hasLineOfSight(fX, fZ, tX, tZ, mallGrid, Room.structure),
                 clampToRoomBounds: (pos) => CollisionOrchestrator.clampToRoomBounds(pos, mallGrid, Room.structure, 1.5),
                 obstacles,
@@ -677,11 +689,11 @@
                 currentRoom,
                 playerPosition: PlayerOrchestrator.position,
                 visitedRooms,
-                gridSystem: mallGrid,
+                gridOrchestrator: mallGrid,
                 roomConfig: Room.structure,
                 currentPickupCount: PickupOrchestrator.getCount(),
                 dt,
-                pickupSystem: PickupOrchestrator,
+                pickupOrchestrator: PickupOrchestrator,
                 obstacles,
                 shelves
             });
@@ -689,15 +701,22 @@
             // Collision detection
             CollisionOrchestrator.processProjectileHits(projectiles, enemies, obstacles, {
                 THREE,
-                gridSystem: mallGrid,
+                gridOrchestrator: mallGrid,
                 roomConfig: Room.structure,
                 shelves,
                 onEnemyHit: (enemy, damage, closestPoint, result) => {
                     UIOrchestrator.showHitMarker();
-                    const hb = enemy.userData.healthBar;
-                    if (hb && typeof EnemyVisual !== 'undefined') EnemyVisual.updateHealthBar(hb, EnemyOrchestrator.getHealthPercent(enemy));
-                    const color = (enemy.userData.config || ENEMY_TYPES.CART).visual?.bodyColor || 0xe94560;
                     const enemyType = enemy.userData.config?.id || 'cart';
+                    const hb = enemy.userData.healthBar;
+                    if (hb) {
+                        const healthPercent = EnemyOrchestrator.getHealthPercent(enemy);
+                        if (enemyType === 'dinosaur' && typeof DinosaurMesh !== 'undefined') {
+                            DinosaurMesh.updateHealthBar(hb, healthPercent);
+                        } else if (typeof SkeletonMesh !== 'undefined') {
+                            SkeletonMesh.updateHealthBar(hb, healthPercent);
+                        }
+                    }
+                    const color = (enemy.userData.config || ENEMY_TYPES.CART).visual?.bodyColor || 0xe94560;
                     if (result.destroyed) {
                         addScore(result.scoreDestroy, enemy.position); spawnParticles(enemy.position, color, 15);
                         UIOrchestrator.addKilledEnemy(); // Track progress

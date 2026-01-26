@@ -86,7 +86,7 @@ const EntityOrchestrator = {
     spawn(typeName, mesh, data = {}) {
         const typeConfig = this._types[typeName];
         if (!typeConfig) {
-            console.warn(`EntitySystem: Unknown type "${typeName}"`);
+            console.warn(`EntityOrchestrator: Unknown type "${typeName}"`);
             return null;
         }
 
@@ -554,7 +554,7 @@ const EntityOrchestrator = {
         const config = this._types[typeName];
 
         if (!factory) {
-            console.warn(`EntitySystem: No factory registered for "${typeName}"`);
+            console.warn(`EntityOrchestrator: No factory registered for "${typeName}"`);
             return null;
         }
 

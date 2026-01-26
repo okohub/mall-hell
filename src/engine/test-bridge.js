@@ -22,10 +22,10 @@ const TestBridge = {
         // GAME STATE PROPERTIES
         // ==========================================
 
-        // gameState - delegates to StateSystem
+        // gameState - delegates to StateOrchestrator
         Object.defineProperty(window, 'gameState', {
-            get: () => StateSystem ? StateSystem.get() : 'MENU',
-            set: (v) => { if (StateSystem) StateSystem.forceTransition(v); },
+            get: () => StateOrchestrator ? StateOrchestrator.get() : 'MENU',
+            set: (v) => { if (StateOrchestrator) StateOrchestrator.forceTransition(v); },
             configurable: true
         });
 
@@ -165,7 +165,7 @@ const TestBridge = {
         // ==========================================
 
         Object.defineProperty(window, 'fpsWeapon', {
-            get: () => gi.getFpsWeapon() || (typeof WeaponManager !== 'undefined' ? WeaponManager.fpsMesh : null),
+            get: () => gi.getFpsWeapon() || (typeof WeaponOrchestrator !== 'undefined' ? WeaponOrchestrator.fpsMesh : null),
             configurable: true
         });
 
@@ -200,7 +200,7 @@ const TestBridge = {
         // INPUT SYSTEM
         // ==========================================
 
-        window.keys = typeof InputSystem !== 'undefined' ? InputSystem.keys : {};
+        window.keys = typeof InputOrchestrator !== 'undefined' ? InputOrchestrator.keys : {};
 
         // ==========================================
         // GAME FUNCTIONS
@@ -228,54 +228,57 @@ const TestBridge = {
 
         // Engine domain
         if (typeof Engine !== 'undefined') window.Engine = Engine;
-        if (typeof CollisionSystem !== 'undefined') window.CollisionSystem = CollisionSystem;
-        if (typeof InputSystem !== 'undefined') window.InputSystem = InputSystem;
-        if (typeof StateSystem !== 'undefined') window.StateSystem = StateSystem;
-        if (typeof LoopSystem !== 'undefined') window.LoopSystem = LoopSystem;
-        if (typeof SceneSystem !== 'undefined') window.SceneSystem = SceneSystem;
-        if (typeof EntitySystem !== 'undefined') window.EntitySystem = EntitySystem;
+        if (typeof CollisionOrchestrator !== 'undefined') window.CollisionOrchestrator = CollisionOrchestrator;
+        if (typeof InputOrchestrator !== 'undefined') window.InputOrchestrator = InputOrchestrator;
+        if (typeof StateOrchestrator !== 'undefined') window.StateOrchestrator = StateOrchestrator;
+        if (typeof LoopOrchestrator !== 'undefined') window.LoopOrchestrator = LoopOrchestrator;
+        if (typeof SceneOrchestrator !== 'undefined') window.SceneOrchestrator = SceneOrchestrator;
+        if (typeof EntityOrchestrator !== 'undefined') window.EntityOrchestrator = EntityOrchestrator;
         if (typeof GameSession !== 'undefined') window.GameSession = GameSession;
 
         // Weapon domain
         if (typeof Weapon !== 'undefined') window.Weapon = Weapon;
-        if (typeof WeaponManager !== 'undefined') window.WeaponManager = WeaponManager;
+        if (typeof WeaponOrchestrator !== 'undefined') window.WeaponOrchestrator = WeaponOrchestrator;
         if (typeof Slingshot !== 'undefined') window.Slingshot = Slingshot;
         if (typeof WaterGun !== 'undefined') window.WaterGun = WaterGun;
         if (typeof NerfGun !== 'undefined') window.NerfGun = NerfGun;
         if (typeof WeaponPickup !== 'undefined') window.WeaponPickup = WeaponPickup;
-        if (typeof PickupSystem !== 'undefined') window.PickupSystem = PickupSystem;
+        if (typeof PickupOrchestrator !== 'undefined') window.PickupOrchestrator = PickupOrchestrator;
 
         // Projectile domain
         if (typeof Projectile !== 'undefined') window.Projectile = Projectile;
         if (typeof ProjectileVisual !== 'undefined') window.ProjectileVisual = ProjectileVisual;
-        if (typeof ProjectileSystem !== 'undefined') window.ProjectileSystem = ProjectileSystem;
+        if (typeof ProjectileOrchestrator !== 'undefined') window.ProjectileOrchestrator = ProjectileOrchestrator;
 
         // Enemy domain
         if (typeof Enemy !== 'undefined') window.Enemy = Enemy;
-        if (typeof EnemyVisual !== 'undefined') window.EnemyVisual = EnemyVisual;
-        if (typeof EnemySystem !== 'undefined') window.EnemySystem = EnemySystem;
+        if (typeof SkeletonMesh !== 'undefined') window.SkeletonMesh = SkeletonMesh;
+        if (typeof DinosaurMesh !== 'undefined') window.DinosaurMesh = DinosaurMesh;
+        if (typeof SkeletonAnimation !== 'undefined') window.SkeletonAnimation = SkeletonAnimation;
+        if (typeof DinosaurAnimation !== 'undefined') window.DinosaurAnimation = DinosaurAnimation;
+        if (typeof EnemyOrchestrator !== 'undefined') window.EnemyOrchestrator = EnemyOrchestrator;
 
         // Room domain
         if (typeof Room !== 'undefined') window.Room = Room;
         if (typeof RoomTheme !== 'undefined') window.RoomTheme = RoomTheme;
         if (typeof RoomMesh !== 'undefined') window.RoomMesh = RoomMesh;
-        if (typeof RoomSystem !== 'undefined') window.RoomSystem = RoomSystem;
+        if (typeof RoomOrchestrator !== 'undefined') window.RoomOrchestrator = RoomOrchestrator;
 
         // Player domain
         if (typeof Player !== 'undefined') window.Player = Player;
         if (typeof PlayerTheme !== 'undefined') window.PlayerTheme = PlayerTheme;
         if (typeof PlayerMesh !== 'undefined') window.PlayerMesh = PlayerMesh;
-        if (typeof PlayerSystem !== 'undefined') window.PlayerSystem = PlayerSystem;
+        if (typeof PlayerOrchestrator !== 'undefined') window.PlayerOrchestrator = PlayerOrchestrator;
 
         // Environment domain
         if (typeof Obstacle !== 'undefined') window.Obstacle = Obstacle;
         if (typeof ObstacleVisual !== 'undefined') window.ObstacleVisual = ObstacleVisual;
         if (typeof Shelf !== 'undefined') window.Shelf = Shelf;
         if (typeof ShelfVisual !== 'undefined') window.ShelfVisual = ShelfVisual;
-        if (typeof EnvironmentSystem !== 'undefined') window.EnvironmentSystem = EnvironmentSystem;
+        if (typeof EnvironmentOrchestrator !== 'undefined') window.EnvironmentOrchestrator = EnvironmentOrchestrator;
 
         // UI domain
-        if (typeof UISystem !== 'undefined') window.UISystem = UISystem;
+        if (typeof UIOrchestrator !== 'undefined') window.UIOrchestrator = UIOrchestrator;
 
         console.log('TestBridge: Initialized successfully');
     },

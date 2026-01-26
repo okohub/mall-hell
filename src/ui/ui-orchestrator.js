@@ -601,7 +601,7 @@ const UIOrchestrator = {
 
     /**
      * Initialize minimap with room grid
-     * @param {Array} rooms - Array of room data from RoomSystem.getAllRooms()
+     * @param {Array} rooms - Array of room data from RoomOrchestrator.getAllRooms()
      */
     initMinimap(rooms) {
         const gridEl = document.getElementById('minimap-grid');
@@ -666,11 +666,11 @@ const UIOrchestrator = {
      * @param {Object} options - Update options
      * @param {Object} options.currentRoom - Player's current room
      * @param {Array} options.enemies - Array of active enemy meshes
-     * @param {Object} options.gridSystem - Grid system for room lookup
+     * @param {Object} options.gridOrchestrator - Grid system for room lookup
      * @param {Object} options.roomConfig - Room config {UNIT}
      */
     updateMinimap(options) {
-        const { currentRoom, enemies, gridSystem, roomConfig } = options;
+        const { currentRoom, enemies, gridOrchestrator, roomConfig } = options;
         const gridEl = document.getElementById('minimap-grid');
         if (!gridEl) return;
 
@@ -681,7 +681,7 @@ const UIOrchestrator = {
         enemies.forEach(enemy => {
             if (!enemy.userData.active) return;
 
-            const room = gridSystem.getRoomAtWorld(enemy.position.x, enemy.position.z);
+            const room = gridOrchestrator.getRoomAtWorld(enemy.position.x, enemy.position.z);
             if (room) {
                 const key = `${room.gridX}_${room.gridZ}`;
                 roomEnemyCounts.set(key, (roomEnemyCounts.get(key) || 0) + 1);

@@ -44,7 +44,7 @@ const StateOrchestrator = {
 
         // Validate initial state
         if (!this._isValidState(initialState)) {
-            console.warn(`StateSystem: Invalid initial state "${initialState}", defaulting to MENU`);
+            console.warn(`StateOrchestrator: Invalid initial state "${initialState}", defaulting to MENU`);
             initialState = this._states.MENU || 'MENU';
         }
 
@@ -136,7 +136,7 @@ const StateOrchestrator = {
     transition(newState) {
         // Check if transition is valid
         if (!this.canTransition(newState)) {
-            console.warn(`StateSystem: Invalid transition from "${this._currentState}" to "${newState}"`);
+            console.warn(`StateOrchestrator: Invalid transition from "${this._currentState}" to "${newState}"`);
             return false;
         }
 
@@ -157,7 +157,7 @@ const StateOrchestrator = {
      */
     forceTransition(newState) {
         if (!this._isValidState(newState)) {
-            console.warn(`StateSystem: Invalid state "${newState}"`);
+            console.warn(`StateOrchestrator: Invalid state "${newState}"`);
             return false;
         }
 
@@ -236,7 +236,7 @@ const StateOrchestrator = {
                 try {
                     cb(otherState);
                 } catch (err) {
-                    console.error(`StateSystem callback error:`, err);
+                    console.error(`StateOrchestrator callback error:`, err);
                 }
             }
         }
@@ -251,7 +251,7 @@ const StateOrchestrator = {
             try {
                 cb(prevState, newState);
             } catch (err) {
-                console.error(`StateSystem onChange callback error:`, err);
+                console.error(`StateOrchestrator onChange callback error:`, err);
             }
         }
     },

@@ -335,18 +335,18 @@ const CollisionOrchestrator = {
      * @param {number} newZ - New Z position
      * @param {number} oldX - Previous X position (unused but kept for API consistency)
      * @param {number} oldZ - Previous Z position (unused but kept for API consistency)
-     * @param {Object} gridSystem - Grid system with getRoomAtWorld method
+     * @param {Object} gridOrchestrator - Grid system with getRoomAtWorld method
      * @param {Object} roomConfig - Room config {UNIT, DOOR_WIDTH}
      * @param {number} [margin=1.2] - Player collision radius
      * @returns {Object} Result {blocked, blockedX, blockedZ}
      */
-    checkWallCollision(newX, newZ, oldX, oldZ, gridSystem, roomConfig, margin = 1.2) {
+    checkWallCollision(newX, newZ, oldX, oldZ, gridOrchestrator, roomConfig, margin = 1.2) {
         const result = { blocked: false, blockedX: false, blockedZ: false };
         const ROOM_UNIT = roomConfig.UNIT;
         const DOOR_WIDTH = roomConfig.DOOR_WIDTH;
 
         // Get current room
-        const room = gridSystem.getRoomAtWorld(newX, newZ);
+        const room = gridOrchestrator.getRoomAtWorld(newX, newZ);
         if (!room) {
             // Outside grid - block movement
             return { blocked: true, blockedX: true, blockedZ: true };
@@ -528,7 +528,7 @@ const CollisionOrchestrator = {
      * @param {number} oldX - Previous X position
      * @param {number} oldZ - Previous Z position
      * @param {Object} options - Collision options
-     * @param {Object} options.gridSystem - Grid system for wall collision
+     * @param {Object} options.gridOrchestrator - Grid system for wall collision
      * @param {Object} options.roomConfig - Room config {UNIT, DOOR_WIDTH}
      * @param {Array} options.obstacles - Obstacle meshes
      * @param {Array} options.shelves - Shelf meshes
@@ -537,7 +537,7 @@ const CollisionOrchestrator = {
      */
     checkAllCollisions(newX, newZ, oldX, oldZ, options) {
         const {
-            gridSystem,
+            gridOrchestrator,
             roomConfig,
             obstacles = null,
             shelves = null,
@@ -547,8 +547,8 @@ const CollisionOrchestrator = {
         const result = { blocked: false, blockedX: false, blockedZ: false };
 
         // Check wall collision
-        if (gridSystem && roomConfig) {
-            const wallResult = this.checkWallCollision(newX, newZ, oldX, oldZ, gridSystem, roomConfig, playerRadius);
+        if (gridOrchestrator && roomConfig) {
+            const wallResult = this.checkWallCollision(newX, newZ, oldX, oldZ, gridOrchestrator, roomConfig, playerRadius);
             if (wallResult.blockedX) result.blockedX = true;
             if (wallResult.blockedZ) result.blockedZ = true;
         }
@@ -646,15 +646,15 @@ const CollisionOrchestrator = {
      * if a position is at/past a wall boundary within a room.
      * @param {number} x - X position
      * @param {number} z - Z position
-     * @param {Object} gridSystem - Grid system for room lookup
+     * @param {Object} gridOrchestrator - Grid system for room lookup
      * @param {Object} roomConfig - Room configuration {UNIT, DOOR_WIDTH}
      * @param {number} margin - How close to wall counts as hitting (default 0.2)
      * @returns {boolean} True if position is hitting a wall
      */
-    isHittingRoomWall(x, z, gridSystem, roomConfig, margin = 0.2) {
+    isHittingRoomWall(x, z, gridOrchestrator, roomConfig, margin = 0.2) {
         const ROOM_UNIT = roomConfig.UNIT;
         const DOOR_WIDTH = roomConfig.DOOR_WIDTH;
-        const room = gridSystem.getRoomAtWorld(x, z);
+        const room = gridOrchestrator.getRoomAtWorld(x, z);
 
         // Outside grid entirely - hitting outer wall
         if (!room) return true;
@@ -696,22 +696,22 @@ const CollisionOrchestrator = {
     /**
      * Hard clamp position to stay within room bounds (last resort safety)
      * @param {Object} position - Entity position {x, z} - will be modified
-     * @param {Object} gridSystem - Grid system for room lookup
+     * @param {Object} gridOrchestrator - Grid system for room lookup
      * @param {Object} roomConfig - Room configuration
      * @param {number} margin - Distance from walls
      * @returns {boolean} True if position was clamped
      */
-    clampToRoomBounds(position, gridSystem, roomConfig, margin = 1.5) {
+    clampToRoomBounds(position, gridOrchestrator, roomConfig, margin = 1.5) {
         const ROOM_UNIT = roomConfig.UNIT;
-        const room = gridSystem.getRoomAtWorld(position.x, position.z);
+        const room = gridOrchestrator.getRoomAtWorld(position.x, position.z);
 
         if (!room) {
             // Outside grid entirely - find nearest valid room and clamp
             const gridX = Math.floor(position.x / ROOM_UNIT);
             const gridZ = Math.floor(position.z / ROOM_UNIT);
             // Clamp to grid bounds
-            const clampedGridX = Math.max(0, Math.min(gridSystem.width - 1, gridX));
-            const clampedGridZ = Math.max(0, Math.min(gridSystem.height - 1, gridZ));
+            const clampedGridX = Math.max(0, Math.min(gridOrchestrator.width - 1, gridX));
+            const clampedGridZ = Math.max(0, Math.min(gridOrchestrator.height - 1, gridZ));
             position.x = clampedGridX * ROOM_UNIT + ROOM_UNIT / 2;
             position.z = clampedGridZ * ROOM_UNIT + ROOM_UNIT / 2;
             return true;
@@ -796,7 +796,7 @@ const CollisionOrchestrator = {
      * @param {Function} options.onEnemyHit - Callback(enemy, damage, closestPoint, destroyed)
      * @param {Function} options.onObstacleHit - Callback(obstacle, closestPoint)
      * @param {Function} options.onWallHit - Callback(position) when hitting wall/shelf
-     * @param {Object} options.gridSystem - Grid system for wall collision
+     * @param {Object} options.gridOrchestrator - Grid system for wall collision
      * @param {Object} options.roomConfig - Room config for wall collision
      * @param {Array} options.shelves - Shelf meshes for collision
      * @param {Object} options.THREE - Three.js library reference
@@ -807,7 +807,7 @@ const CollisionOrchestrator = {
             onObstacleHit = null,
             onWallHit = null,
             onSplashHit = null,
-            gridSystem = null,
+            gridOrchestrator = null,
             roomConfig = null,
             shelves = null,
             THREE
@@ -829,15 +829,15 @@ const CollisionOrchestrator = {
 
             // Check wall collision (using 2D line check + room boundary check)
             // Only check if projectile has moved a meaningful distance (not just spawned)
-            if (gridSystem && roomConfig && proj.userData.active && projLen > 0.5) {
+            if (gridOrchestrator && roomConfig && proj.userData.active && projLen > 0.5) {
                 let hitWall = false;
                 // Check if LOS is blocked between prev and current position (room-to-room)
-                if (!this.hasLineOfSight(prevPos.x, prevPos.z, currPos.x, currPos.z, gridSystem, roomConfig)) {
+                if (!this.hasLineOfSight(prevPos.x, prevPos.z, currPos.x, currPos.z, gridOrchestrator, roomConfig)) {
                     hitWall = true;
                 }
                 // Also check if projectile hit a room wall (within same room)
                 // Use small margin (0.2) to catch wall impacts
-                else if (this.isHittingRoomWall(currPos.x, currPos.z, gridSystem, roomConfig, 0.2)) {
+                else if (this.isHittingRoomWall(currPos.x, currPos.z, gridOrchestrator, roomConfig, 0.2)) {
                     hitWall = true;
                 }
 
@@ -935,9 +935,9 @@ const CollisionOrchestrator = {
                         proj.userData.active = false;
                         const damage = 1 + Math.round((proj.userData.power || 0) * 2);
 
-                        // Use EnemySystem for damage handling
-                        const result = typeof EnemySystem !== 'undefined'
-                            ? EnemySystem.damage(enemy, damage)
+                        // Use EnemyOrchestrator for damage handling
+                        const result = typeof EnemyOrchestrator !== 'undefined'
+                            ? EnemyOrchestrator.damage(enemy, damage)
                             : { hit: true, destroyed: enemy.userData.health <= damage };
 
                         if (result && onEnemyHit) {
@@ -1049,8 +1049,8 @@ const CollisionOrchestrator = {
                 const damage = Math.ceil(splashDamage * falloff);
 
                 if (damage > 0) {
-                    const result = typeof EnemySystem !== 'undefined'
-                        ? EnemySystem.damage(enemy, damage)
+                    const result = typeof EnemyOrchestrator !== 'undefined'
+                        ? EnemyOrchestrator.damage(enemy, damage)
                         : { hit: true, destroyed: enemy.userData.health <= damage };
 
                     if (result && onSplashHit) {
@@ -1136,17 +1136,17 @@ const CollisionOrchestrator = {
      * @param {number} fromZ - Source Z position
      * @param {number} toX - Target X position
      * @param {number} toZ - Target Z position
-     * @param {Object} gridSystem - Grid system with getRoomAtWorld method
+     * @param {Object} gridOrchestrator - Grid system with getRoomAtWorld method
      * @param {Object} roomConfig - Room config {UNIT, DOOR_WIDTH}
      * @returns {boolean} True if line of sight exists
      */
-    hasLineOfSight(fromX, fromZ, toX, toZ, gridSystem, roomConfig) {
+    hasLineOfSight(fromX, fromZ, toX, toZ, gridOrchestrator, roomConfig) {
         const ROOM_UNIT = roomConfig.UNIT;
         const DOOR_WIDTH = roomConfig.DOOR_WIDTH;
 
         // Get rooms for both positions
-        const fromRoom = gridSystem.getRoomAtWorld(fromX, fromZ);
-        const toRoom = gridSystem.getRoomAtWorld(toX, toZ);
+        const fromRoom = gridOrchestrator.getRoomAtWorld(fromX, fromZ);
+        const toRoom = gridOrchestrator.getRoomAtWorld(toX, toZ);
 
         // If either position is outside the grid, no line of sight
         if (!fromRoom || !toRoom) return false;
@@ -1172,7 +1172,7 @@ const CollisionOrchestrator = {
             const checkX = fromX + dx * t;
             const checkZ = fromZ + dz * t;
 
-            const checkRoom = gridSystem.getRoomAtWorld(checkX, checkZ);
+            const checkRoom = gridOrchestrator.getRoomAtWorld(checkX, checkZ);
             if (!checkRoom) return false; // Outside grid
 
             // Check if we crossed into a different room
@@ -1216,7 +1216,7 @@ const CollisionOrchestrator = {
      * @param {number} toX - Target X position
      * @param {number} toZ - Target Z position
      * @param {Object} options - Check options
-     * @param {Object} options.gridSystem - Grid system with getRoomAtWorld method
+     * @param {Object} options.gridOrchestrator - Grid system with getRoomAtWorld method
      * @param {Object} options.roomConfig - Room config {UNIT, DOOR_WIDTH}
      * @param {Array} options.obstacles - Obstacle meshes to check against
      * @param {Array} options.shelves - Shelf meshes to check against
@@ -1225,7 +1225,7 @@ const CollisionOrchestrator = {
      */
     hasLineOfSightWithPhysicals(fromX, fromZ, toX, toZ, options) {
         const {
-            gridSystem,
+            gridOrchestrator,
             roomConfig,
             obstacles = null,
             shelves = null,
@@ -1233,8 +1233,8 @@ const CollisionOrchestrator = {
         } = options;
 
         // 1. First check basic wall/door LOS
-        if (gridSystem && roomConfig) {
-            if (!this.hasLineOfSight(fromX, fromZ, toX, toZ, gridSystem, roomConfig)) {
+        if (gridOrchestrator && roomConfig) {
+            if (!this.hasLineOfSight(fromX, fromZ, toX, toZ, gridOrchestrator, roomConfig)) {
                 return false;
             }
         }

@@ -283,9 +283,9 @@
             // Start charging and wait for minimum charge time
             // minTension=0.2, chargeRate=1.2/sec, so need ~170ms minimum
             runner.gameWindow.startFiring();
-            await runner.wait(200);
+            await runner.wait(250);
             runner.gameWindow.stopFiring();
-            await runner.wait(100);
+            await runner.wait(200);
 
             const newCount = runner.gameWindow.projectiles?.length || 0;
 
@@ -368,9 +368,9 @@
 
             // Start charging and wait for minimum charge time
             runner.gameWindow.startFiring();
-            await runner.wait(200);
+            await runner.wait(250);
             runner.gameWindow.stopFiring();
-            await runner.wait(100);
+            await runner.wait(200);
 
             const projectiles = runner.gameWindow.projectiles || [];
             if (projectiles.length <= initialCount) {

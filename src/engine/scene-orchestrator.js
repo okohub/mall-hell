@@ -224,7 +224,7 @@ const SceneOrchestrator = {
     addToGroup(groupName, object) {
         const group = this._groups[groupName];
         if (!group) {
-            console.warn(`SceneSystem: Group "${groupName}" not found`);
+            console.warn(`SceneOrchestrator: Group "${groupName}" not found`);
             return false;
         }
         group.add(object);

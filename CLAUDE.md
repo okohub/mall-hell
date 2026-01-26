@@ -28,21 +28,21 @@
 2. **Fix code, not tests** - If tests fail, implementation is wrong
 3. **Domain boundaries** - Each domain is self-contained (not pure DDD, but domain-inspired)
 4. **Single source of truth** - Use constants from `<domain>.js` files, never hardcode
-5. **Managers over instances** - Use `WeaponManager`, `EnemySystem`, not specific implementations
+5. **Orchestrators over instances** - Use `WeaponOrchestrator`, `EnemyOrchestrator`, not specific implementations
 6. **Stateless helpers** - Mesh/animation modules receive all data as parameters (no internal state)
 
 ## Domain Quick Reference
 
-| Domain | Data | System | Purpose |
-|--------|------|--------|---------|
-| enemy | `enemy.js` | `enemy-system.js` | Enemy types, AI, spawning |
-| weapon | `weapon.js` | `weapon-manager.js` | Weapons, ammo, firing |
-| room | `room.js` | `room-system.js` | Room grid, themes |
-| environment | `obstacle.js` | `spawn-system.js` | Obstacles, lazy loading |
-| ui | `ui.js` | `ui-system.js` | HUD, menus, minimap |
-| player | `player.js` | `player-system.js` | Movement, health |
-| projectile | `projectile.js` | `projectile-system.js` | Projectile physics |
-| engine | - | `state-system.js`, etc. | Core game systems |
+| Domain | Data | Orchestrator | Purpose |
+|--------|------|--------------|---------|
+| enemy | `enemy.js` | `enemy-orchestrator.js` | Enemy types, AI, spawning |
+| weapon | `weapon.js` | `weapon-orchestrator.js` | Weapons, ammo, firing |
+| room | `room.js` | `room-orchestrator.js` | Room grid, themes |
+| environment | `obstacle.js` | `spawn-orchestrator.js` | Obstacles, lazy loading |
+| ui | `ui.js` | `ui-orchestrator.js` | HUD, menus, minimap |
+| player | `player.js` | `player-orchestrator.js` | Movement, health |
+| projectile | `projectile.js` | `projectile-orchestrator.js` | Projectile physics |
+| engine | - | `state-orchestrator.js`, etc. | Core game systems |
 
 ## File Ownership
 

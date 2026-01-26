@@ -70,24 +70,24 @@
             const pos1 = { x: 0, z: 0 };
             const pos2 = { x: 3, z: 4 }; // Distance = 5
 
-            test.assertEqual(CollisionSystem.checkDistance2D(pos1, pos2, 6), true, 'Within radius');
-            test.assertEqual(CollisionSystem.checkDistance2D(pos1, pos2, 5), true, 'At radius');
-            test.assertEqual(CollisionSystem.checkDistance2D(pos1, pos2, 4), false, 'Outside radius');
+            test.assertEqual(CollisionOrchestrator.checkDistance2D(pos1, pos2, 6), true, 'Within radius');
+            test.assertEqual(CollisionOrchestrator.checkDistance2D(pos1, pos2, 5), true, 'At radius');
+            test.assertEqual(CollisionOrchestrator.checkDistance2D(pos1, pos2, 4), false, 'Outside radius');
         });
 
         test.it('should calculate 2D distance correctly', () => {
             const pos1 = { x: 0, z: 0 };
             const pos2 = { x: 3, z: 4 };
 
-            test.assertCloseTo(CollisionSystem.distance2D(pos1, pos2), 5, 0.001);
+            test.assertCloseTo(CollisionOrchestrator.distance2D(pos1, pos2), 5, 0.001);
         });
 
         test.it('should detect 3D distance collision', () => {
             const pos1 = { x: 0, y: 0, z: 0 };
             const pos2 = { x: 0, y: 3, z: 4 }; // Distance = 5
 
-            test.assertEqual(CollisionSystem.checkDistance3D(pos1, pos2, 6), true);
-            test.assertEqual(CollisionSystem.checkDistance3D(pos1, pos2, 4), false);
+            test.assertEqual(CollisionOrchestrator.checkDistance3D(pos1, pos2, 6), true);
+            test.assertEqual(CollisionOrchestrator.checkDistance3D(pos1, pos2, 4), false);
         });
 
         test.it('should detect AABB collision', () => {
@@ -104,12 +104,12 @@
                 max: { x: 6, y: 6, z: 6 }
             };
 
-            test.assertEqual(CollisionSystem.checkAABB(box1, box2), true, 'Overlapping');
-            test.assertEqual(CollisionSystem.checkAABB(box1, box3), false, 'Not overlapping');
+            test.assertEqual(CollisionOrchestrator.checkAABB(box1, box2), true, 'Overlapping');
+            test.assertEqual(CollisionOrchestrator.checkAABB(box1, box3), false, 'Not overlapping');
         });
 
         test.it('should create AABB from center and half-extents', () => {
-            const aabb = CollisionSystem.createAABB(
+            const aabb = CollisionOrchestrator.createAABB(
                 { x: 5, y: 5, z: 5 },
                 { x: 1, y: 1, z: 1 }
             );
@@ -128,9 +128,9 @@
                 max: { x: 10, y: 10, z: 10 }
             };
 
-            test.assertEqual(CollisionSystem.pointInAABB({ x: 5, y: 5, z: 5 }, box), true, 'Inside');
-            test.assertEqual(CollisionSystem.pointInAABB({ x: 0, y: 0, z: 0 }, box), true, 'On edge');
-            test.assertEqual(CollisionSystem.pointInAABB({ x: 15, y: 5, z: 5 }, box), false, 'Outside');
+            test.assertEqual(CollisionOrchestrator.pointInAABB({ x: 5, y: 5, z: 5 }, box), true, 'Inside');
+            test.assertEqual(CollisionOrchestrator.pointInAABB({ x: 0, y: 0, z: 0 }, box), true, 'On edge');
+            test.assertEqual(CollisionOrchestrator.pointInAABB({ x: 15, y: 5, z: 5 }, box), false, 'Outside');
         });
 
         test.it('should perform sweep sphere test', () => {
@@ -138,7 +138,7 @@
             const curr = { x: 10, y: 0, z: 0 };
             const target = { x: 5, y: 0, z: 0 };
 
-            const hit = CollisionSystem.sweepSphere(prev, curr, target, 1);
+            const hit = CollisionOrchestrator.sweepSphere(prev, curr, target, 1);
             test.assertEqual(hit !== null, true, 'Should hit');
             test.assertCloseTo(hit.t, 0.4, 0.1, 'Hit at ~40% along path');
         });
@@ -149,7 +149,7 @@
                 userData: { active: true, hit: false, collisionRadius: 2 }
             }];
             // Moving towards obstacle
-            const result = CollisionSystem.checkObstacleCollision(4, 0, 0, 0, obstacles, 1.5);
+            const result = CollisionOrchestrator.checkObstacleCollision(4, 0, 0, 0, obstacles, 1.5);
             test.assertTrue(result.blockedX, 'Should block X movement towards obstacle');
         });
 
@@ -158,7 +158,7 @@
                 position: { x: 20, y: 0, z: 0 },
                 userData: { active: true, hit: false, collisionRadius: 2 }
             }];
-            const result = CollisionSystem.checkObstacleCollision(5, 0, 0, 0, obstacles, 1.5);
+            const result = CollisionOrchestrator.checkObstacleCollision(5, 0, 0, 0, obstacles, 1.5);
             test.assertFalse(result.blocked, 'Should not block when far from obstacle');
         });
 
@@ -167,7 +167,7 @@
                 position: { x: 2, y: 0, z: 0 },
                 userData: { active: false, hit: false, collisionRadius: 2 }
             }];
-            const result = CollisionSystem.checkObstacleCollision(2, 0, 0, 0, obstacles, 1.5);
+            const result = CollisionOrchestrator.checkObstacleCollision(2, 0, 0, 0, obstacles, 1.5);
             test.assertFalse(result.blocked, 'Should ignore inactive obstacles');
         });
 
@@ -176,7 +176,7 @@
                 position: { x: 2, y: 0, z: 0 },
                 userData: { active: true, hit: true, collisionRadius: 2 }
             }];
-            const result = CollisionSystem.checkObstacleCollision(2, 0, 0, 0, obstacles, 1.5);
+            const result = CollisionOrchestrator.checkObstacleCollision(2, 0, 0, 0, obstacles, 1.5);
             test.assertFalse(result.blocked, 'Should ignore hit obstacles');
         });
 
@@ -186,7 +186,7 @@
                 userData: { width: 4, depth: 2 }
             }];
             // Moving into shelf area
-            const result = CollisionSystem.checkShelfCollision(4, 0, 0, 0, shelves, 1.2);
+            const result = CollisionOrchestrator.checkShelfCollision(4, 0, 0, 0, shelves, 1.2);
             test.assertTrue(result.blockedX, 'Should block X movement into shelf');
         });
 
@@ -195,7 +195,7 @@
                 position: { x: 20, y: 0, z: 0 },
                 userData: { width: 4, depth: 2 }
             }];
-            const result = CollisionSystem.checkShelfCollision(5, 0, 0, 0, shelves, 1.2);
+            const result = CollisionOrchestrator.checkShelfCollision(5, 0, 0, 0, shelves, 1.2);
             test.assertFalse(result.blocked, 'Should not block when outside shelf');
         });
 
@@ -218,8 +218,8 @@
             const mockRoomConfig = { UNIT: 30, DOOR_WIDTH: 6 };
 
             // Test obstacle blocking
-            const result1 = CollisionSystem.checkAllCollisions(4, 0, 0, 0, {
-                gridSystem: mockGrid,
+            const result1 = CollisionOrchestrator.checkAllCollisions(4, 0, 0, 0, {
+                gridOrchestrator: mockGrid,
                 roomConfig: mockRoomConfig,
                 obstacles,
                 shelves,
@@ -228,8 +228,8 @@
             test.assertTrue(result1.blockedX, 'Should be blocked by obstacle');
 
             // Test shelf blocking
-            const result2 = CollisionSystem.checkAllCollisions(0, 9, 0, 0, {
-                gridSystem: mockGrid,
+            const result2 = CollisionOrchestrator.checkAllCollisions(0, 9, 0, 0, {
+                gridOrchestrator: mockGrid,
                 roomConfig: mockRoomConfig,
                 obstacles,
                 shelves,
@@ -247,8 +247,8 @@
             };
             const mockRoomConfig = { UNIT: 30, DOOR_WIDTH: 6 };
 
-            const result = CollisionSystem.checkAllCollisions(5, 5, 0, 0, {
-                gridSystem: mockGrid,
+            const result = CollisionOrchestrator.checkAllCollisions(5, 5, 0, 0, {
+                gridOrchestrator: mockGrid,
                 roomConfig: mockRoomConfig,
                 obstacles: null,
                 shelves: null,
@@ -268,7 +268,7 @@
             const lineEnd = { x: 10, z: 0 };
             const box = { minX: 4, maxX: 6, minZ: -2, maxZ: 2 };
 
-            test.assertTrue(CollisionSystem.lineAABB2D(lineStart, lineEnd, box), 'Line should intersect box');
+            test.assertTrue(CollisionOrchestrator.lineAABB2D(lineStart, lineEnd, box), 'Line should intersect box');
         });
 
         test.it('lineAABB2D - should not detect when line misses AABB', () => {
@@ -276,7 +276,7 @@
             const lineEnd = { x: 10, z: 0 };
             const box = { minX: 4, maxX: 6, minZ: 5, maxZ: 10 };
 
-            test.assertFalse(CollisionSystem.lineAABB2D(lineStart, lineEnd, box), 'Line should miss box');
+            test.assertFalse(CollisionOrchestrator.lineAABB2D(lineStart, lineEnd, box), 'Line should miss box');
         });
 
         test.it('lineAABB2D - should handle diagonal lines', () => {
@@ -284,7 +284,7 @@
             const lineEnd = { x: 10, z: 10 };
             const box = { minX: 4, maxX: 6, minZ: 4, maxZ: 6 };
 
-            test.assertTrue(CollisionSystem.lineAABB2D(lineStart, lineEnd, box), 'Diagonal should intersect');
+            test.assertTrue(CollisionOrchestrator.lineAABB2D(lineStart, lineEnd, box), 'Diagonal should intersect');
         });
 
         test.it('lineAABB2D - should handle line starting inside AABB', () => {
@@ -292,7 +292,7 @@
             const lineEnd = { x: 10, z: 0 };
             const box = { minX: 4, maxX: 6, minZ: -2, maxZ: 2 };
 
-            test.assertTrue(CollisionSystem.lineAABB2D(lineStart, lineEnd, box), 'Line starting inside should intersect');
+            test.assertTrue(CollisionOrchestrator.lineAABB2D(lineStart, lineEnd, box), 'Line starting inside should intersect');
         });
 
         test.it('lineAABB2D - should handle parallel line not intersecting', () => {
@@ -300,7 +300,7 @@
             const lineEnd = { x: 10, z: 10 };
             const box = { minX: 4, maxX: 6, minZ: 0, maxZ: 5 };
 
-            test.assertFalse(CollisionSystem.lineAABB2D(lineStart, lineEnd, box), 'Parallel line should not intersect');
+            test.assertFalse(CollisionOrchestrator.lineAABB2D(lineStart, lineEnd, box), 'Parallel line should not intersect');
         });
 
         test.it('hasLineOfSightWithPhysicals - should pass with no obstacles', () => {
@@ -312,8 +312,8 @@
             };
             const mockRoomConfig = { UNIT: 30, DOOR_WIDTH: 6 };
 
-            const result = CollisionSystem.hasLineOfSightWithPhysicals(0, 0, 10, 10, {
-                gridSystem: mockGrid,
+            const result = CollisionOrchestrator.hasLineOfSightWithPhysicals(0, 0, 10, 10, {
+                gridOrchestrator: mockGrid,
                 roomConfig: mockRoomConfig,
                 obstacles: [],
                 shelves: [],
@@ -336,8 +336,8 @@
                 userData: { active: true, hit: false, collisionRadius: 2 }
             }];
 
-            const result = CollisionSystem.hasLineOfSightWithPhysicals(0, 0, 10, 10, {
-                gridSystem: mockGrid,
+            const result = CollisionOrchestrator.hasLineOfSightWithPhysicals(0, 0, 10, 10, {
+                gridOrchestrator: mockGrid,
                 roomConfig: mockRoomConfig,
                 obstacles,
                 shelves: [],
@@ -360,8 +360,8 @@
                 userData: { active: true, hit: false, collisionRadius: 2 }
             }];
 
-            const result = CollisionSystem.hasLineOfSightWithPhysicals(0, 0, 10, 10, {
-                gridSystem: mockGrid,
+            const result = CollisionOrchestrator.hasLineOfSightWithPhysicals(0, 0, 10, 10, {
+                gridOrchestrator: mockGrid,
                 roomConfig: mockRoomConfig,
                 obstacles,
                 shelves: [],
@@ -384,8 +384,8 @@
                 userData: { width: 4, depth: 2 }
             }];
 
-            const result = CollisionSystem.hasLineOfSightWithPhysicals(0, 0, 10, 0, {
-                gridSystem: mockGrid,
+            const result = CollisionOrchestrator.hasLineOfSightWithPhysicals(0, 0, 10, 0, {
+                gridOrchestrator: mockGrid,
                 roomConfig: mockRoomConfig,
                 obstacles: [],
                 shelves,
@@ -408,8 +408,8 @@
                 userData: { active: false, hit: false, collisionRadius: 2 }
             }];
 
-            const result = CollisionSystem.hasLineOfSightWithPhysicals(0, 0, 10, 10, {
-                gridSystem: mockGrid,
+            const result = CollisionOrchestrator.hasLineOfSightWithPhysicals(0, 0, 10, 10, {
+                gridOrchestrator: mockGrid,
                 roomConfig: mockRoomConfig,
                 obstacles,
                 shelves: [],
@@ -432,8 +432,8 @@
                 userData: { active: true, hit: true, collisionRadius: 2 }
             }];
 
-            const result = CollisionSystem.hasLineOfSightWithPhysicals(0, 0, 10, 10, {
-                gridSystem: mockGrid,
+            const result = CollisionOrchestrator.hasLineOfSightWithPhysicals(0, 0, 10, 10, {
+                gridOrchestrator: mockGrid,
                 roomConfig: mockRoomConfig,
                 obstacles,
                 shelves: [],
@@ -443,8 +443,8 @@
         });
 
         test.it('hasLineOfSightWithPhysicals - should handle null options gracefully', () => {
-            const result = CollisionSystem.hasLineOfSightWithPhysicals(0, 0, 10, 10, {
-                gridSystem: null,
+            const result = CollisionOrchestrator.hasLineOfSightWithPhysicals(0, 0, 10, 10, {
+                gridOrchestrator: null,
                 roomConfig: null,
                 obstacles: null,
                 shelves: null,
@@ -460,7 +460,7 @@
 
     test.describe('Engine Collision: Splash Damage', () => {
         test.it('should have processSplashDamage method', () => {
-            test.assertTrue(typeof CollisionSystem.processSplashDamage === 'function');
+            test.assertTrue(typeof CollisionOrchestrator.processSplashDamage === 'function');
         });
 
         test.it('should damage enemies within splash radius', () => {
@@ -471,7 +471,7 @@
             ];
             let hitCount = 0;
 
-            CollisionSystem.processSplashDamage(impactPos, 5, 2, enemies, null, (enemy, damage, result) => {
+            CollisionOrchestrator.processSplashDamage(impactPos, 5, 2, enemies, null, (enemy, damage, result) => {
                 hitCount++;
             });
 
@@ -486,7 +486,7 @@
             ];
             const damages = [];
 
-            CollisionSystem.processSplashDamage(impactPos, 5, 2, enemies, null, (enemy, damage, result) => {
+            CollisionOrchestrator.processSplashDamage(impactPos, 5, 2, enemies, null, (enemy, damage, result) => {
                 damages.push(damage);
             });
 
@@ -503,7 +503,7 @@
             ];
             let hitCount = 0;
 
-            CollisionSystem.processSplashDamage(impactPos, 5, 2, enemies, directHit, (enemy, damage, result) => {
+            CollisionOrchestrator.processSplashDamage(impactPos, 5, 2, enemies, directHit, (enemy, damage, result) => {
                 hitCount++;
             });
 
@@ -518,7 +518,7 @@
             ];
             let hitCount = 0;
 
-            CollisionSystem.processSplashDamage(impactPos, 5, 2, enemies, null, (enemy, damage, result) => {
+            CollisionOrchestrator.processSplashDamage(impactPos, 5, 2, enemies, null, (enemy, damage, result) => {
                 hitCount++;
             });
 
@@ -532,7 +532,7 @@
             ];
             let hitCount = 0;
 
-            CollisionSystem.processSplashDamage(impactPos, 0, 2, enemies, null, () => { hitCount++; });
+            CollisionOrchestrator.processSplashDamage(impactPos, 0, 2, enemies, null, () => { hitCount++; });
             test.assertEqual(hitCount, 0, 'Should not damage with 0 radius');
         });
     });
@@ -543,50 +543,50 @@
 
     test.describe('Engine: Input System', () => {
         test.beforeEach(() => {
-            InputSystem.init();
+            InputOrchestrator.init();
         });
 
         test.afterEach(() => {
-            InputSystem.destroy();
-            InputSystem.clearAllCallbacks();
+            InputOrchestrator.destroy();
+            InputOrchestrator.clearAllCallbacks();
         });
 
         test.it('should initialize with default bindings', () => {
-            test.assertEqual(InputSystem.getBinding('KeyW'), 'forward');
-            test.assertEqual(InputSystem.getBinding('Space'), 'fire');
-            test.assertEqual(InputSystem.getBinding('KeyP'), 'freeze');
+            test.assertEqual(InputOrchestrator.getBinding('KeyW'), 'forward');
+            test.assertEqual(InputOrchestrator.getBinding('Space'), 'fire');
+            test.assertEqual(InputOrchestrator.getBinding('KeyP'), 'freeze');
         });
 
         test.it('should track key states', () => {
-            test.assertEqual(InputSystem.keys.forward, false);
-            test.assertEqual(InputSystem.keys.backward, false);
-            test.assertEqual(InputSystem.keys.turnLeft, false);
-            test.assertEqual(InputSystem.keys.turnRight, false);
+            test.assertEqual(InputOrchestrator.keys.forward, false);
+            test.assertEqual(InputOrchestrator.keys.backward, false);
+            test.assertEqual(InputOrchestrator.keys.turnLeft, false);
+            test.assertEqual(InputOrchestrator.keys.turnRight, false);
         });
 
         test.it('should return movement input', () => {
-            const movement = InputSystem.getMovement();
+            const movement = InputOrchestrator.getMovement();
             test.assertEqual(movement.forward, 0);
             test.assertEqual(movement.turn, 0);
         });
 
         test.it('should reset key states', () => {
-            InputSystem.keys.forward = true;
-            InputSystem.keys.turnLeft = true;
-            InputSystem.reset();
-            test.assertEqual(InputSystem.keys.forward, false);
-            test.assertEqual(InputSystem.keys.turnLeft, false);
+            InputOrchestrator.keys.forward = true;
+            InputOrchestrator.keys.turnLeft = true;
+            InputOrchestrator.reset();
+            test.assertEqual(InputOrchestrator.keys.forward, false);
+            test.assertEqual(InputOrchestrator.keys.turnLeft, false);
         });
 
         test.it('should allow custom bindings', () => {
-            InputSystem.setBinding('KeyX', 'customAction');
-            test.assertEqual(InputSystem.getBinding('KeyX'), 'customAction');
+            InputOrchestrator.setBinding('KeyX', 'customAction');
+            test.assertEqual(InputOrchestrator.getBinding('KeyX'), 'customAction');
         });
 
         test.it('should report initialization state', () => {
-            test.assertEqual(InputSystem.isInitialized(), true);
-            InputSystem.destroy();
-            test.assertEqual(InputSystem.isInitialized(), false);
+            test.assertEqual(InputOrchestrator.isInitialized(), true);
+            InputOrchestrator.destroy();
+            test.assertEqual(InputOrchestrator.isInitialized(), false);
         });
     });
 
@@ -596,81 +596,81 @@
 
     test.describe('Engine: State System', () => {
         test.beforeEach(() => {
-            StateSystem.clearAllCallbacks();
-            StateSystem.init('MENU');
+            StateOrchestrator.clearAllCallbacks();
+            StateOrchestrator.init('MENU');
         });
 
         test.it('should initialize to specified state', () => {
-            test.assertEqual(StateSystem.get(), 'MENU');
+            test.assertEqual(StateOrchestrator.get(), 'MENU');
         });
 
         test.it('should check current state', () => {
-            test.assertEqual(StateSystem.is('MENU'), true);
-            test.assertEqual(StateSystem.is('PLAYING'), false);
+            test.assertEqual(StateOrchestrator.is('MENU'), true);
+            test.assertEqual(StateOrchestrator.is('PLAYING'), false);
         });
 
         test.it('should check multiple states with isAny', () => {
-            test.assertEqual(StateSystem.isAny('MENU', 'PLAYING'), true);
-            test.assertEqual(StateSystem.isAny('PAUSED', 'GAME_OVER'), false);
+            test.assertEqual(StateOrchestrator.isAny('MENU', 'PLAYING'), true);
+            test.assertEqual(StateOrchestrator.isAny('PAUSED', 'GAME_OVER'), false);
         });
 
         test.it('should transition to valid state', () => {
-            const result = StateSystem.transition('PLAYING');
+            const result = StateOrchestrator.transition('PLAYING');
             test.assertEqual(result, true);
-            test.assertEqual(StateSystem.get(), 'PLAYING');
+            test.assertEqual(StateOrchestrator.get(), 'PLAYING');
         });
 
         test.it('should reject invalid transition', () => {
-            const result = StateSystem.transition('PAUSED');
+            const result = StateOrchestrator.transition('PAUSED');
             test.assertEqual(result, false);
-            test.assertEqual(StateSystem.get(), 'MENU');
+            test.assertEqual(StateOrchestrator.get(), 'MENU');
         });
 
         test.it('should report valid transitions', () => {
-            const valid = StateSystem.getValidTransitions();
+            const valid = StateOrchestrator.getValidTransitions();
             test.assertEqual(valid.includes('PLAYING'), true);
             test.assertEqual(valid.includes('PAUSED'), false);
         });
 
         test.it('should fire enter callback on transition', () => {
             let entered = false;
-            StateSystem.onStateEnter('PLAYING', () => { entered = true; });
-            StateSystem.transition('PLAYING');
+            StateOrchestrator.onStateEnter('PLAYING', () => { entered = true; });
+            StateOrchestrator.transition('PLAYING');
             test.assertEqual(entered, true);
         });
 
         test.it('should fire exit callback on transition', () => {
             let exited = false;
-            StateSystem.onStateExit('MENU', () => { exited = true; });
-            StateSystem.transition('PLAYING');
+            StateOrchestrator.onStateExit('MENU', () => { exited = true; });
+            StateOrchestrator.transition('PLAYING');
             test.assertEqual(exited, true);
         });
 
         test.it('should fire global change callback', () => {
             let prevState = null;
             let newState = null;
-            StateSystem.onChange((prev, next) => {
+            StateOrchestrator.onChange((prev, next) => {
                 prevState = prev;
                 newState = next;
             });
-            StateSystem.transition('PLAYING');
+            StateOrchestrator.transition('PLAYING');
             test.assertEqual(prevState, 'MENU');
             test.assertEqual(newState, 'PLAYING');
         });
 
         test.it('should have convenience methods', () => {
-            test.assertEqual(StateSystem.isMenu(), true);
-            test.assertEqual(StateSystem.isPlaying(), false);
+            test.assertEqual(StateOrchestrator.isMenu(), true);
+            test.assertEqual(StateOrchestrator.isPlaying(), false);
 
-            StateSystem.transition('PLAYING');
-            test.assertEqual(StateSystem.isPlaying(), true);
+            StateOrchestrator.transition('PLAYING');
+            test.assertEqual(StateOrchestrator.isPlaying(), true);
 
-            StateSystem.transition('PAUSED');
-            test.assertEqual(StateSystem.isPaused(), true);
+            StateOrchestrator.transition('PAUSED');
+            test.assertEqual(StateOrchestrator.isPaused(), true);
 
-            StateSystem.transition('MENU');
-            StateSystem.forceTransition('GAME_OVER');
-            test.assertEqual(StateSystem.isGameOver(), true);
+            StateOrchestrator.transition('MENU');
+            StateOrchestrator.forceTransition('GAME_OVER');
+            test.assertEqual(StateOrchestrator.isGameOver(), true);
         });
     });
 
@@ -681,49 +681,49 @@
     test.describe('Engine: Loop System', () => {
         test.beforeEach(() => {
             // Initialize with mock THREE
-            LoopSystem.init({ Clock: function() {
+            LoopOrchestrator.init({ Clock: function() {
                 this.start = () => {};
                 this.getDelta = () => 0.016;
             }});
         });
 
         test.it('should not be running initially', () => {
-            test.assertEqual(LoopSystem.isRunning(), false);
+            test.assertEqual(LoopOrchestrator.isRunning(), false);
         });
 
         test.it('should track frame count', () => {
-            test.assertEqual(LoopSystem.getFrameCount(), 0);
+            test.assertEqual(LoopOrchestrator.getFrameCount(), 0);
         });
 
         test.it('should have configurable max delta time', () => {
-            LoopSystem.setMaxDeltaTime(0.05);
-            test.assertEqual(LoopSystem.getMaxDeltaTime(), 0.05);
+            LoopOrchestrator.setMaxDeltaTime(0.05);
+            test.assertEqual(LoopOrchestrator.getMaxDeltaTime(), 0.05);
         });
 
         test.it('should accept update callback', () => {
             let called = false;
-            LoopSystem.setUpdateCallback(() => { called = true; });
+            LoopOrchestrator.setUpdateCallback(() => { called = true; });
             // Note: callback won't fire until loop starts
             test.assertEqual(called, false);
         });
 
         test.it('should accept render callback', () => {
             let called = false;
-            LoopSystem.setRenderCallback(() => { called = true; });
+            LoopOrchestrator.setRenderCallback(() => { called = true; });
             test.assertEqual(called, false);
         });
 
         test.it('should manage pre-update callbacks', () => {
             const cb = () => {};
-            LoopSystem.addPreUpdate(cb);
-            LoopSystem.removePreUpdate(cb);
+            LoopOrchestrator.addPreUpdate(cb);
+            LoopOrchestrator.removePreUpdate(cb);
             // No error means success
         });
 
         test.it('should manage post-update callbacks', () => {
             const cb = () => {};
-            LoopSystem.addPostUpdate(cb);
-            LoopSystem.removePostUpdate(cb);
+            LoopOrchestrator.addPostUpdate(cb);
+            LoopOrchestrator.removePostUpdate(cb);
         });
     });
 
@@ -740,44 +740,44 @@
             }
 
             const container = document.createElement('div');
-            SceneSystem.init(THREE, container);
+            SceneOrchestrator.init(THREE, container);
 
-            test.assertEqual(SceneSystem.scene !== null, true, 'Scene created');
-            test.assertEqual(SceneSystem.camera !== null, true, 'Camera created');
-            test.assertEqual(SceneSystem.renderer !== null, true, 'Renderer created');
+            test.assertEqual(SceneOrchestrator.scene !== null, true, 'Scene created');
+            test.assertEqual(SceneOrchestrator.camera !== null, true, 'Camera created');
+            test.assertEqual(SceneOrchestrator.renderer !== null, true, 'Renderer created');
 
-            SceneSystem.dispose();
+            SceneOrchestrator.dispose();
         });
 
         test.it('should create and manage groups', () => {
             if (typeof THREE === 'undefined') return;
 
             const container = document.createElement('div');
-            SceneSystem.init(THREE, container);
+            SceneOrchestrator.init(THREE, container);
 
-            const group = SceneSystem.createGroup('testGroup');
+            const group = SceneOrchestrator.createGroup('testGroup');
             test.assertEqual(group !== null, true, 'Group created');
-            test.assertEqual(SceneSystem.getGroup('testGroup'), group, 'Group retrieved');
+            test.assertEqual(SceneOrchestrator.getGroup('testGroup'), group, 'Group retrieved');
 
-            SceneSystem.dispose();
+            SceneOrchestrator.dispose();
         });
 
         test.it('should add objects to groups', () => {
             if (typeof THREE === 'undefined') return;
 
             const container = document.createElement('div');
-            SceneSystem.init(THREE, container);
+            SceneOrchestrator.init(THREE, container);
 
             const mesh = new THREE.Mesh(
                 new THREE.BoxGeometry(1, 1, 1),
                 new THREE.MeshBasicMaterial()
             );
 
-            SceneSystem.createGroup('test');
-            const result = SceneSystem.addToGroup('test', mesh);
+            SceneOrchestrator.createGroup('test');
+            const result = SceneOrchestrator.addToGroup('test', mesh);
             test.assertEqual(result, true);
 
-            SceneSystem.dispose();
+            SceneOrchestrator.dispose();
         });
     });
 
@@ -792,18 +792,18 @@
                 add: () => {},
                 remove: () => {}
             };
-            EntitySystem.init(mockScene);
+            EntityOrchestrator.init(mockScene);
         });
 
         test.it('should register entity types', () => {
-            EntitySystem.registerType('enemy', { maxCount: 5 });
-            test.assertEqual(EntitySystem.hasType('enemy'), true);
+            EntityOrchestrator.registerType('enemy', { maxCount: 5 });
+            test.assertEqual(EntityOrchestrator.hasType('enemy'), true);
         });
 
         test.it('should spawn entities', () => {
-            EntitySystem.registerType('enemy', { maxCount: 5 });
+            EntityOrchestrator.registerType('enemy', { maxCount: 5 });
             const mockMesh = { position: { x: 0, y: 0, z: 0 }, userData: {} };
-            const entity = EntitySystem.spawn('enemy', mockMesh, { health: 3 });
+            const entity = EntityOrchestrator.spawn('enemy', mockMesh, { health: 3 });
 
             test.assertEqual(entity !== null, true, 'Entity spawned');
             test.assertEqual(entity.type, 'enemy');
@@ -812,82 +812,82 @@
         });
 
         test.it('should respect max count', () => {
-            EntitySystem.registerType('enemy', { maxCount: 2 });
+            EntityOrchestrator.registerType('enemy', { maxCount: 2 });
 
             const mesh1 = { position: { x: 0, y: 0, z: 0 }, userData: {} };
             const mesh2 = { position: { x: 1, y: 0, z: 0 }, userData: {} };
             const mesh3 = { position: { x: 2, y: 0, z: 0 }, userData: {} };
 
-            EntitySystem.spawn('enemy', mesh1);
-            EntitySystem.spawn('enemy', mesh2);
-            const result = EntitySystem.spawn('enemy', mesh3);
+            EntityOrchestrator.spawn('enemy', mesh1);
+            EntityOrchestrator.spawn('enemy', mesh2);
+            const result = EntityOrchestrator.spawn('enemy', mesh3);
 
             test.assertEqual(result, null, 'Third spawn rejected');
-            test.assertEqual(EntitySystem.getCount('enemy'), 2);
+            test.assertEqual(EntityOrchestrator.getCount('enemy'), 2);
         });
 
         test.it('should despawn entities', () => {
-            EntitySystem.registerType('enemy', { maxCount: 5 });
+            EntityOrchestrator.registerType('enemy', { maxCount: 5 });
             const mockMesh = { position: { x: 0, y: 0, z: 0 }, userData: {} };
-            const entity = EntitySystem.spawn('enemy', mockMesh);
+            const entity = EntityOrchestrator.spawn('enemy', mockMesh);
 
-            EntitySystem.despawn('enemy', entity);
-            test.assertEqual(EntitySystem.getCount('enemy'), 0);
+            EntityOrchestrator.despawn('enemy', entity);
+            test.assertEqual(EntityOrchestrator.getCount('enemy'), 0);
         });
 
         test.it('should get active entities', () => {
-            EntitySystem.registerType('enemy', { maxCount: 5 });
+            EntityOrchestrator.registerType('enemy', { maxCount: 5 });
             const mesh1 = { position: { x: 0, y: 0, z: 0 }, userData: {} };
             const mesh2 = { position: { x: 1, y: 0, z: 0 }, userData: {} };
 
-            EntitySystem.spawn('enemy', mesh1);
-            EntitySystem.spawn('enemy', mesh2);
+            EntityOrchestrator.spawn('enemy', mesh1);
+            EntityOrchestrator.spawn('enemy', mesh2);
 
-            const active = EntitySystem.getActive('enemy');
+            const active = EntityOrchestrator.getActive('enemy');
             test.assertEqual(active.length, 2);
         });
 
         test.it('should check capacity', () => {
-            EntitySystem.registerType('enemy', { maxCount: 1 });
-            test.assertEqual(EntitySystem.isAtCapacity('enemy'), false);
+            EntityOrchestrator.registerType('enemy', { maxCount: 1 });
+            test.assertEqual(EntityOrchestrator.isAtCapacity('enemy'), false);
 
             const mockMesh = { position: { x: 0, y: 0, z: 0 }, userData: {} };
-            EntitySystem.spawn('enemy', mockMesh);
-            test.assertEqual(EntitySystem.isAtCapacity('enemy'), true);
+            EntityOrchestrator.spawn('enemy', mockMesh);
+            test.assertEqual(EntityOrchestrator.isAtCapacity('enemy'), true);
         });
 
         test.it('should iterate with forEach', () => {
-            EntitySystem.registerType('enemy', { maxCount: 5 });
+            EntityOrchestrator.registerType('enemy', { maxCount: 5 });
             const mesh1 = { position: { x: 0, y: 0, z: 0 }, userData: {} };
             const mesh2 = { position: { x: 1, y: 0, z: 0 }, userData: {} };
 
-            EntitySystem.spawn('enemy', mesh1);
-            EntitySystem.spawn('enemy', mesh2);
+            EntityOrchestrator.spawn('enemy', mesh1);
+            EntityOrchestrator.spawn('enemy', mesh2);
 
             let count = 0;
-            EntitySystem.forEach('enemy', () => { count++; });
+            EntityOrchestrator.forEach('enemy', () => { count++; });
             test.assertEqual(count, 2);
         });
 
         test.it('should filter entities', () => {
-            EntitySystem.registerType('enemy', { maxCount: 5 });
+            EntityOrchestrator.registerType('enemy', { maxCount: 5 });
             const mesh1 = { position: { x: 0, y: 0, z: 0 }, userData: {} };
             const mesh2 = { position: { x: 5, y: 0, z: 0 }, userData: {} };
 
-            EntitySystem.spawn('enemy', mesh1, { damage: 10 });
-            EntitySystem.spawn('enemy', mesh2, { damage: 20 });
+            EntityOrchestrator.spawn('enemy', mesh1, { damage: 10 });
+            EntityOrchestrator.spawn('enemy', mesh2, { damage: 20 });
 
-            const highDamage = EntitySystem.filter('enemy', e => e.data.damage > 15);
+            const highDamage = EntityOrchestrator.filter('enemy', e => e.data.damage > 15);
             test.assertEqual(highDamage.length, 1);
         });
 
         test.it('should reset all entities', () => {
-            EntitySystem.registerType('enemy', { maxCount: 5 });
+            EntityOrchestrator.registerType('enemy', { maxCount: 5 });
             const mesh1 = { position: { x: 0, y: 0, z: 0 }, userData: {} };
-            EntitySystem.spawn('enemy', mesh1);
+            EntityOrchestrator.spawn('enemy', mesh1);
 
-            EntitySystem.reset();
-            test.assertEqual(EntitySystem.getCount('enemy'), 0);
+            EntityOrchestrator.reset();
+            test.assertEqual(EntityOrchestrator.getCount('enemy'), 0);
         });
     });
 
@@ -895,48 +895,48 @@
     // ANALYTICS SYSTEM TESTS
     // ==========================================
 
-    test.describe('Engine AnalyticsSystem - Initialization', () => {
+    test.describe('Engine AnalyticsOrchestrator - Initialization', () => {
         test.it('should have init method', () => {
-            test.assertTrue(typeof AnalyticsSystem.init === 'function');
+            test.assertTrue(typeof AnalyticsOrchestrator.init === 'function');
         });
 
         test.it('should have track method', () => {
-            test.assertTrue(typeof AnalyticsSystem.track === 'function');
+            test.assertTrue(typeof AnalyticsOrchestrator.track === 'function');
         });
 
         test.it('should initialize without errors', () => {
             // Should not throw even with no gtag
-            AnalyticsSystem.init({ provider: 'none', debug: false });
-            test.assertTrue(AnalyticsSystem.initialized);
+            AnalyticsOrchestrator.init({ provider: 'none', debug: false });
+            test.assertTrue(AnalyticsOrchestrator.initialized);
         });
 
         test.it('should support disabling analytics', () => {
-            AnalyticsSystem.init({ enabled: true });
-            test.assertTrue(AnalyticsSystem.config.enabled);
-            AnalyticsSystem.disable();
-            test.assertFalse(AnalyticsSystem.config.enabled);
-            AnalyticsSystem.enable();
-            test.assertTrue(AnalyticsSystem.config.enabled);
+            AnalyticsOrchestrator.init({ enabled: true });
+            test.assertTrue(AnalyticsOrchestrator.config.enabled);
+            AnalyticsOrchestrator.disable();
+            test.assertFalse(AnalyticsOrchestrator.config.enabled);
+            AnalyticsOrchestrator.enable();
+            test.assertTrue(AnalyticsOrchestrator.config.enabled);
         });
     });
 
-    test.describe('Engine AnalyticsSystem - Failsafe Tracking', () => {
+    test.describe('Engine AnalyticsOrchestrator - Failsafe Tracking', () => {
         test.beforeEach(() => {
-            AnalyticsSystem.init({ provider: 'none', debug: false });
+            AnalyticsOrchestrator.init({ provider: 'none', debug: false });
         });
 
         test.it('should track events without throwing', () => {
             // All these should complete without errors
             let errorThrown = false;
             try {
-                AnalyticsSystem.track('test_event', { value: 1 });
-                AnalyticsSystem.gameStart();
-                AnalyticsSystem.gameOver({ score: 1000, playTime: 60, died: false, rating: 'test' });
-                AnalyticsSystem.weaponSwitch('watergun', 'slingshot');
-                AnalyticsSystem.enemyKill('skeleton', 300);
-                AnalyticsSystem.damageTaken(20, 'enemy', 80);
-                AnalyticsSystem.pickupCollected('weapon', 'nerfgun');
-                AnalyticsSystem.obstacleHit('barrel', 150);
+                AnalyticsOrchestrator.track('test_event', { value: 1 });
+                AnalyticsOrchestrator.gameStart();
+                AnalyticsOrchestrator.gameOver({ score: 1000, playTime: 60, died: false, rating: 'test' });
+                AnalyticsOrchestrator.weaponSwitch('watergun', 'slingshot');
+                AnalyticsOrchestrator.enemyKill('skeleton', 300);
+                AnalyticsOrchestrator.damageTaken(20, 'enemy', 80);
+                AnalyticsOrchestrator.pickupCollected('weapon', 'nerfgun');
+                AnalyticsOrchestrator.obstacleHit('barrel', 150);
             } catch (e) {
                 errorThrown = true;
             }
@@ -944,10 +944,10 @@
         });
 
         test.it('should handle missing provider gracefully', () => {
-            AnalyticsSystem.config.provider = 'nonexistent';
+            AnalyticsOrchestrator.config.provider = 'nonexistent';
             let errorThrown = false;
             try {
-                AnalyticsSystem.track('test_event');
+                AnalyticsOrchestrator.track('test_event');
             } catch (e) {
                 errorThrown = true;
             }
@@ -955,11 +955,11 @@
         });
 
         test.it('should handle disabled state gracefully', () => {
-            AnalyticsSystem.disable();
+            AnalyticsOrchestrator.disable();
             let errorThrown = false;
             try {
-                AnalyticsSystem.gameStart();
-                AnalyticsSystem.gameOver({ score: 500 });
+                AnalyticsOrchestrator.gameStart();
+                AnalyticsOrchestrator.gameOver({ score: 500 });
             } catch (e) {
                 errorThrown = true;
             }
@@ -967,7 +967,7 @@
         });
     });
 
-    test.describe('Engine AnalyticsSystem - Custom Provider', () => {
+    test.describe('Engine AnalyticsOrchestrator - Custom Provider', () => {
         test.it('should register custom provider', () => {
             const events = [];
             const customProvider = {
@@ -975,13 +975,13 @@
                 track: (name, params) => events.push({ name, params })
             };
 
-            const result = AnalyticsSystem.registerProvider('custom', customProvider);
+            const result = AnalyticsOrchestrator.registerProvider('custom', customProvider);
             test.assertTrue(result);
-            test.assertTrue(AnalyticsSystem.providers['custom'] !== undefined);
+            test.assertTrue(AnalyticsOrchestrator.providers['custom'] !== undefined);
         });
 
         test.it('should reject invalid provider', () => {
-            const result = AnalyticsSystem.registerProvider('invalid', { foo: 'bar' });
+            const result = AnalyticsOrchestrator.registerProvider('invalid', { foo: 'bar' });
             test.assertFalse(result);
         });
     });

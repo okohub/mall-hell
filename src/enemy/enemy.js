@@ -20,17 +20,7 @@ const Enemy = {
             driftSpeed: 4,
             collisionRadius: 2.5,
             walkSpeed: 3.5,               // Walking animation speed
-            visual: {
-                boneColor: 0xf5f5dc,      // Bone white
-                eyeColor: 0xff0000,       // Blood red eyes
-                smileColor: 0x8b0000,     // Dark red smile
-                glowColor: 0xff0000,
-                cartColor: 0x1a1a1a,      // Dark cart
-                hornColor: 0x8b0000,      // Devil horns
-                bodyColor: 0x1a1a1a,      // For compatibility
-                wireColor: 0x8b0000,
-                size: { w: 2.2, h: 1.5, d: 2.8 }
-            }
+            size: { w: 2.2, h: 1.5, d: 2.8 }
         },
 
         DINOSAUR: {
@@ -47,19 +37,7 @@ const Enemy = {
             collisionRadius: 5.5,          // Larger collision for big dino
             walkSpeed: 2.5,                // Slower stomp animation
             isBoss: true,                  // Boss flag for special handling
-            visual: {
-                bodyColor: 0x8B5A2B,        // Dark tan/brown body
-                bellyColor: 0xD2B48C,       // Light tan underbelly
-                stripeColor: 0x5D3A1A,      // Dark brown stripes/accents
-                headColor: 0x6B4423,        // Slightly darker head
-                mouthColor: 0x4A1515,       // Deep red mouth interior
-                eyeColor: 0xFFCC00,         // Fierce yellow eyes
-                pupilColor: 0xFF0000,       // Red slit pupils
-                teethColor: 0xFFFFF0,       // Ivory teeth
-                tongueColor: 0xCC3333,      // Red tongue
-                glowColor: 0xFF4500,        // Orange glow
-                size: { w: 3.5, h: 2.5, d: 4.5 }  // Much larger
-            }
+            size: { w: 3.5, h: 2.5, d: 4.5 }  // Much larger
         }
     },
 

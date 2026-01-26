@@ -139,7 +139,7 @@ const PickupOrchestrator = {
      */
     spawn(typeId, position) {
         if (!this.scene || !this.THREE) {
-            console.warn('PickupSystem not initialized');
+            console.warn('PickupOrchestrator not initialized');
             return null;
         }
 
@@ -186,8 +186,8 @@ const PickupOrchestrator = {
             let weaponModule = null;
 
             // Find the weapon module
-            if (typeof WeaponManager !== 'undefined' && WeaponManager.weapons[weaponId]) {
-                weaponModule = WeaponManager.weapons[weaponId];
+            if (typeof WeaponOrchestrator !== 'undefined' && WeaponOrchestrator.weapons[weaponId]) {
+                weaponModule = WeaponOrchestrator.weapons[weaponId];
             } else if (weaponId === 'watergun' && typeof WaterGun !== 'undefined') {
                 weaponModule = WaterGun;
             } else if (weaponId === 'lasergun' && typeof LaserGun !== 'undefined') {
@@ -406,22 +406,22 @@ const PickupOrchestrator = {
     /**
      * Handle pickup collection
      * @param {Object} pickup - The collected pickup instance
-     * @param {Object} weaponManager - WeaponManager reference
+     * @param {Object} weaponOrchestrator - WeaponOrchestrator reference
      * @param {Object} THREE - THREE.js library
      * @param {Object} materials - Materials for mesh creation
      * @param {Object} camera - Camera for FPS mesh attachment
      * @returns {Object} Result {switched, ammoAdded, weaponId, isAmmo}
      */
-    collect(pickup, weaponManager, THREE, materials, camera) {
-        if (!pickup || !weaponManager) return null;
+    collect(pickup, weaponOrchestrator, THREE, materials, camera) {
+        if (!pickup || !weaponOrchestrator) return null;
 
         const config = pickup.config;
         const weaponId = config.weaponId;
-        const currentWeaponId = weaponManager.getCurrentId();
+        const currentWeaponId = weaponOrchestrator.getCurrentId();
 
         // Ammo pickup - always adds ammo to current weapon
         if (config.isAmmo || weaponId === null) {
-            weaponManager.addAmmo(config.ammoGrant);
+            weaponOrchestrator.addAmmo(config.ammoGrant);
             return {
                 switched: false,
                 ammoAdded: config.ammoGrant,
@@ -432,7 +432,7 @@ const PickupOrchestrator = {
 
         // Weapon pickup - same weapon adds ammo
         if (currentWeaponId === weaponId) {
-            weaponManager.addAmmo(config.ammoGrant);
+            weaponOrchestrator.addAmmo(config.ammoGrant);
             return {
                 switched: false,
                 ammoAdded: config.ammoGrant,
@@ -442,7 +442,7 @@ const PickupOrchestrator = {
         }
 
         // Weapon pickup - different weapon switches
-        weaponManager.equip(weaponId, THREE, materials, camera);
+        weaponOrchestrator.equip(weaponId, THREE, materials, camera);
         return {
             switched: true,
             ammoAdded: 0,

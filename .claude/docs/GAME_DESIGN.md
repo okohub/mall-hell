@@ -69,6 +69,7 @@ EXPLORE → HUNT → KILL → SCORE → REPEAT
 |--------|------|--------|---------|
 | Slingshot | 25 | 1 | Charge for power |
 | Water Blaster | 50 | 1 | Rapid fire, splash |
+| Nerf Blaster | 40 | 1 | Single shot |
 | Laser Blaster | 30 | 2 | High damage beam |
 
 ---

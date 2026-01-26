@@ -112,13 +112,20 @@ const EnemyOrchestrator = {
         const instance = this.enemyData.createInstance(typeId, { x, y: 0, z });
         if (!instance) return null;
 
-        // Create visual
+        // Create visual - dispatch to specific mesh module
         let mesh = null;
-        if (THREE && typeof EnemyVisual !== 'undefined') {
-            mesh = EnemyVisual.createEnemy(THREE, config);
-            mesh.position.set(x, 0, z);
-            if (this.scene) {
-                this.scene.add(mesh);
+        if (THREE) {
+            if (typeId === 'DINOSAUR' && typeof DinosaurMesh !== 'undefined') {
+                mesh = DinosaurMesh.createEnemy(THREE, config);
+            } else if (typeof SkeletonMesh !== 'undefined') {
+                mesh = SkeletonMesh.createEnemy(THREE, config);
+            }
+
+            if (mesh) {
+                mesh.position.set(x, 0, z);
+                if (this.scene) {
+                    this.scene.add(mesh);
+                }
             }
         }
 
@@ -380,17 +387,28 @@ const EnemyOrchestrator = {
                 enemy.hitFlash -= dt * this.hitFlashDecay;
                 if (enemy.hitFlash < 0) enemy.hitFlash = 0;
 
-                if (enemy.mesh && typeof EnemyVisual !== 'undefined') {
-                    EnemyVisual.applyHitFlash(enemy.mesh.userData.cart, enemy.hitFlash);
+                if (enemy.mesh) {
+                    if (enemy.type === 'DINOSAUR' && typeof DinosaurMesh !== 'undefined') {
+                        DinosaurMesh.applyHitFlash(enemy.mesh.userData.cart, enemy.hitFlash);
+                    } else if (typeof SkeletonMesh !== 'undefined') {
+                        SkeletonMesh.applyHitFlash(enemy.mesh.userData.cart, enemy.hitFlash);
+                    }
                 }
             }
 
             // Update health bar
-            if (enemy.mesh && enemy.mesh.userData.healthBar && typeof EnemyVisual !== 'undefined') {
-                EnemyVisual.updateHealthBar(
-                    enemy.mesh.userData.healthBar,
-                    enemy.health / enemy.maxHealth
-                );
+            if (enemy.mesh && enemy.mesh.userData.healthBar) {
+                if (enemy.type === 'DINOSAUR' && typeof DinosaurMesh !== 'undefined') {
+                    DinosaurMesh.updateHealthBar(
+                        enemy.mesh.userData.healthBar,
+                        enemy.health / enemy.maxHealth
+                    );
+                } else if (typeof SkeletonMesh !== 'undefined') {
+                    SkeletonMesh.updateHealthBar(
+                        enemy.mesh.userData.healthBar,
+                        enemy.health / enemy.maxHealth
+                    );
+                }
             }
 
             // Despawn if behind camera or destroyed
@@ -476,10 +494,15 @@ const EnemyOrchestrator = {
 
         if (!config) return null;
 
-        // Create mesh using EnemyVisual
-        const group = (typeof EnemyVisual !== 'undefined')
-            ? EnemyVisual.createEnemy(THREE, config)
-            : new THREE.Group();
+        // Create mesh - dispatch to specific mesh module
+        let group = null;
+        if (typeId === 'DINOSAUR' && typeof DinosaurMesh !== 'undefined') {
+            group = DinosaurMesh.createEnemy(THREE, config);
+        } else if (typeof SkeletonMesh !== 'undefined') {
+            group = SkeletonMesh.createEnemy(THREE, config);
+        } else {
+            group = new THREE.Group();
+        }
 
         // Set userData using createEnemyData helper
         const enemyData = this.createEnemyData(typeId);
@@ -660,23 +683,21 @@ const EnemyOrchestrator = {
             const lookDir = Math.atan2(dx, dz);
             enemy.rotation.y = lookDir;
 
-            // Animate eyes (track player)
-            if (typeof EnemyVisual !== 'undefined' && enemy.userData.cart) {
-                EnemyVisual.animateEyes(enemy.userData.cart, playerPosition);
+            // Animate eyes (track player - skeleton only)
+            if (enemy.userData.skeleton && typeof SkeletonAnimation !== 'undefined') {
+                SkeletonAnimation.animateEyes(enemy.userData.cart, playerPosition);
             }
 
-            // Animate walking (skeleton or dinosaur)
-            if (typeof EnemyVisual !== 'undefined') {
-                const walkSpeed = enemy.userData.config?.walkSpeed || 3.5;
-                enemy.userData.walkTimer = (enemy.userData.walkTimer || 0) + dt * walkSpeed;
+            // Animate walking
+            const walkSpeed = enemy.userData.config?.walkSpeed || 3.5;
+            enemy.userData.walkTimer = (enemy.userData.walkTimer || 0) + dt * walkSpeed;
 
-                if (enemy.userData.dinosaur) {
-                    // Dinosaur boss animation
-                    EnemyVisual.animateDinosaurWalk(enemy.userData.cart, enemy.userData.walkTimer, walkSpeed);
-                } else if (enemy.userData.skeleton) {
-                    // Skeleton animation
-                    EnemyVisual.animateSkeletonWalk(enemy.userData.cart, enemy.userData.walkTimer, walkSpeed);
-                }
+            if (enemy.userData.dinosaur && typeof DinosaurAnimation !== 'undefined') {
+                // Dinosaur boss animation
+                DinosaurAnimation.animateWalk(enemy.userData.cart, enemy.userData.walkTimer, walkSpeed);
+            } else if (enemy.userData.skeleton && typeof SkeletonAnimation !== 'undefined') {
+                // Skeleton animation
+                SkeletonAnimation.animateWalk(enemy.userData.cart, enemy.userData.walkTimer, walkSpeed);
             }
 
             // Hit flash
@@ -684,8 +705,12 @@ const EnemyOrchestrator = {
                 enemy.userData.hitFlash -= dt * this.hitFlashDecay;
                 if (enemy.userData.hitFlash < 0) enemy.userData.hitFlash = 0;
 
-                if (typeof EnemyVisual !== 'undefined' && enemy.userData.cart) {
-                    EnemyVisual.applyHitFlash(enemy.userData.cart, enemy.userData.hitFlash);
+                if (enemy.userData.cart) {
+                    if (enemy.userData.dinosaur && typeof DinosaurMesh !== 'undefined') {
+                        DinosaurMesh.applyHitFlash(enemy.userData.cart, enemy.userData.hitFlash);
+                    } else if (typeof SkeletonMesh !== 'undefined') {
+                        SkeletonMesh.applyHitFlash(enemy.userData.cart, enemy.userData.hitFlash);
+                    }
                 } else {
                     // Fallback for legacy enemies
                     enemy.children.forEach(child => {

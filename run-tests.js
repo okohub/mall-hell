@@ -378,6 +378,17 @@ async function runUITests(browser) {
     let passed = 0, failed = 0, pending = 0;
     let failedTests = [];
 
+    // Capture console errors
+    page.on('console', msg => {
+        if (msg.type() === 'error') {
+            logProgress(`  [UI Browser Error] ${msg.text()}`);
+        }
+    });
+
+    page.on('pageerror', error => {
+        logProgress(`  [UI Page Error] ${error.message}`);
+    });
+
     try {
         await page.setViewport({ width: 1400, height: 900 });
         await page.goto(`file://${filePath}`, { waitUntil: 'domcontentloaded', timeout: 15000 });
@@ -449,6 +460,25 @@ async function runUITests(browser) {
         const totalTests = await page.evaluate(() => window.runner?.tests?.length || 0);
         progress.ui.total = totalTests;
 
+        if (VERBOSE) {
+            logProgress(`  [UI] Found ${totalTests} tests registered`);
+        }
+
+        // Check if runner is ready
+        const runnerStatus = await page.evaluate(() => {
+            return {
+                runnerExists: !!window.runner,
+                testsCount: window.runner?.tests?.length || 0,
+                gameWindow: !!window.runner?.gameWindow,
+                gameDocument: !!window.runner?.gameDocument,
+                buttonExists: !!document.querySelector('#run-all-btn')
+            };
+        });
+
+        if (VERBOSE) {
+            logProgress(`  [UI] Runner status: ${JSON.stringify(runnerStatus)}`);
+        }
+
         await page.evaluate(() => {
             const runBtn = document.querySelector('#run-all-btn');
             if (runBtn) runBtn.click();
@@ -459,7 +489,10 @@ async function runUITests(browser) {
         let stableCount = 0, attempts = 0, lastCompleted = 0;
         let loggedTests = new Set();
 
-        while (attempts < 120) {
+        // Calculate max wait time: 94 tests * 500ms delay + 200ms per test + 10s buffer = ~65s
+        const maxAttempts = 200; // 200 * 500ms = 100 seconds total
+
+        while (attempts < maxAttempts) {
             const status = await page.evaluate(() => {
                 const runner = window.runner;
                 if (!runner) return { isRunning: false, completed: 0, total: 0, passed: 0, failed: 0, current: '', completedTests: [] };
@@ -503,8 +536,10 @@ async function runUITests(browser) {
                 break;
             }
 
+            // Exit when all tests are complete
             if (!status.isRunning && status.completed === status.total && status.total > 0) break;
 
+            // Track stability (no progress)
             if (status.completed === lastCompleted) {
                 stableCount++;
             } else {
@@ -512,7 +547,14 @@ async function runUITests(browser) {
                 lastCompleted = status.completed;
             }
 
-            if (stableCount > 10 && status.completed > 0) break;
+            // Only break on stability if we've waited long enough (30 seconds of no progress)
+            // This prevents premature exit when tests are just running slowly
+            if (stableCount > 60 && status.completed > 0) {
+                if (VERBOSE) {
+                    logProgress(`  [UI] No progress for 30 seconds, stopping (${status.completed}/${status.total} tests completed)`);
+                }
+                break;
+            }
 
             await new Promise(resolve => setTimeout(resolve, 500));
             attempts++;

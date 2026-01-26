@@ -15,7 +15,7 @@ Most domains follow this file pattern:
 | `<domain>.js` | Pure data, constants, configs (single source of truth) |
 | `<domain>-theme.js` | Colors, materials, visuals |
 | `<domain>-mesh.js` | Three.js mesh creation (stateless) |
-| `<domain>-system.js` | State management, logic |
+| `<domain>-orchestrator.js` | State management, logic |
 | `<domain>.test.js` | Unit tests |
 
 ### Weapon Domain Pattern (Refactored)
@@ -25,11 +25,11 @@ Weapons use a specialized pattern for better focus and context management:
 | File | Purpose | Size Impact |
 |------|---------|-------------|
 | `weapon.js` | All weapon configs (single source of truth) | Centralized |
-| `weapon-manager.js` | Weapon orchestration, lifecycle | Unchanged |
+| `weapon-orchestrator.js` | Weapon orchestration, lifecycle | Unchanged |
 | `<weapon>.js` | Thin behavioral module (delegates to mesh/animation) | **55-63% smaller** |
 | `<weapon>-mesh.js` | Stateless mesh creation functions | ~250 lines |
 | `<weapon>-animation.js` | Stateless animation functions | ~65 lines |
-| `pickup.js`, `pickup-system.js` | Weapon pickup logic | Unchanged |
+| `pickup.js`, `pickup-orchestrator.js` | Weapon pickup logic | Unchanged |
 | `weapon.test.js` | Unit tests | Unchanged |
 
 **Key difference**: Individual weapons split visual concerns (mesh, animation) from behavioral concerns (firing, state).
@@ -126,47 +126,47 @@ Consider true DDD if you need:
 In `index.html`, load in this order:
 1. Three.js (CDN)
 2. `src/shared/materials-theme.js`
-3. `src/ui/ui.js` → `ui-system.js`
-4. `src/engine/*` (engine.js first, then *-system.js)
-5. Domain files (data → theme → mesh → system)
+3. `src/ui/ui.js` → `ui-orchestrator.js`
+4. `src/engine/*` (engine.js first, then *-orchestrator.js)
+5. Domain files (data → theme → mesh → orchestrator)
 
 ## Key Systems
 
-### WeaponManager
+### WeaponOrchestrator
 ```javascript
-WeaponManager.init(scene);
-WeaponManager.register(Slingshot);
-WeaponManager.equip('slingshot', THREE, MaterialsTheme, camera);
-WeaponManager.onFireStart(Date.now());
-WeaponManager.onFireRelease(Date.now());
+WeaponOrchestrator.init(scene);
+WeaponOrchestrator.register(Slingshot);
+WeaponOrchestrator.equip('slingshot', THREE, MaterialsTheme, camera);
+WeaponOrchestrator.onFireStart(Date.now());
+WeaponOrchestrator.onFireRelease(Date.now());
 ```
 
-### EnemySystem
+### EnemyOrchestrator
 ```javascript
 // Get enemy type based on score (for dynamic spawning)
-const type = EnemySystem.getSpawnType(currentScore);
-const enemy = EnemySystem.createMesh(THREE, type, x, z);
+const type = EnemyOrchestrator.getSpawnType(currentScore);
+const enemy = EnemyOrchestrator.createMesh(THREE, type, x, z);
 ```
 
-### SpawnSystem (Lazy Loading)
+### SpawnOrchestrator (Lazy Loading)
 ```javascript
 // Plan all rooms (data only, no meshes)
-SpawnSystem.planAllRooms(rooms, config, getEnemyType, score);
+SpawnOrchestrator.planAllRooms(rooms, config, getEnemyType, score);
 
 // Materialize when player approaches
-SpawnSystem.materializeNearbyRooms(room, grid, roomSystem, callbacks);
+SpawnOrchestrator.materializeNearbyRooms(room, grid, roomOrchestrator, callbacks);
 ```
 
-### UISystem
+### UIOrchestrator
 ```javascript
-UISystem.updateScore(score, animate);
-UISystem.updateMinimap({ currentRoom, enemies, gridSystem, roomConfig });
-UISystem.showBossWarning('DINO BOSS!');
+UIOrchestrator.updateScore(score, animate);
+UIOrchestrator.updateMinimap({ currentRoom, enemies, gridOrchestrator, roomConfig });
+UIOrchestrator.showBossWarning('DINO BOSS!');
 ```
 
-### StateSystem
+### StateOrchestrator
 ```javascript
-StateSystem.init('MENU');
-StateSystem.transition('PLAYING');
-StateSystem.getState(); // 'MENU' | 'PLAYING' | 'PAUSED' | 'GAME_OVER'
+StateOrchestrator.init('MENU');
+StateOrchestrator.transition('PLAYING');
+StateOrchestrator.getState(); // 'MENU' | 'PLAYING' | 'PAUSED' | 'GAME_OVER'
 ```

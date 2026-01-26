@@ -52,7 +52,7 @@ const SpawnOrchestrator = {
 
     /**
      * Plan contents for all rooms (data only, no mesh creation)
-     * @param {Array} rooms - Array of room data from RoomSystem.getAllRooms()
+     * @param {Array} rooms - Array of room data from RoomOrchestrator.getAllRooms()
      * @param {Object} roomConfig - Room config {UNIT, DOOR_WIDTH}
      * @param {Function} getEnemyType - Function to get enemy type (score) => 'SKELETON' | 'DINOSAUR'
      * @param {number} currentScore - Current score for enemy type calculation
@@ -175,25 +175,25 @@ const SpawnOrchestrator = {
 
     /**
      * Materialize a room and its adjacent rooms
-     * Uses RoomSystem for room queries (proper DDD separation)
+     * Uses RoomOrchestrator for room queries (proper DDD separation)
      * @param {Object} centerRoom - Center room object
-     * @param {Object} gridSystem - Grid system with getRoomAtWorld
-     * @param {Object} roomSystem - RoomSystem for room utilities
+     * @param {Object} gridOrchestrator - Grid system with getRoomAtWorld
+     * @param {Object} roomOrchestrator - RoomOrchestrator for room utilities
      * @param {Object} callbacks - { createEnemy, createObstacle, onRoomMaterialized }
      * @returns {Object} { materializedKeys: string[], totalEnemies: number, totalObstacles: number }
      */
-    materializeNearbyRooms(centerRoom, gridSystem, roomSystem, callbacks) {
-        if (!centerRoom || !roomSystem) {
+    materializeNearbyRooms(centerRoom, gridOrchestrator, roomOrchestrator, callbacks) {
+        if (!centerRoom || !roomOrchestrator) {
             return { materializedKeys: [], totalEnemies: 0, totalObstacles: 0 };
         }
 
-        const roomsToMaterialize = roomSystem.getRoomWithAdjacent(centerRoom, gridSystem);
+        const roomsToMaterialize = roomOrchestrator.getRoomWithAdjacent(centerRoom, gridOrchestrator);
         const materializedKeys = [];
         let totalEnemies = 0;
         let totalObstacles = 0;
 
         roomsToMaterialize.forEach(room => {
-            const roomKey = roomSystem.getRoomKey(room);
+            const roomKey = roomOrchestrator.getRoomKey(room);
             if (!roomKey || this.isRoomMaterialized(roomKey)) {
                 return;
             }
@@ -403,7 +403,7 @@ const SpawnOrchestrator = {
      * @param {Object} options.currentRoom - Player's current room
      * @param {Object} options.playerPosition - Player position {x, z}
      * @param {Array} options.visitedRooms - Set of visited room keys
-     * @param {Object} options.gridSystem - Grid system for room lookup
+     * @param {Object} options.gridOrchestrator - Grid system for room lookup
      * @param {Object} options.roomConfig - Room config {UNIT, DOOR_WIDTH}
      * @param {number} options.currentEnemyCount - Current active enemy count
      * @param {number} options.dt - Delta time
@@ -415,7 +415,7 @@ const SpawnOrchestrator = {
             currentRoom,
             playerPosition,
             visitedRooms,
-            gridSystem,
+            gridOrchestrator,
             roomConfig,
             currentEnemyCount,
             dt,
@@ -462,7 +462,7 @@ const SpawnOrchestrator = {
 
             if (dist >= this.runtimeConfig.minDistanceFromPlayer &&
                 dist <= this.runtimeConfig.maxDistanceFromPlayer) {
-                const room = gridSystem.getRoomAtWorld(roomCenterX, roomCenterZ);
+                const room = gridOrchestrator.getRoomAtWorld(roomCenterX, roomCenterZ);
                 if (room && room.theme !== 'ENTRANCE') {
                     candidateRooms.push(room);
                 }
@@ -474,7 +474,7 @@ const SpawnOrchestrator = {
             // Look for rooms ahead (in negative Z direction typically)
             for (let i = 1; i <= 3; i++) {
                 const aheadZ = playerPosition.z - (i * ROOM_UNIT);
-                const room = gridSystem.getRoomAtWorld(playerPosition.x, aheadZ);
+                const room = gridOrchestrator.getRoomAtWorld(playerPosition.x, aheadZ);
                 if (room && room !== currentRoom && room.theme !== 'ENTRANCE') {
                     candidateRooms.push(room);
                 }
@@ -524,11 +524,11 @@ const SpawnOrchestrator = {
      * @param {Object} options.currentRoom - Player's current room
      * @param {Object} options.playerPosition - Player position {x, z}
      * @param {Array} options.visitedRooms - Set of visited room keys
-     * @param {Object} options.gridSystem - Grid system for room lookup
+     * @param {Object} options.gridOrchestrator - Grid system for room lookup
      * @param {Object} options.roomConfig - Room config {UNIT, DOOR_WIDTH}
      * @param {number} options.currentPickupCount - Current active pickup count
      * @param {number} options.dt - Delta time
-     * @param {Object} options.pickupSystem - PickupSystem reference
+     * @param {Object} options.pickupOrchestrator - PickupOrchestrator reference
      * @param {Array} options.obstacles - Obstacles array for collision avoidance
      * @param {Array} options.shelves - Shelves array for collision avoidance
      * @returns {boolean} True if a pickup was spawned
@@ -538,11 +538,11 @@ const SpawnOrchestrator = {
             currentRoom,
             playerPosition,
             visitedRooms,
-            gridSystem,
+            gridOrchestrator,
             roomConfig,
             currentPickupCount,
             dt,
-            pickupSystem,
+            pickupOrchestrator,
             obstacles = [],
             shelves = []
         } = options;
@@ -586,7 +586,7 @@ const SpawnOrchestrator = {
 
             if (dist >= this.pickupRuntimeConfig.minDistanceFromPlayer &&
                 dist <= this.pickupRuntimeConfig.maxDistanceFromPlayer) {
-                const room = gridSystem.getRoomAtWorld(roomCenterX, roomCenterZ);
+                const room = gridOrchestrator.getRoomAtWorld(roomCenterX, roomCenterZ);
                 if (room && room.theme !== 'ENTRANCE') {
                     candidateRooms.push(room);
                 }
@@ -597,7 +597,7 @@ const SpawnOrchestrator = {
         if (candidateRooms.length === 0) {
             for (let i = 1; i <= 3; i++) {
                 const aheadZ = playerPosition.z - (i * ROOM_UNIT);
-                const room = gridSystem.getRoomAtWorld(playerPosition.x, aheadZ);
+                const room = gridOrchestrator.getRoomAtWorld(playerPosition.x, aheadZ);
                 if (room && room !== currentRoom && room.theme !== 'ENTRANCE') {
                     candidateRooms.push(room);
                 }
@@ -611,9 +611,9 @@ const SpawnOrchestrator = {
         // Pick a random candidate room
         const targetRoom = candidateRooms[Math.floor(Math.random() * candidateRooms.length)];
 
-        // Use PickupSystem to spawn
-        if (pickupSystem) {
-            return pickupSystem.trySpawnForRoom(
+        // Use PickupOrchestrator to spawn
+        if (pickupOrchestrator) {
+            return pickupOrchestrator.trySpawnForRoom(
                 { x: targetRoom.worldX, z: targetRoom.worldZ },
                 ROOM_UNIT * 0.7,
                 ROOM_UNIT * 0.7,

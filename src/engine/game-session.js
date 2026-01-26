@@ -2,7 +2,7 @@
 // GAME SESSION - Game State Management
 // ============================================
 // Manages game session state: score, timer, lifecycle.
-// Integrates with UISystem for display updates.
+// Integrates with UIOrchestrator for display updates.
 
 const GameSession = {
     // ==========================================
@@ -62,8 +62,8 @@ const GameSession = {
         this._isPaused = false;
 
         // Update UI
-        if (typeof UISystem !== 'undefined') {
-            UISystem.updateScore(0, false);
+        if (typeof UIOrchestrator !== 'undefined') {
+            UIOrchestrator.updateScore(0, false);
         }
     },
 
@@ -75,8 +75,8 @@ const GameSession = {
         this._isPaused = true;
 
         // Show pause UI
-        if (typeof UISystem !== 'undefined') {
-            UISystem.showPause(this._score);
+        if (typeof UIOrchestrator !== 'undefined') {
+            UIOrchestrator.showPause(this._score);
         }
     },
 
@@ -88,8 +88,8 @@ const GameSession = {
         this._isPaused = false;
 
         // Hide pause UI
-        if (typeof UISystem !== 'undefined') {
-            UISystem.hidePause();
+        if (typeof UIOrchestrator !== 'undefined') {
+            UIOrchestrator.hidePause();
         }
     },
 
@@ -102,9 +102,9 @@ const GameSession = {
         this._isPaused = false;
 
         // Show game over UI
-        if (typeof UISystem !== 'undefined' && typeof UI !== 'undefined') {
+        if (typeof UIOrchestrator !== 'undefined' && typeof UI !== 'undefined') {
             const rating = UI.getScoreRating(this._score);
-            UISystem.showGameOver(this._score, rating, died);
+            UIOrchestrator.showGameOver(this._score, rating, died);
         }
     },
 
@@ -118,8 +118,8 @@ const GameSession = {
         this._isPaused = false;
 
         // Update UI
-        if (typeof UISystem !== 'undefined') {
-            UISystem.updateScore(0, false);
+        if (typeof UIOrchestrator !== 'undefined') {
+            UIOrchestrator.updateScore(0, false);
             this.updateTimerDisplay();
         }
     },
@@ -137,13 +137,13 @@ const GameSession = {
         this._score += points;
 
         // Update UI
-        if (typeof UISystem !== 'undefined') {
-            UISystem.updateScore(this._score, true);
+        if (typeof UIOrchestrator !== 'undefined') {
+            UIOrchestrator.updateScore(this._score, true);
 
             // Show floating popup if position provided
             if (position && this._camera) {
-                const screenPos = UISystem.worldToScreen(position, this._camera);
-                UISystem.showScorePopup(points, screenPos.x, screenPos.y);
+                const screenPos = UIOrchestrator.worldToScreen(position, this._camera);
+                UIOrchestrator.showScorePopup(points, screenPos.x, screenPos.y);
             }
         }
     },
@@ -162,8 +162,8 @@ const GameSession = {
      */
     setScore(value) {
         this._score = value;
-        if (typeof UISystem !== 'undefined') {
-            UISystem.updateScore(this._score, false);
+        if (typeof UIOrchestrator !== 'undefined') {
+            UIOrchestrator.updateScore(this._score, false);
         }
     },
 
@@ -194,8 +194,8 @@ const GameSession = {
      * Update timer display in UI
      */
     updateTimerDisplay() {
-        if (typeof UISystem !== 'undefined') {
-            UISystem.updateTimerDisplay(this._timer, this._duration);
+        if (typeof UIOrchestrator !== 'undefined') {
+            UIOrchestrator.updateTimerDisplay(this._timer, this._duration);
         }
     },
 
@@ -261,7 +261,7 @@ const GameSession = {
     },
 
     /**
-     * Set active state directly (for StateSystem integration)
+     * Set active state directly (for StateOrchestrator integration)
      * @param {boolean} active
      */
     setActive(active) {

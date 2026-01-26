@@ -268,7 +268,7 @@
         });
 
         test.it('should not spawn if max pickups reached', () => {
-            const mockPickupSystem = {
+            const mockPickupOrchestrator = {
                 getCount: () => 10,  // More than max
                 trySpawnForRoom: () => true
             };
@@ -277,11 +277,11 @@
                 currentRoom: { gridX: 0, gridZ: 0 },
                 playerPosition: { x: 15, z: 15 },
                 visitedRooms: new Set(['0_0', '1_0']),
-                gridSystem: { getRoomAtWorld: () => ({ gridX: 1, gridZ: 0, theme: 'NORMAL', worldX: 45, worldZ: 15 }) },
+                gridOrchestrator: { getRoomAtWorld: () => ({ gridX: 1, gridZ: 0, theme: 'NORMAL', worldX: 45, worldZ: 15 }) },
                 roomConfig: { UNIT: 30, DOOR_WIDTH: 6 },
                 currentPickupCount: 10,  // >= max
                 dt: 5.0,  // Exceed interval
-                pickupSystem: mockPickupSystem,
+                pickupOrchestrator: mockPickupOrchestrator,
                 obstacles: [],
                 shelves: []
             });
@@ -296,11 +296,11 @@
                 currentRoom: null,
                 playerPosition: { x: 15, z: 15 },
                 visitedRooms: new Set(),
-                gridSystem: { getRoomAtWorld: () => null },
+                gridOrchestrator: { getRoomAtWorld: () => null },
                 roomConfig: { UNIT: 30, DOOR_WIDTH: 6 },
                 currentPickupCount: 0,
                 dt: 0.1,  // Less than interval
-                pickupSystem: null,
+                pickupOrchestrator: null,
                 obstacles: [],
                 shelves: []
             });

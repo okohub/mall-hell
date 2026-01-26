@@ -336,11 +336,11 @@ const RoomOrchestrator = {
      * Create all meshes for a single room
      * @param {THREE} THREE - Three.js library
      * @param {Object} room - Room data
-     * @param {Object} options - Options {scene, shelfArray, shelfSystem}
+     * @param {Object} options - Options {scene, shelfArray, shelfOrchestrator}
      * @returns {Object} Created meshes {floor, ceiling, walls, shelves, sign, light}
      */
     createRoomMeshes(THREE, room, options = {}) {
-        const { scene, shelfArray, shelfSystem } = options;
+        const { scene, shelfArray, shelfOrchestrator } = options;
         const theme = room.themeData || this.getRoomTheme(room);
         if (!theme) return null;
 
@@ -434,7 +434,7 @@ const RoomOrchestrator = {
             // West wall shelves
             if (!doors.includes('west') && typeof RoomMesh !== 'undefined') {
                 [-6, 0, 6].forEach(offset => {
-                    const shelf = RoomMesh.createShelfUnit(THREE, theme, roomMinX + 2.5, worldZ + offset, false, shelfSystem);
+                    const shelf = RoomMesh.createShelfUnit(THREE, theme, roomMinX + 2.5, worldZ + offset, false, shelfOrchestrator);
                     result.meshes.push(shelf);
                     if (scene) scene.add(shelf);
                     if (shelfArray) shelfArray.push(shelf);
@@ -444,7 +444,7 @@ const RoomOrchestrator = {
             // East wall shelves
             if (!doors.includes('east') && typeof RoomMesh !== 'undefined') {
                 [-6, 0, 6].forEach(offset => {
-                    const shelf = RoomMesh.createShelfUnit(THREE, theme, roomMaxX - 2.5, worldZ + offset, true, shelfSystem);
+                    const shelf = RoomMesh.createShelfUnit(THREE, theme, roomMaxX - 2.5, worldZ + offset, true, shelfOrchestrator);
                     result.meshes.push(shelf);
                     if (scene) scene.add(shelf);
                     if (shelfArray) shelfArray.push(shelf);
@@ -454,7 +454,7 @@ const RoomOrchestrator = {
             // North wall shelves
             if (!doors.includes('north') && typeof RoomMesh !== 'undefined') {
                 [-6, 6].forEach(offset => {
-                    const shelf = RoomMesh.createWallShelf(THREE, theme, worldX + offset, roomMinZ + 2.5, 0, shelfSystem);
+                    const shelf = RoomMesh.createWallShelf(THREE, theme, worldX + offset, roomMinZ + 2.5, 0, shelfOrchestrator);
                     result.meshes.push(shelf);
                     if (scene) scene.add(shelf);
                     if (shelfArray) shelfArray.push(shelf);
@@ -464,7 +464,7 @@ const RoomOrchestrator = {
             // South wall shelves
             if (!doors.includes('south') && typeof RoomMesh !== 'undefined') {
                 [-6, 6].forEach(offset => {
-                    const shelf = RoomMesh.createWallShelf(THREE, theme, worldX + offset, roomMaxZ - 2.5, Math.PI, shelfSystem);
+                    const shelf = RoomMesh.createWallShelf(THREE, theme, worldX + offset, roomMaxZ - 2.5, Math.PI, shelfOrchestrator);
                     result.meshes.push(shelf);
                     if (scene) scene.add(shelf);
                     if (shelfArray) shelfArray.push(shelf);
@@ -473,7 +473,7 @@ const RoomOrchestrator = {
 
             // Center display (not in JUNCTION rooms)
             if (room.theme !== 'JUNCTION' && typeof RoomMesh !== 'undefined') {
-                const display = RoomMesh.createCenterDisplay(THREE, theme, worldX, worldZ, shelfSystem);
+                const display = RoomMesh.createCenterDisplay(THREE, theme, worldX, worldZ, shelfOrchestrator);
                 // Add collision data (5x5 base platform)
                 display.userData.width = 5;
                 display.userData.depth = 5;
@@ -489,7 +489,7 @@ const RoomOrchestrator = {
     /**
      * Create all environment meshes for all rooms
      * @param {THREE} THREE - Three.js library
-     * @param {Object} options - Options {scene, shelfArray, shelfSystem}
+     * @param {Object} options - Options {scene, shelfArray, shelfOrchestrator}
      */
     createAllRoomMeshes(THREE, options = {}) {
         const rooms = this.getAllRooms();
@@ -583,11 +583,11 @@ const RoomOrchestrator = {
     /**
      * Get adjacent rooms (north, south, east, west)
      * @param {Object} room - Center room
-     * @param {Object} gridSystem - Grid system with getRoomAtWorld
+     * @param {Object} gridOrchestrator - Grid system with getRoomAtWorld
      * @returns {Array} Array of adjacent room objects (excludes null)
      */
-    getAdjacentRooms(room, gridSystem) {
-        if (!room || !gridSystem || !this.roomData) return [];
+    getAdjacentRooms(room, gridOrchestrator) {
+        if (!room || !gridOrchestrator || !this.roomData) return [];
 
         const ROOM_UNIT = this.roomData.structure.UNIT;
         const adjacent = [];
@@ -602,7 +602,7 @@ const RoomOrchestrator = {
         offsets.forEach(({ dx, dz }) => {
             const adjX = (room.gridX + dx) * ROOM_UNIT + ROOM_UNIT / 2;
             const adjZ = (room.gridZ + dz) * ROOM_UNIT + ROOM_UNIT / 2;
-            const adjRoom = gridSystem.getRoomAtWorld(adjX, adjZ);
+            const adjRoom = gridOrchestrator.getRoomAtWorld(adjX, adjZ);
             if (adjRoom) {
                 adjacent.push(adjRoom);
             }
@@ -614,12 +614,12 @@ const RoomOrchestrator = {
     /**
      * Get room and its adjacent rooms
      * @param {Object} room - Center room
-     * @param {Object} gridSystem - Grid system with getRoomAtWorld
+     * @param {Object} gridOrchestrator - Grid system with getRoomAtWorld
      * @returns {Array} Array including center room + adjacent rooms
      */
-    getRoomWithAdjacent(room, gridSystem) {
+    getRoomWithAdjacent(room, gridOrchestrator) {
         if (!room) return [];
-        const adjacent = this.getAdjacentRooms(room, gridSystem);
+        const adjacent = this.getAdjacentRooms(room, gridOrchestrator);
         return [room, ...adjacent];
     },
 
@@ -635,14 +635,14 @@ const RoomOrchestrator = {
      * Update ambient lighting based on current room
      * @param {Object} ambientLight - THREE.js AmbientLight
      * @param {Object} playerPosition - Player position {x, z}
-     * @param {Object} gridSystem - Grid system with getRoomAtWorld
+     * @param {Object} gridOrchestrator - Grid system with getRoomAtWorld
      * @param {THREE} THREE - Three.js library
      * @param {number} lerpSpeed - Color transition speed (default: 0.02)
      */
-    updateAmbientLighting(ambientLight, playerPosition, gridSystem, THREE, lerpSpeed = 0.02) {
-        if (!ambientLight || !gridSystem) return;
+    updateAmbientLighting(ambientLight, playerPosition, gridOrchestrator, THREE, lerpSpeed = 0.02) {
+        if (!ambientLight || !gridOrchestrator) return;
 
-        const room = gridSystem.getRoomAtWorld(playerPosition.x, playerPosition.z);
+        const room = gridOrchestrator.getRoomAtWorld(playerPosition.x, playerPosition.z);
         if (room && room.themeData) {
             const targetColor = new THREE.Color(room.themeData.ambientColor);
             ambientLight.color.lerp(targetColor, lerpSpeed);

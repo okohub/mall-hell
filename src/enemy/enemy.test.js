@@ -69,12 +69,11 @@
         });
 
         test.it('should have skeleton visual properties', () => {
-            const skeleton = Enemy.types.SKELETON;
-            test.assertTrue(skeleton.visual.boneColor !== undefined);
-            test.assertTrue(skeleton.visual.eyeColor !== undefined);
-            test.assertTrue(skeleton.visual.smileColor !== undefined);
-            test.assertTrue(skeleton.visual.cartColor !== undefined);
-            test.assertTrue(skeleton.visual.hornColor !== undefined);
+            test.assertTrue(Skeleton.theme.boneColor !== undefined);
+            test.assertTrue(Skeleton.theme.eyeColor !== undefined);
+            test.assertTrue(Skeleton.theme.smileColor !== undefined);
+            test.assertTrue(Skeleton.theme.cartColor !== undefined);
+            test.assertTrue(Skeleton.theme.hornColor !== undefined);
         });
 
         test.it('should have walkSpeed in skeleton config', () => {
@@ -115,11 +114,10 @@
         });
 
         test.it('should have dinosaur visual properties', () => {
-            const dinosaur = Enemy.types.DINOSAUR;
-            test.assertTrue(dinosaur.visual.bodyColor !== undefined);
-            test.assertTrue(dinosaur.visual.bellyColor !== undefined);
-            test.assertTrue(dinosaur.visual.eyeColor !== undefined);
-            test.assertTrue(dinosaur.visual.teethColor !== undefined);
+            test.assertTrue(Dinosaur.theme.bodyColor !== undefined);
+            test.assertTrue(Dinosaur.theme.bellyColor !== undefined);
+            test.assertTrue(Dinosaur.theme.eyeColor !== undefined);
+            test.assertTrue(Dinosaur.theme.teethColor !== undefined);
         });
 
         test.it('should create dinosaur instance data', () => {
@@ -790,27 +788,27 @@
 
     test.describe('Enemy Visual', () => {
         test.it('should have createSkeletonMesh method', () => {
-            test.assertTrue(typeof EnemyVisual.createSkeletonMesh === 'function');
+            test.assertTrue(typeof SkeletonMesh.createMesh === 'function');
         });
 
-        test.it('should have createHealthBar method', () => {
-            test.assertTrue(typeof EnemyVisual.createHealthBar === 'function');
+        test.it('should have skeleton createHealthBar method', () => {
+            test.assertTrue(typeof SkeletonMesh.updateHealthBar === 'function');
         });
 
-        test.it('should have updateHealthBar method', () => {
-            test.assertTrue(typeof EnemyVisual.updateHealthBar === 'function');
+        test.it('should have skeleton updateHealthBar method', () => {
+            test.assertTrue(typeof SkeletonMesh.updateHealthBar === 'function');
         });
 
-        test.it('should have applyHitFlash method', () => {
-            test.assertTrue(typeof EnemyVisual.applyHitFlash === 'function');
+        test.it('should have skeleton applyHitFlash method', () => {
+            test.assertTrue(typeof SkeletonMesh.applyHitFlash === 'function');
         });
 
         test.it('should have animateSkeletonEyes method', () => {
-            test.assertTrue(typeof EnemyVisual.animateSkeletonEyes === 'function');
+            test.assertTrue(typeof SkeletonAnimation.animateEyes === 'function');
         });
 
         test.it('should have animateSkeletonWalk method', () => {
-            test.assertTrue(typeof EnemyVisual.animateSkeletonWalk === 'function');
+            test.assertTrue(typeof SkeletonAnimation.animateWalk === 'function');
         });
 
         test.it('should create skeleton mesh with THREE', () => {
@@ -819,7 +817,8 @@
                 return;
             }
             const config = Enemy.get('SKELETON');
-            const mesh = EnemyVisual.createSkeletonMesh(THREE, config);
+            const configWithTheme = { ...config, visual: { ...Skeleton.theme, size: config.size } };
+            const mesh = SkeletonMesh.createMesh(THREE, configWithTheme);
             test.assertTrue(mesh instanceof THREE.Group);
             test.assertTrue(mesh.userData.skull !== undefined);
             test.assertTrue(mesh.userData.skeleton !== undefined);
@@ -831,7 +830,8 @@
                 return;
             }
             const config = Enemy.get('SKELETON');
-            const mesh = EnemyVisual.createSkeletonMesh(THREE, config);
+            const configWithTheme = { ...config, visual: { ...Skeleton.theme, size: config.size } };
+            const mesh = SkeletonMesh.createMesh(THREE, configWithTheme);
             test.assertTrue(mesh.userData.leftLeg !== undefined);
             test.assertTrue(mesh.userData.rightLeg !== undefined);
             test.assertTrue(mesh.userData.pelvis !== undefined);
@@ -843,7 +843,8 @@
                 return;
             }
             const config = Enemy.get('SKELETON');
-            const mesh = EnemyVisual.createSkeletonMesh(THREE, config);
+            const configWithTheme = { ...config, visual: { ...Skeleton.theme, size: config.size } };
+            const mesh = SkeletonMesh.createMesh(THREE, configWithTheme);
             test.assertTrue(mesh.userData.leftArm !== undefined);
             test.assertTrue(mesh.userData.rightArm !== undefined);
         });
@@ -854,7 +855,7 @@
                 return;
             }
             const config = Enemy.get('SKELETON');
-            const enemy = EnemyVisual.createEnemy(THREE, config);
+            const enemy = SkeletonMesh.createEnemy(THREE, config);
             test.assertTrue(enemy instanceof THREE.Group);
             test.assertTrue(enemy.userData.skeleton !== undefined);
             test.assertTrue(enemy.userData.leftLeg !== undefined);
@@ -862,11 +863,11 @@
         });
 
         test.it('should have createDinosaurMesh method', () => {
-            test.assertTrue(typeof EnemyVisual.createDinosaurMesh === 'function');
+            test.assertTrue(typeof DinosaurMesh.createMesh === 'function');
         });
 
         test.it('should have animateDinosaurWalk method', () => {
-            test.assertTrue(typeof EnemyVisual.animateDinosaurWalk === 'function');
+            test.assertTrue(typeof DinosaurAnimation.animateWalk === 'function');
         });
 
         test.it('should create dinosaur mesh with THREE', () => {
@@ -875,7 +876,8 @@
                 return;
             }
             const config = Enemy.get('DINOSAUR');
-            const mesh = EnemyVisual.createDinosaurMesh(THREE, config);
+            const configWithTheme = { ...config, visual: { ...Dinosaur.theme, size: config.size } };
+            const mesh = DinosaurMesh.createMesh(THREE, configWithTheme);
             test.assertTrue(mesh instanceof THREE.Group);
             test.assertTrue(mesh.userData.dinosaur !== undefined);
             test.assertTrue(mesh.userData.head !== undefined);
@@ -888,7 +890,8 @@
                 return;
             }
             const config = Enemy.get('DINOSAUR');
-            const mesh = EnemyVisual.createDinosaurMesh(THREE, config);
+            const configWithTheme = { ...config, visual: { ...Dinosaur.theme, size: config.size } };
+            const mesh = DinosaurMesh.createMesh(THREE, configWithTheme);
             test.assertTrue(mesh.userData.leftLeg !== undefined);
             test.assertTrue(mesh.userData.rightLeg !== undefined);
         });
@@ -899,7 +902,7 @@
                 return;
             }
             const config = Enemy.get('DINOSAUR');
-            const enemy = EnemyVisual.createEnemy(THREE, config);
+            const enemy = DinosaurMesh.createEnemy(THREE, config);
             test.assertTrue(enemy instanceof THREE.Group);
             test.assertTrue(enemy.userData.dinosaur !== undefined);
             // Boss should have larger health bar
@@ -911,7 +914,10 @@
                 test.skip('THREE.js not available');
                 return;
             }
-            const healthBar = EnemyVisual.createHealthBar(THREE, 2);
+            // Test skeleton health bar
+            const config = Enemy.get('SKELETON');
+            const enemy = SkeletonMesh.createEnemy(THREE, config);
+            const healthBar = enemy.userData.healthBar;
             test.assertTrue(healthBar instanceof THREE.Group);
             test.assertTrue(healthBar.userData.fill !== undefined);
         });
@@ -978,47 +984,6 @@
             EnemyOrchestrator._dinoSpawnCount = 5;
             EnemyOrchestrator.reset();
             test.assertEqual(EnemyOrchestrator._dinoSpawnCount, 0);
-        });
-    });
-
-    test.describe('Enemy Theme', () => {
-        test.it('should have skeleton theme', () => {
-            test.assertTrue(EnemyTheme.skeleton !== undefined);
-            test.assertTrue(EnemyTheme.skeleton.bone !== undefined);
-            test.assertTrue(EnemyTheme.skeleton.eyes !== undefined);
-            test.assertTrue(EnemyTheme.skeleton.smile !== undefined);
-            test.assertTrue(EnemyTheme.skeleton.cart !== undefined);
-        });
-
-        test.it('should have skeleton eye properties', () => {
-            test.assertTrue(EnemyTheme.skeleton.eyes.socket !== undefined);
-            test.assertTrue(EnemyTheme.skeleton.eyes.glow !== undefined);
-            test.assertTrue(EnemyTheme.skeleton.eyes.emissiveIntensity !== undefined);
-        });
-
-        test.it('should have skeleton smile properties', () => {
-            test.assertTrue(EnemyTheme.skeleton.smile.color !== undefined);
-            test.assertTrue(EnemyTheme.skeleton.smile.teeth !== undefined);
-        });
-
-        test.it('should have skeleton cart properties', () => {
-            test.assertTrue(EnemyTheme.skeleton.cart.body !== undefined);
-            test.assertTrue(EnemyTheme.skeleton.cart.horns !== undefined);
-        });
-
-        test.it('should get skeleton theme for any type', () => {
-            const theme = EnemyTheme.getTheme('SKELETON');
-            test.assertEqual(theme, EnemyTheme.skeleton);
-
-            // Any type should return skeleton (only type available)
-            const theme2 = EnemyTheme.getTheme('UNKNOWN');
-            test.assertEqual(theme2, EnemyTheme.skeleton);
-        });
-
-        test.it('should have damage flash config', () => {
-            test.assertTrue(EnemyTheme.damageFlash !== undefined);
-            test.assertTrue(EnemyTheme.damageFlash.color !== undefined);
-            test.assertTrue(EnemyTheme.damageFlash.duration !== undefined);
         });
     });
 

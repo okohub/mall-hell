@@ -548,7 +548,7 @@ const WeaponOrchestrator = {
      * @returns {boolean}
      */
     isTargetValid(obj, camera, playerPosition, options = {}) {
-        const { collisionSystem, gridSystem, roomConfig } = options;
+        const { collisionOrchestrator, gridOrchestrator, roomConfig } = options;
 
         // Basic validity checks
         if (!obj || !obj.userData?.active) return false;
@@ -560,15 +560,15 @@ const WeaponOrchestrator = {
 
         // Calculate 2D distance
         const maxRange = this.getAimProfileConfig()?.maxRange || 100;
-        const dist2D = CollisionSystem.distance2D(playerPosition, obj.position);
+        const dist2D = CollisionOrchestrator.distance2D(playerPosition, obj.position);
         if (dist2D > maxRange) return false;
 
         // Wall LOS check only
-        if (collisionSystem && gridSystem && roomConfig) {
-            if (!collisionSystem.hasLineOfSight(
+        if (collisionOrchestrator && gridOrchestrator && roomConfig) {
+            if (!collisionOrchestrator.hasLineOfSight(
                 playerPosition.x, playerPosition.z,
                 obj.position.x, obj.position.z,
-                gridSystem, roomConfig
+                gridOrchestrator, roomConfig
             )) {
                 return false;
             }
@@ -658,17 +658,17 @@ const WeaponOrchestrator = {
     _lastFireTime: 0,
 
     // References for projectile creation
-    _projectileSystem: null,
-    _entitySystem: null,
+    _projectileOrchestrator: null,
+    _entityOrchestrator: null,
     _THREE: null,
 
     /**
      * Set references for projectile creation
-     * @param {Object} refs - { ProjectileSystem, EntitySystem, THREE }
+     * @param {Object} refs - { ProjectileOrchestrator, EntityOrchestrator, THREE }
      */
     setProjectileRefs(refs) {
-        this._projectileSystem = refs.ProjectileSystem;
-        this._entitySystem = refs.EntitySystem;
+        this._projectileOrchestrator = refs.ProjectileOrchestrator;
+        this._entityOrchestrator = refs.EntityOrchestrator;
         this._THREE = refs.THREE;
     },
 
@@ -711,10 +711,10 @@ const WeaponOrchestrator = {
         this.triggerFireAnim();
 
         // Calculate spawn position and direction
-        const ProjectileSystem = this._projectileSystem || (typeof window !== 'undefined' ? window.ProjectileSystem : null);
-        if (!ProjectileSystem) return null;
+        const ProjectileOrchestrator = this._projectileOrchestrator || (typeof window !== 'undefined' ? window.ProjectileOrchestrator : null);
+        if (!ProjectileOrchestrator) return null;
 
-        const { spawnPos, direction } = ProjectileSystem.calculateFire(THREE, camera, crosshairX, crosshairY);
+        const { spawnPos, direction } = ProjectileOrchestrator.calculateFire(THREE, camera, crosshairX, crosshairY);
 
         // Apply spread if present (for auto-fire weapons)
         if (fireResult.spread) {
@@ -728,7 +728,7 @@ const WeaponOrchestrator = {
         const speedMax = this.currentWeapon?.config?.projectile?.speedMax || 180;
 
         // Create projectile
-        const projectile = ProjectileSystem.createMesh(THREE, direction, spawnPos, fireResult.speed, {
+        const projectile = ProjectileOrchestrator.createMesh(THREE, direction, spawnPos, fireResult.speed, {
             speedMin,
             speedMax,
             fallbackCamera: camera
@@ -773,10 +773,10 @@ const WeaponOrchestrator = {
             this._lastFireTime = now;
             this.triggerFireAnim();
 
-            const ProjectileSystem = this._projectileSystem || (typeof window !== 'undefined' ? window.ProjectileSystem : null);
-            if (!ProjectileSystem) return null;
+            const ProjectileOrchestrator = this._projectileOrchestrator || (typeof window !== 'undefined' ? window.ProjectileOrchestrator : null);
+            if (!ProjectileOrchestrator) return null;
 
-            const { spawnPos, direction } = ProjectileSystem.calculateFire(THREE, camera, crosshairX, crosshairY);
+            const { spawnPos, direction } = ProjectileOrchestrator.calculateFire(THREE, camera, crosshairX, crosshairY);
 
             if (fireResult.spread) {
                 direction.x += fireResult.spread.x;
@@ -787,7 +787,7 @@ const WeaponOrchestrator = {
             const speedMin = this.currentWeapon?.config?.projectile?.speedMin || 60;
             const speedMax = this.currentWeapon?.config?.projectile?.speedMax || 180;
 
-            const projectile = ProjectileSystem.createMesh(THREE, direction, spawnPos, fireResult.speed, {
+            const projectile = ProjectileOrchestrator.createMesh(THREE, direction, spawnPos, fireResult.speed, {
                 speedMin,
                 speedMax,
                 fallbackCamera: camera

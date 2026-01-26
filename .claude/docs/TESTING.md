@@ -61,19 +61,19 @@ Results saved to `.test-output/`:
 
 ### Critical Patterns
 
-**Use managers/systems, not specific implementations:**
+**Use orchestrators, not specific implementations:**
 ```javascript
 // GOOD - weapon agnostic
-WeaponManager.currentWeapon.state.lastFireTime = 0;
+WeaponOrchestrator.currentWeapon.state.lastFireTime = 0;
 
 // BAD - couples to specific weapon
 Slingshot.state.lastFireTime = 0;
 ```
 
 **Same principle for all domains:**
-- Use `EntitySystem`, not specific entity arrays
-- Use `StateSystem`, not direct state manipulation
-- Use `EnemySystem.getSpawnType()`, not hardcoded types
+- Use `EntityOrchestrator`, not specific entity arrays
+- Use `StateOrchestrator`, not direct state manipulation
+- Use `EnemyOrchestrator.getSpawnType()`, not hardcoded types
 
 ## Test Isolation
 
@@ -87,7 +87,7 @@ The test runner automatically resets game state before and after each test. Test
 
 **What gets reset:**
 - Game state → MENU
-- UISystem.showMenu() called
+- UIOrchestrator.showMenu() called
 - Pending UI timeouts cleared
 - Boss warning elements removed
 - Score reset to 0
@@ -96,8 +96,8 @@ The test runner automatically resets game state before and after each test. Test
 
 **Keyboard events (`simulateKeyDown`) are unreliable in the puppeteer/iframe test environment.**
 
-The issue: Events dispatched to `gameDocument` sometimes don't reach `InputSystem` listeners, even though:
-- InputSystem is initialized
+The issue: Events dispatched to `gameDocument` sometimes don't reach `InputOrchestrator` listeners, even though:
+- InputOrchestrator is initialized
 - Callbacks are registered
 - Event format is correct
 
@@ -133,8 +133,8 @@ await runner.wait(100);
 When testing weapon functionality, always call `weapon.reset()` before your test to ensure clean state:
 
 ```javascript
-const WeaponManager = runner.gameWindow.WeaponManager;
-WeaponManager.currentWeapon.reset();  // Clean state
+const WeaponOrchestrator = runner.gameWindow.WeaponOrchestrator;
+WeaponOrchestrator.currentWeapon.reset();  // Clean state
 
 // Now test weapon behavior
 weapon.onFireStart(Date.now());

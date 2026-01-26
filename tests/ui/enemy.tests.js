@@ -45,15 +45,15 @@
             await runner.wait(500);
 
             const THREE = runner.gameWindow.THREE;
-            const EnemyVisual = runner.gameWindow.EnemyVisual;
+            const SkeletonMesh = runner.gameWindow.SkeletonMesh;
             const Enemy = runner.gameWindow.Enemy;
 
-            if (!EnemyVisual || !Enemy) {
-                throw new Error('EnemyVisual or Enemy not found');
+            if (!SkeletonMesh || !Enemy) {
+                throw new Error('SkeletonMesh or Enemy not found');
             }
 
             const config = Enemy.types.SKELETON;
-            const enemy = EnemyVisual.createEnemy(THREE, config);
+            const enemy = SkeletonMesh.createEnemy(THREE, config);
 
             if (!enemy || !enemy.children) {
                 throw new Error('Enemy has no children groups');
@@ -86,16 +86,16 @@
             await runner.wait(500);
 
             const THREE = runner.gameWindow.THREE;
-            const EnemyVisual = runner.gameWindow.EnemyVisual;
+            const SkeletonMesh = runner.gameWindow.SkeletonMesh;
             const EnemyOrchestrator = runner.gameWindow.EnemyOrchestrator;
             const Enemy = runner.gameWindow.Enemy;
 
-            if (!EnemyVisual || !EnemyOrchestrator || !Enemy) {
-                throw new Error('EnemyVisual, EnemyOrchestrator, or Enemy not found');
+            if (!SkeletonMesh || !EnemyOrchestrator || !Enemy) {
+                throw new Error('SkeletonMesh, EnemyOrchestrator, or Enemy not found');
             }
 
             const config = Enemy.types.SKELETON;
-            const enemy = EnemyVisual.createEnemy(THREE, config);
+            const enemy = SkeletonMesh.createEnemy(THREE, config);
 
             const enemyData = EnemyOrchestrator.createEnemyData('SKELETON');
             Object.assign(enemy.userData, enemyData);
@@ -123,15 +123,15 @@
             await runner.wait(500);
 
             const THREE = runner.gameWindow.THREE;
-            const EnemyVisual = runner.gameWindow.EnemyVisual;
+            const SkeletonMesh = runner.gameWindow.SkeletonMesh;
             const Enemy = runner.gameWindow.Enemy;
 
-            if (!EnemyVisual || !Enemy) {
-                throw new Error('EnemyVisual or Enemy not found');
+            if (!SkeletonMesh || !Enemy) {
+                throw new Error('SkeletonMesh or Enemy not found');
             }
 
             const config = Enemy.types.SKELETON;
-            const enemy = EnemyVisual.createEnemy(THREE, config);
+            const enemy = SkeletonMesh.createEnemy(THREE, config);
 
             let meshCount = 0;
             enemy.traverse(obj => {
@@ -200,19 +200,19 @@
         }
     );
 
-    runner.addTest('room-system-exists', 'Pre-Spawning', 'RoomSystem is accessible',
+    runner.addTest('room-system-exists', 'Pre-Spawning', 'RoomOrchestrator is accessible',
         'Verifies the room system is available',
         async () => {
             runner.resetGame();
             await runner.wait(200);
 
-            const RoomSystem = runner.gameWindow.RoomSystem;
-            if (!RoomSystem) {
-                throw new Error('RoomSystem not found');
+            const RoomOrchestrator = runner.gameWindow.RoomOrchestrator;
+            if (!RoomOrchestrator) {
+                throw new Error('RoomOrchestrator not found');
             }
 
-            if (typeof RoomSystem.getAllRooms !== 'function') {
-                throw new Error('RoomSystem.getAllRooms method not found');
+            if (typeof RoomOrchestrator.getAllRooms !== 'function') {
+                throw new Error('RoomOrchestrator.getAllRooms method not found');
             }
         }
     );
@@ -247,36 +247,36 @@
     );
 
     // Collision System Tests
-    runner.addTest('collision-system-exists', 'Collision', 'CollisionSystem is available',
+    runner.addTest('collision-system-exists', 'Collision', 'CollisionOrchestrator is available',
         'Verifies the collision system is loaded',
         async () => {
             runner.resetGame();
             await runner.wait(200);
 
-            const CollisionSystem = runner.gameWindow.CollisionSystem;
-            if (!CollisionSystem) {
-                throw new Error('CollisionSystem not found');
+            const CollisionOrchestrator = runner.gameWindow.CollisionOrchestrator;
+            if (!CollisionOrchestrator) {
+                throw new Error('CollisionOrchestrator not found');
             }
 
-            if (typeof CollisionSystem.checkAllCollisions !== 'function') {
-                throw new Error('CollisionSystem.checkAllCollisions method not found');
+            if (typeof CollisionOrchestrator.checkAllCollisions !== 'function') {
+                throw new Error('CollisionOrchestrator.checkAllCollisions method not found');
             }
         }
     );
 
-    runner.addTest('collision-has-line-of-sight', 'Collision', 'CollisionSystem has line of sight',
-        'Verifies line of sight function exists in CollisionSystem',
+    runner.addTest('collision-has-line-of-sight', 'Collision', 'CollisionOrchestrator has line of sight',
+        'Verifies line of sight function exists in CollisionOrchestrator',
         async () => {
             runner.resetGame();
             await runner.wait(200);
 
-            const CollisionSystem = runner.gameWindow.CollisionSystem;
-            if (!CollisionSystem) {
-                throw new Error('CollisionSystem not found');
+            const CollisionOrchestrator = runner.gameWindow.CollisionOrchestrator;
+            if (!CollisionOrchestrator) {
+                throw new Error('CollisionOrchestrator not found');
             }
 
-            if (typeof CollisionSystem.hasLineOfSight !== 'function') {
-                throw new Error('CollisionSystem.hasLineOfSight method not found');
+            if (typeof CollisionOrchestrator.hasLineOfSight !== 'function') {
+                throw new Error('CollisionOrchestrator.hasLineOfSight method not found');
             }
         }
     );

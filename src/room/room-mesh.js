@@ -291,10 +291,10 @@ const RoomMesh = {
      * @param {Object} theme - Room theme with shelfColor, productColors
      * @param {number} worldX - World X position
      * @param {number} worldZ - World Z position
-     * @param {Object} [shelfSystem] - Optional ShelfSystem reference for templates
+     * @param {Object} [shelfOrchestrator] - Optional ShelfOrchestrator reference for templates
      * @returns {THREE.Group} Display group
      */
-    createCenterDisplay(THREE, theme, worldX, worldZ, shelfSystem) {
+    createCenterDisplay(THREE, theme, worldX, worldZ, shelfOrchestrator) {
         const group = new THREE.Group();
         group.position.set(worldX, 0, worldZ);
 
@@ -315,8 +315,9 @@ const RoomMesh = {
             color: new THREE.Color(theme.shelfColor).multiplyScalar(0.6)
         });
 
-        const shelfCount = shelfSystem ? shelfSystem.getShelfTemplate('FLOOR_ISLAND').shelfCount : 2;
-        const productsPerLevel = shelfSystem ? shelfSystem.getShelfTemplate('FLOOR_ISLAND').productsPerLevel : 9;
+        const template = (typeof Shelf !== 'undefined') ? Shelf.getTemplate('FLOOR_ISLAND') : null;
+        const shelfCount = template ? template.shelfCount : 2;
+        const productsPerLevel = template ? template.productsPerLevel : 9;
 
         for (let level = 0; level < shelfCount; level++) {
             const shelf = new THREE.Mesh(shelfGeo, shelfMat);
@@ -328,8 +329,8 @@ const RoomMesh = {
                 for (let i = 0; i < productsPerLevel; i++) {
                     const row = Math.floor(i / 3);
                     const col = i % 3;
-                    const color = shelfSystem ?
-                        shelfSystem.pickProductColor(theme) :
+                    const color = (typeof Shelf !== 'undefined') ?
+                        Shelf.pickColor(theme.productColors) :
                         theme.productColors[Math.floor(Math.random() * theme.productColors.length)];
 
                     // Varied product shapes
@@ -394,17 +395,17 @@ const RoomMesh = {
      * @param {number} x - X position
      * @param {number} z - Z position
      * @param {boolean} facingLeft - Whether shelf faces left
-     * @param {Object} [shelfSystem] - Optional ShelfSystem for templates
+     * @param {Object} [shelfOrchestrator] - Optional ShelfOrchestrator for templates
      * @returns {THREE.Group} Shelf group
      */
-    createShelfUnit(THREE, theme, x, z, facingLeft, shelfSystem) {
+    createShelfUnit(THREE, theme, x, z, facingLeft, shelfOrchestrator) {
         const group = new THREE.Group();
         group.position.set(x, 0, z);
         if (facingLeft) group.rotation.y = Math.PI;
 
         // Get template
-        const template = shelfSystem ?
-            shelfSystem.getShelfTemplate('WALL_TALL') :
+        const template = (typeof Shelf !== 'undefined') ?
+            Shelf.getTemplate('WALL_TALL') :
             { frameSize: { w: 4, h: 8, d: 1.5 }, shelfCount: 3, productsPerShelf: 4 };
 
         // Frame
@@ -429,8 +430,8 @@ const RoomMesh = {
 
             if (theme.productColors && theme.productColors.length > 0) {
                 for (let j = 0; j < template.productsPerShelf; j++) {
-                    const color = shelfSystem ?
-                        shelfSystem.pickProductColor(theme) :
+                    const color = (typeof Shelf !== 'undefined') ?
+                        Shelf.pickColor(theme.productColors) :
                         theme.productColors[Math.floor(Math.random() * theme.productColors.length)];
                     const prodMat = new THREE.MeshLambertMaterial({ color });
                     const product = new THREE.Mesh(productGeo, prodMat);
@@ -450,17 +451,17 @@ const RoomMesh = {
      * @param {number} x - X position
      * @param {number} z - Z position
      * @param {number} rotation - Y rotation
-     * @param {Object} [shelfSystem] - Optional ShelfSystem
+     * @param {Object} [shelfOrchestrator] - Optional ShelfOrchestrator
      * @returns {THREE.Group} Shelf group
      */
-    createWallShelf(THREE, theme, x, z, rotation, shelfSystem) {
+    createWallShelf(THREE, theme, x, z, rotation, shelfOrchestrator) {
         const group = new THREE.Group();
         group.position.set(x, 0, z);
         group.rotation.y = rotation;
 
         // Get template
-        const template = shelfSystem ?
-            shelfSystem.getShelfTemplate('WALL_STANDARD') :
+        const template = (typeof Shelf !== 'undefined') ?
+            Shelf.getTemplate('WALL_STANDARD') :
             { shelfCount: 3, productsPerShelf: 4 };
 
         // Frame
@@ -483,8 +484,8 @@ const RoomMesh = {
 
             if (theme.productColors && theme.productColors.length > 0) {
                 for (let j = 0; j < template.productsPerShelf; j++) {
-                    const color = shelfSystem ?
-                        shelfSystem.pickProductColor(theme) :
+                    const color = (typeof Shelf !== 'undefined') ?
+                        Shelf.pickColor(theme.productColors) :
                         theme.productColors[Math.floor(Math.random() * theme.productColors.length)];
                     const heightVar = 0.4;
                     const productGeo = new THREE.BoxGeometry(0.5, 0.6 + Math.random() * heightVar, 0.4);

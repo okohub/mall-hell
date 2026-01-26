@@ -211,7 +211,7 @@ const LoopOrchestrator = {
             try {
                 cb(dt, this._totalTime);
             } catch (err) {
-                console.error('LoopSystem pre-update error:', err);
+                console.error('LoopOrchestrator pre-update error:', err);
             }
         }
 
@@ -220,7 +220,7 @@ const LoopOrchestrator = {
             try {
                 this._updateCallback(dt, this._totalTime);
             } catch (err) {
-                console.error('LoopSystem update error:', err);
+                console.error('LoopOrchestrator update error:', err);
             }
         }
 
@@ -229,7 +229,7 @@ const LoopOrchestrator = {
             try {
                 cb(dt, this._totalTime);
             } catch (err) {
-                console.error('LoopSystem post-update error:', err);
+                console.error('LoopOrchestrator post-update error:', err);
             }
         }
 
@@ -238,7 +238,7 @@ const LoopOrchestrator = {
             try {
                 this._renderCallback(dt);
             } catch (err) {
-                console.error('LoopSystem render error:', err);
+                console.error('LoopOrchestrator render error:', err);
             }
         }
     },
