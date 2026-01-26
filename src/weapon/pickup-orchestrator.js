@@ -3,7 +3,7 @@
 // ============================================
 // Manages weapon pickup spawning, animation, and collection
 
-const PickupSystem = {
+const PickupOrchestrator = {
     // ==========================================
     // STATE
     // ==========================================

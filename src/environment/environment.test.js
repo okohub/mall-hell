@@ -115,77 +115,77 @@
 
     test.describe('Environment System - Initialization', () => {
         test.beforeEach(() => {
-            EnvironmentSystem.obstacles = [];
-            EnvironmentSystem.shelves = [];
-            EnvironmentSystem.scene = null;
+            EnvironmentOrchestrator.obstacles = [];
+            EnvironmentOrchestrator.shelves = [];
+            EnvironmentOrchestrator.scene = null;
         });
 
         test.it('should initialize with data references', () => {
-            EnvironmentSystem.init(Obstacle, Shelf, null);
-            test.assertEqual(EnvironmentSystem.obstacleData, Obstacle);
-            test.assertEqual(EnvironmentSystem.shelfData, Shelf);
+            EnvironmentOrchestrator.init(Obstacle, Shelf, null);
+            test.assertEqual(EnvironmentOrchestrator.obstacleData, Obstacle);
+            test.assertEqual(EnvironmentOrchestrator.shelfData, Shelf);
         });
 
         test.it('should reset clears obstacles and shelves', () => {
-            EnvironmentSystem.obstacles = [{ active: true }];
-            EnvironmentSystem.shelves = [{ mesh: null }];
-            EnvironmentSystem.reset();
-            test.assertEqual(EnvironmentSystem.obstacles.length, 0);
-            test.assertEqual(EnvironmentSystem.shelves.length, 0);
+            EnvironmentOrchestrator.obstacles = [{ active: true }];
+            EnvironmentOrchestrator.shelves = [{ mesh: null }];
+            EnvironmentOrchestrator.reset();
+            test.assertEqual(EnvironmentOrchestrator.obstacles.length, 0);
+            test.assertEqual(EnvironmentOrchestrator.shelves.length, 0);
         });
     });
 
     test.describe('Environment System - Obstacles', () => {
         test.beforeEach(() => {
-            EnvironmentSystem.init(Obstacle, Shelf, null);
+            EnvironmentOrchestrator.init(Obstacle, Shelf, null);
         });
 
         test.it('should spawn obstacle without THREE', () => {
-            const obs = EnvironmentSystem.spawnObstacle('STACK', 5, -20, null);
+            const obs = EnvironmentOrchestrator.spawnObstacle('STACK', 5, -20, null);
             test.assertTrue(obs !== null);
             test.assertEqual(obs.type, 'STACK');
             test.assertEqual(obs.position.x, 5);
         });
 
         test.it('should track spawned obstacles', () => {
-            EnvironmentSystem.spawnObstacle('STACK', 0, -10, null);
-            EnvironmentSystem.spawnObstacle('BARREL', 5, -20, null);
-            test.assertEqual(EnvironmentSystem.getObstacleCount(), 2);
+            EnvironmentOrchestrator.spawnObstacle('STACK', 0, -10, null);
+            EnvironmentOrchestrator.spawnObstacle('BARREL', 5, -20, null);
+            test.assertEqual(EnvironmentOrchestrator.getObstacleCount(), 2);
         });
 
         test.it('should limit max obstacles', () => {
             // maxObstacles is now from config (15 by default)
-            const maxObstacles = EnvironmentSystem.maxObstacles;
+            const maxObstacles = EnvironmentOrchestrator.maxObstacles;
             for (let i = 0; i < maxObstacles + 5; i++) {
-                EnvironmentSystem.spawnObstacle('STACK', i, -10 * i, null);
+                EnvironmentOrchestrator.spawnObstacle('STACK', i, -10 * i, null);
             }
-            test.assertEqual(EnvironmentSystem.getObstacleCount(), maxObstacles);
+            test.assertEqual(EnvironmentOrchestrator.getObstacleCount(), maxObstacles);
         });
 
         test.it('should hit obstacle and return score', () => {
-            const obs = EnvironmentSystem.spawnObstacle('STACK', 0, 0, null);
-            const result = EnvironmentSystem.hitObstacle(obs);
+            const obs = EnvironmentOrchestrator.spawnObstacle('STACK', 0, 0, null);
+            const result = EnvironmentOrchestrator.hitObstacle(obs);
             test.assertTrue(result.hit);
             test.assertEqual(result.score, 150);
             test.assertTrue(obs.falling);
         });
 
         test.it('should despawn fallen obstacles', () => {
-            const obs = EnvironmentSystem.spawnObstacle('STACK', 0, 0, null);
+            const obs = EnvironmentOrchestrator.spawnObstacle('STACK', 0, 0, null);
             obs.falling = true;
             obs.fallProgress = 1.5; // Fully fallen
-            EnvironmentSystem.updateObstacles({ z: 0 }, 0.1);
-            test.assertEqual(EnvironmentSystem.getObstacleCount(), 0);
+            EnvironmentOrchestrator.updateObstacles({ z: 0 }, 0.1);
+            test.assertEqual(EnvironmentOrchestrator.getObstacleCount(), 0);
         });
     });
 
     test.describe('Environment System - Shelves', () => {
         test.beforeEach(() => {
-            EnvironmentSystem.init(Obstacle, Shelf, null);
+            EnvironmentOrchestrator.init(Obstacle, Shelf, null);
         });
 
         test.it('should create shelf without THREE', () => {
-            const shelf = EnvironmentSystem.createShelf(
+            const shelf = EnvironmentOrchestrator.createShelf(
                 'WALL_STANDARD',
                 { x: -10, y: 0, z: -5 },
                 Math.PI / 2,
@@ -198,9 +198,9 @@
         });
 
         test.it('should track created shelves', () => {
-            EnvironmentSystem.createShelf('WALL_STANDARD', { x: 0, y: 0, z: 0 }, 0, null, null);
-            EnvironmentSystem.createShelf('FLOOR_ISLAND', { x: 5, y: 0, z: -10 }, 0, null, null);
-            test.assertEqual(EnvironmentSystem.getShelfCount(), 2);
+            EnvironmentOrchestrator.createShelf('WALL_STANDARD', { x: 0, y: 0, z: 0 }, 0, null, null);
+            EnvironmentOrchestrator.createShelf('FLOOR_ISLAND', { x: 5, y: 0, z: -10 }, 0, null, null);
+            test.assertEqual(EnvironmentOrchestrator.getShelfCount(), 2);
         });
     });
 
@@ -258,13 +258,13 @@
 
     test.describe('Spawn System - Runtime Pickup Spawning', () => {
         test.it('should have tryRuntimePickupSpawn method', () => {
-            test.assertTrue(typeof SpawnSystem.tryRuntimePickupSpawn === 'function');
+            test.assertTrue(typeof SpawnOrchestrator.tryRuntimePickupSpawn === 'function');
         });
 
         test.it('should have pickupRuntimeConfig defined', () => {
-            test.assertTrue(SpawnSystem.pickupRuntimeConfig !== undefined);
-            test.assertTrue(SpawnSystem.pickupRuntimeConfig.maxPickups > 0);
-            test.assertTrue(SpawnSystem.pickupRuntimeConfig.spawnInterval > 0);
+            test.assertTrue(SpawnOrchestrator.pickupRuntimeConfig !== undefined);
+            test.assertTrue(SpawnOrchestrator.pickupRuntimeConfig.maxPickups > 0);
+            test.assertTrue(SpawnOrchestrator.pickupRuntimeConfig.spawnInterval > 0);
         });
 
         test.it('should not spawn if max pickups reached', () => {
@@ -273,7 +273,7 @@
                 trySpawnForRoom: () => true
             };
 
-            const result = SpawnSystem.tryRuntimePickupSpawn({
+            const result = SpawnOrchestrator.tryRuntimePickupSpawn({
                 currentRoom: { gridX: 0, gridZ: 0 },
                 playerPosition: { x: 15, z: 15 },
                 visitedRooms: new Set(['0_0', '1_0']),
@@ -290,9 +290,9 @@
         });
 
         test.it('should respect spawn interval timing', () => {
-            SpawnSystem._lastPickupSpawnTime = 0;
+            SpawnOrchestrator._lastPickupSpawnTime = 0;
 
-            const result = SpawnSystem.tryRuntimePickupSpawn({
+            const result = SpawnOrchestrator.tryRuntimePickupSpawn({
                 currentRoom: null,
                 playerPosition: { x: 15, z: 15 },
                 visitedRooms: new Set(),
@@ -309,12 +309,12 @@
         });
 
         test.it('should have valid config values', () => {
-            test.assertTrue(SpawnSystem.pickupRuntimeConfig.maxPickups >= 1);
-            test.assertTrue(SpawnSystem.pickupRuntimeConfig.spawnInterval >= 1);
-            test.assertTrue(SpawnSystem.pickupRuntimeConfig.minDistanceFromPlayer > 0);
-            test.assertTrue(SpawnSystem.pickupRuntimeConfig.maxDistanceFromPlayer > SpawnSystem.pickupRuntimeConfig.minDistanceFromPlayer);
-            test.assertTrue(SpawnSystem.pickupRuntimeConfig.spawnChancePerAttempt > 0);
-            test.assertTrue(SpawnSystem.pickupRuntimeConfig.spawnChancePerAttempt <= 1);
+            test.assertTrue(SpawnOrchestrator.pickupRuntimeConfig.maxPickups >= 1);
+            test.assertTrue(SpawnOrchestrator.pickupRuntimeConfig.spawnInterval >= 1);
+            test.assertTrue(SpawnOrchestrator.pickupRuntimeConfig.minDistanceFromPlayer > 0);
+            test.assertTrue(SpawnOrchestrator.pickupRuntimeConfig.maxDistanceFromPlayer > SpawnOrchestrator.pickupRuntimeConfig.minDistanceFromPlayer);
+            test.assertTrue(SpawnOrchestrator.pickupRuntimeConfig.spawnChancePerAttempt > 0);
+            test.assertTrue(SpawnOrchestrator.pickupRuntimeConfig.spawnChancePerAttempt <= 1);
         });
     });
 

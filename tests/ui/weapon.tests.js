@@ -103,15 +103,15 @@
                 throw new Error(`Not in PLAYING state: ${runner.getGameState()}`);
             }
 
-            const WeaponManager = runner.gameWindow.WeaponManager;
-            if (!WeaponManager?.currentWeapon) {
-                throw new Error('WeaponManager.currentWeapon not available');
+            const WeaponOrchestrator = runner.gameWindow.WeaponOrchestrator;
+            if (!WeaponOrchestrator?.currentWeapon) {
+                throw new Error('WeaponOrchestrator.currentWeapon not available');
             }
 
             // Reset weapon to ensure clean state
-            WeaponManager.currentWeapon.reset?.();
+            WeaponOrchestrator.currentWeapon.reset?.();
 
-            const weapon = WeaponManager.currentWeapon;
+            const weapon = WeaponOrchestrator.currentWeapon;
 
             // Verify weapon can fire
             const canFire = weapon.canFire(Date.now());
@@ -149,8 +149,8 @@
 
             // Reset weapon state completely
             runner.gameWindow.lastShootTime = 0;
-            if (runner.gameWindow.WeaponManager?.currentWeapon) {
-                const weapon = runner.gameWindow.WeaponManager.currentWeapon;
+            if (runner.gameWindow.WeaponOrchestrator?.currentWeapon) {
+                const weapon = runner.gameWindow.WeaponOrchestrator.currentWeapon;
                 weapon.state.lastFireTime = 0;
                 weapon.state.chargeAmount = 0;
                 weapon.state.isCharging = false;
@@ -161,7 +161,7 @@
             }
 
             // Get initial tension (should be 0 after reset)
-            const initialTension = runner.gameWindow.WeaponManager?.getTension() || 0;
+            const initialTension = runner.gameWindow.WeaponOrchestrator?.getTension() || 0;
 
             runner.gameWindow.startCharging();
             await runner.wait(50);
@@ -171,8 +171,8 @@
                 await runner.wait(10);
             }
 
-            // Get final tension via WeaponManager
-            const finalTension = runner.gameWindow.WeaponManager?.getTension() || 0;
+            // Get final tension via WeaponOrchestrator
+            const finalTension = runner.gameWindow.WeaponOrchestrator?.getTension() || 0;
 
             runner.gameWindow.cancelCharging();
 
@@ -230,8 +230,8 @@
 
             // Reset cooldowns and ensure ammo
             runner.gameWindow.lastShootTime = 0;
-            if (runner.gameWindow.WeaponManager?.currentWeapon) {
-                const weapon = runner.gameWindow.WeaponManager.currentWeapon;
+            if (runner.gameWindow.WeaponOrchestrator?.currentWeapon) {
+                const weapon = runner.gameWindow.WeaponOrchestrator.currentWeapon;
                 weapon.state.lastFireTime = 0;
                 weapon.state.chargeAmount = 0;
                 weapon.state.isCharging = false;
@@ -268,8 +268,8 @@
 
             // Reset cooldowns and ensure ammo
             runner.gameWindow.lastShootTime = 0;
-            if (runner.gameWindow.WeaponManager?.currentWeapon) {
-                const weapon = runner.gameWindow.WeaponManager.currentWeapon;
+            if (runner.gameWindow.WeaponOrchestrator?.currentWeapon) {
+                const weapon = runner.gameWindow.WeaponOrchestrator.currentWeapon;
                 weapon.state.lastFireTime = 0;
                 weapon.state.chargeAmount = 0;
                 weapon.state.isCharging = false;
@@ -306,8 +306,8 @@
 
             // Reset cooldowns with ammo
             runner.gameWindow.lastShootTime = 0;
-            if (runner.gameWindow.WeaponManager?.currentWeapon) {
-                const weapon = runner.gameWindow.WeaponManager.currentWeapon;
+            if (runner.gameWindow.WeaponOrchestrator?.currentWeapon) {
+                const weapon = runner.gameWindow.WeaponOrchestrator.currentWeapon;
                 weapon.state.lastFireTime = 0;
                 weapon.state.chargeAmount = 0;
                 weapon.state.isCharging = false;
@@ -354,8 +354,8 @@
 
             // Reset cooldowns and ensure ammo
             runner.gameWindow.lastShootTime = 0;
-            if (runner.gameWindow.WeaponManager?.currentWeapon) {
-                const weapon = runner.gameWindow.WeaponManager.currentWeapon;
+            if (runner.gameWindow.WeaponOrchestrator?.currentWeapon) {
+                const weapon = runner.gameWindow.WeaponOrchestrator.currentWeapon;
                 weapon.state.lastFireTime = 0;
                 weapon.state.chargeAmount = 0;
                 weapon.state.isCharging = false;
@@ -456,9 +456,9 @@
             if (runner.gameWindow.weapon) {
                 runner.gameWindow.weapon.lastFireTime = 0;
             }
-            // Also reset via WeaponManager
-            if (runner.gameWindow.WeaponManager?.currentWeapon) {
-                const weapon = runner.gameWindow.WeaponManager.currentWeapon;
+            // Also reset via WeaponOrchestrator
+            if (runner.gameWindow.WeaponOrchestrator?.currentWeapon) {
+                const weapon = runner.gameWindow.WeaponOrchestrator.currentWeapon;
                 weapon.state.lastFireTime = 0;
                 weapon.state.chargeAmount = 0;
                 weapon.state.isCharging = false;
@@ -505,8 +505,8 @@
             await runner.wait(400);
 
             // Set ammo to 0
-            if (runner.gameWindow.WeaponManager?.currentWeapon) {
-                runner.gameWindow.WeaponManager.currentWeapon.state.ammo = 0;
+            if (runner.gameWindow.WeaponOrchestrator?.currentWeapon) {
+                runner.gameWindow.WeaponOrchestrator.currentWeapon.state.ammo = 0;
             }
 
             // Trigger ammo display update
@@ -538,8 +538,8 @@
             await runner.wait(400);
 
             // Ensure ammo is available
-            if (runner.gameWindow.WeaponManager?.currentWeapon) {
-                const weapon = runner.gameWindow.WeaponManager.currentWeapon;
+            if (runner.gameWindow.WeaponOrchestrator?.currentWeapon) {
+                const weapon = runner.gameWindow.WeaponOrchestrator.currentWeapon;
                 if (weapon.config?.ammo?.max) {
                     weapon.state.ammo = weapon.config.ammo.max;
                 }

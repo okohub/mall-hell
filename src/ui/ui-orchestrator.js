@@ -4,7 +4,7 @@
 // DOM manipulation and visual feedback for HUD, popups, and menus.
 // Depends on UI constants from ui.js.
 
-const UISystem = {
+const UIOrchestrator = {
     // Cached DOM elements
     elements: {
         uiLayer: null,

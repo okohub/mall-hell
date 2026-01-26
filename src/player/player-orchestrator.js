@@ -4,7 +4,7 @@
 // Manages player state, movement, health, and collision
 // Uses Player data definitions (assumes Player is loaded globally)
 
-const PlayerSystem = {
+const PlayerOrchestrator = {
     // Position and movement state
     position: { x: 0, z: 0 },
     rotation: 0,

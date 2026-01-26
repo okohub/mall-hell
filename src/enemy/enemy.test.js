@@ -137,19 +137,19 @@
 
     test.describe('Enemy System - Initialization', () => {
         test.beforeEach(() => {
-            EnemySystem.enemies = [];
-            EnemySystem.scene = null;
+            EnemyOrchestrator.enemies = [];
+            EnemyOrchestrator.scene = null;
         });
 
         test.it('should initialize with data reference', () => {
-            EnemySystem.init(Enemy, null);
-            test.assertEqual(EnemySystem.enemyData, Enemy);
+            EnemyOrchestrator.init(Enemy, null);
+            test.assertEqual(EnemyOrchestrator.enemyData, Enemy);
         });
 
         test.it('should reset clears enemies', () => {
-            EnemySystem.enemies = [{ active: true }];
-            EnemySystem.reset();
-            test.assertEqual(EnemySystem.enemies.length, 0);
+            EnemyOrchestrator.enemies = [{ active: true }];
+            EnemyOrchestrator.reset();
+            test.assertEqual(EnemyOrchestrator.enemies.length, 0);
         });
     });
 
@@ -157,13 +157,13 @@
         let originalMaxEnemies;
 
         test.beforeEach(() => {
-            EnemySystem.init(Enemy, null);
+            EnemyOrchestrator.init(Enemy, null);
             // Store original value from config
-            originalMaxEnemies = EnemySystem.maxEnemies;
+            originalMaxEnemies = EnemyOrchestrator.maxEnemies;
         });
 
         test.it('should spawn skeleton enemy without THREE', () => {
-            const e = EnemySystem.spawn('SKELETON', 5, -20, null);
+            const e = EnemyOrchestrator.spawn('SKELETON', 5, -20, null);
             test.assertTrue(e !== null);
             test.assertEqual(e.type, 'SKELETON');
             test.assertEqual(e.position.x, 5);
@@ -171,33 +171,33 @@
         });
 
         test.it('should track spawned enemies', () => {
-            EnemySystem.spawn('SKELETON', 0, -10, null);
-            EnemySystem.spawn('SKELETON', 5, -20, null);
-            test.assertEqual(EnemySystem.getCount(), 2);
+            EnemyOrchestrator.spawn('SKELETON', 0, -10, null);
+            EnemyOrchestrator.spawn('SKELETON', 5, -20, null);
+            test.assertEqual(EnemyOrchestrator.getCount(), 2);
         });
 
         test.it('should limit max enemies', () => {
             // Spawn more than max enemies to verify limit
-            const maxEnemies = EnemySystem.maxEnemies; // Should be 10 from config
+            const maxEnemies = EnemyOrchestrator.maxEnemies; // Should be 10 from config
             for (let i = 0; i < maxEnemies + 5; i++) {
-                EnemySystem.spawn('SKELETON', i, -10 * i, null);
+                EnemyOrchestrator.spawn('SKELETON', i, -10 * i, null);
             }
-            test.assertEqual(EnemySystem.getCount(), maxEnemies);
+            test.assertEqual(EnemyOrchestrator.getCount(), maxEnemies);
         });
 
         test.it('should check canSpawn', () => {
             // Fill up to max
-            const maxEnemies = EnemySystem.maxEnemies;
-            test.assertTrue(EnemySystem.canSpawn());
+            const maxEnemies = EnemyOrchestrator.maxEnemies;
+            test.assertTrue(EnemyOrchestrator.canSpawn());
 
             for (let i = 0; i < maxEnemies; i++) {
-                EnemySystem.spawn('SKELETON', i, -i * 10, null);
+                EnemyOrchestrator.spawn('SKELETON', i, -i * 10, null);
             }
-            test.assertFalse(EnemySystem.canSpawn());
+            test.assertFalse(EnemyOrchestrator.canSpawn());
         });
 
         test.it('should spawn skeleton with correct properties', () => {
-            const e = EnemySystem.spawn('SKELETON', 5, -20, null);
+            const e = EnemyOrchestrator.spawn('SKELETON', 5, -20, null);
             test.assertTrue(e !== null);
             test.assertEqual(e.type, 'SKELETON');
             test.assertEqual(e.health, 4);
@@ -206,12 +206,12 @@
         });
 
         test.it('should handle multiple skeleton spawns', () => {
-            EnemySystem.spawn('SKELETON', 0, -10, null);
-            EnemySystem.spawn('SKELETON', 5, -20, null);
-            EnemySystem.spawn('SKELETON', 10, -30, null);
-            test.assertEqual(EnemySystem.getCount(), 3);
+            EnemyOrchestrator.spawn('SKELETON', 0, -10, null);
+            EnemyOrchestrator.spawn('SKELETON', 5, -20, null);
+            EnemyOrchestrator.spawn('SKELETON', 10, -30, null);
+            test.assertEqual(EnemyOrchestrator.getCount(), 3);
 
-            const active = EnemySystem.getActive();
+            const active = EnemyOrchestrator.getActive();
             const types = active.map(e => e.type);
             test.assertTrue(types.every(t => t === 'SKELETON'));
         });
@@ -219,12 +219,12 @@
 
     test.describe('Enemy System - Damage', () => {
         test.beforeEach(() => {
-            EnemySystem.init(Enemy, null);
+            EnemyOrchestrator.init(Enemy, null);
         });
 
         test.it('should damage skeleton', () => {
-            const e = EnemySystem.spawn('SKELETON', 0, 0, null);
-            const result = EnemySystem.damage(e, 1);
+            const e = EnemyOrchestrator.spawn('SKELETON', 0, 0, null);
+            const result = EnemyOrchestrator.damage(e, 1);
 
             test.assertTrue(result.hit);
             test.assertFalse(result.destroyed);
@@ -234,11 +234,11 @@
         });
 
         test.it('should destroy skeleton at 0 health', () => {
-            const e = EnemySystem.spawn('SKELETON', 0, 0, null);
-            EnemySystem.damage(e, 1);
-            EnemySystem.damage(e, 1);
-            EnemySystem.damage(e, 1);
-            const result = EnemySystem.damage(e, 1);  // 4th hit destroys
+            const e = EnemyOrchestrator.spawn('SKELETON', 0, 0, null);
+            EnemyOrchestrator.damage(e, 1);
+            EnemyOrchestrator.damage(e, 1);
+            EnemyOrchestrator.damage(e, 1);
+            const result = EnemyOrchestrator.damage(e, 1);  // 4th hit destroys
 
             test.assertTrue(result.destroyed);
             test.assertEqual(result.scoreDestroy, 400);  // Skeleton scoreDestroy
@@ -247,33 +247,33 @@
         });
 
         test.it('should set hit flash on damage', () => {
-            const e = EnemySystem.spawn('SKELETON', 0, 0, null);
-            EnemySystem.damage(e, 1);
+            const e = EnemyOrchestrator.spawn('SKELETON', 0, 0, null);
+            EnemyOrchestrator.damage(e, 1);
             test.assertEqual(e.hitFlash, 1);
         });
     });
 
     test.describe('Enemy System - AI Behavior', () => {
         test.beforeEach(() => {
-            EnemySystem.init(Enemy, null);
+            EnemyOrchestrator.init(Enemy, null);
         });
 
         test.it('should chase player', () => {
-            const e = EnemySystem.spawn('SKELETON', 10, -10, null);
+            const e = EnemyOrchestrator.spawn('SKELETON', 10, -10, null);
             const initialX = e.position.x;
             const playerPos = { x: 0, y: 0, z: 0 };
 
-            EnemySystem.updateBehavior(e, playerPos, 1, 10);
+            EnemyOrchestrator.updateBehavior(e, playerPos, 1, 10);
 
             // Should move towards player (x = 0)
             test.assertTrue(e.position.x < initialX);
         });
 
         test.it('should update drift', () => {
-            const e = EnemySystem.spawn('SKELETON', 0, -10, null);
+            const e = EnemyOrchestrator.spawn('SKELETON', 0, -10, null);
             e.driftTimer = 10; // Force drift change
 
-            EnemySystem.updateBehavior(e, { x: 0, y: 0, z: 0 }, 0.1, 10);
+            EnemyOrchestrator.updateBehavior(e, { x: 0, y: 0, z: 0 }, 0.1, 10);
 
             // Drift timer should reset
             test.assertTrue(e.driftTimer < 1);
@@ -286,11 +286,11 @@
 
     test.describe('Enemy System - Wall Collision', () => {
         test.beforeEach(() => {
-            EnemySystem.init(Enemy, null);
+            EnemyOrchestrator.init(Enemy, null);
         });
 
         test.it('should stop at wall when collision check blocks X', () => {
-            const e = EnemySystem.spawn('SKELETON', 5, -10, null);
+            const e = EnemyOrchestrator.spawn('SKELETON', 5, -10, null);
             const initialX = e.position.x;
             const playerPos = { x: 20, y: 0, z: -10 }; // Player to the right
 
@@ -301,14 +301,14 @@
                 blockedZ: false
             });
 
-            EnemySystem.updateBehavior(e, playerPos, 1, 10, { collisionCheck });
+            EnemyOrchestrator.updateBehavior(e, playerPos, 1, 10, { collisionCheck });
 
             // X should not change (blocked)
             test.assertEqual(e.position.x, initialX);
         });
 
         test.it('should stop at wall when collision check blocks Z', () => {
-            const e = EnemySystem.spawn('SKELETON', 0, -10, null);
+            const e = EnemyOrchestrator.spawn('SKELETON', 0, -10, null);
             const initialZ = e.position.z;
             const playerPos = { x: 0, y: 0, z: -50 }; // Player ahead
 
@@ -319,14 +319,14 @@
                 blockedZ: true
             });
 
-            EnemySystem.updateBehavior(e, playerPos, 1, 10, { collisionCheck });
+            EnemyOrchestrator.updateBehavior(e, playerPos, 1, 10, { collisionCheck });
 
             // Z should not change (blocked)
             test.assertEqual(e.position.z, initialZ);
         });
 
         test.it('should move freely when collision check allows', () => {
-            const e = EnemySystem.spawn('SKELETON', 5, -10, null);
+            const e = EnemyOrchestrator.spawn('SKELETON', 5, -10, null);
             const initialX = e.position.x;
             const playerPos = { x: 0, y: 0, z: 0 };
 
@@ -337,14 +337,14 @@
                 blockedZ: false
             });
 
-            EnemySystem.updateBehavior(e, playerPos, 1, 10, { collisionCheck });
+            EnemyOrchestrator.updateBehavior(e, playerPos, 1, 10, { collisionCheck });
 
             // Should move towards player
             test.assertTrue(e.position.x !== initialX);
         });
 
         test.it('should reverse drift direction when hitting wall', () => {
-            const e = EnemySystem.spawn('SKELETON', 0, -10, null);
+            const e = EnemyOrchestrator.spawn('SKELETON', 0, -10, null);
             e.driftSpeed = 5; // Positive drift
             e.driftTimer = 0;
 
@@ -354,7 +354,7 @@
                 blockedZ: false
             });
 
-            EnemySystem.updateBehavior(e, { x: 0, y: 0, z: 0 }, 0.1, 10, { collisionCheck });
+            EnemyOrchestrator.updateBehavior(e, { x: 0, y: 0, z: 0 }, 0.1, 10, { collisionCheck });
 
             // Drift should reverse
             test.assertEqual(e.driftSpeed, -5);
@@ -367,25 +367,25 @@
 
     test.describe('Enemy System - Line of Sight', () => {
         test.beforeEach(() => {
-            EnemySystem.init(Enemy, null);
+            EnemyOrchestrator.init(Enemy, null);
         });
 
         test.it('should chase when has line of sight', () => {
-            const e = EnemySystem.spawn('SKELETON', 10, -10, null);
+            const e = EnemyOrchestrator.spawn('SKELETON', 10, -10, null);
             const initialX = e.position.x;
             const playerPos = { x: 0, y: 0, z: 0 };
 
             // LOS check returns true
             const hasLineOfSight = () => true;
 
-            EnemySystem.updateBehavior(e, playerPos, 1, 10, { hasLineOfSight });
+            EnemyOrchestrator.updateBehavior(e, playerPos, 1, 10, { hasLineOfSight });
 
             // Should move towards player
             test.assertTrue(e.position.x < initialX);
         });
 
         test.it('should NOT chase directly when no line of sight', () => {
-            const e = EnemySystem.spawn('SKELETON', 10, -10, null);
+            const e = EnemyOrchestrator.spawn('SKELETON', 10, -10, null);
             e.lastSeenPlayerPos = null;
             e.lostSightTimer = 10; // Lost sight for a while
             const initialPos = { x: e.position.x, z: e.position.z };
@@ -394,7 +394,7 @@
             // LOS check returns false
             const hasLineOfSight = () => false;
 
-            EnemySystem.updateBehavior(e, playerPos, 0.1, 10, { hasLineOfSight });
+            EnemyOrchestrator.updateBehavior(e, playerPos, 0.1, 10, { hasLineOfSight });
 
             // Should NOT move directly towards player (wander instead)
             // Movement should be much slower (wander speed is 15% of base)
@@ -406,13 +406,13 @@
         });
 
         test.it('should track last seen player position', () => {
-            const e = EnemySystem.spawn('SKELETON', 10, -10, null);
+            const e = EnemyOrchestrator.spawn('SKELETON', 10, -10, null);
             const playerPos = { x: 5, y: 0, z: -5 };
 
             // LOS check returns true
             const hasLineOfSight = () => true;
 
-            EnemySystem.updateBehavior(e, playerPos, 0.1, 10, { hasLineOfSight });
+            EnemyOrchestrator.updateBehavior(e, playerPos, 0.1, 10, { hasLineOfSight });
 
             // Should remember last seen position
             test.assertTrue(e.lastSeenPlayerPos !== undefined);
@@ -421,21 +421,21 @@
         });
 
         test.it('should reset lost sight timer when sees player', () => {
-            const e = EnemySystem.spawn('SKELETON', 10, -10, null);
+            const e = EnemyOrchestrator.spawn('SKELETON', 10, -10, null);
             e.lostSightTimer = 5;
             const playerPos = { x: 0, y: 0, z: 0 };
 
             // LOS check returns true
             const hasLineOfSight = () => true;
 
-            EnemySystem.updateBehavior(e, playerPos, 0.1, 10, { hasLineOfSight });
+            EnemyOrchestrator.updateBehavior(e, playerPos, 0.1, 10, { hasLineOfSight });
 
             // Lost sight timer should reset
             test.assertEqual(e.lostSightTimer, 0);
         });
 
         test.it('should increment lost sight timer when cannot see player', () => {
-            const e = EnemySystem.spawn('SKELETON', 10, -10, null);
+            const e = EnemyOrchestrator.spawn('SKELETON', 10, -10, null);
             e.lostSightTimer = 0;
             e.lastSeenPlayerPos = null;
             const playerPos = { x: 0, y: 0, z: 0 };
@@ -443,7 +443,7 @@
             // LOS check returns false
             const hasLineOfSight = () => false;
 
-            EnemySystem.updateBehavior(e, playerPos, 0.5, 10, { hasLineOfSight });
+            EnemyOrchestrator.updateBehavior(e, playerPos, 0.5, 10, { hasLineOfSight });
 
             // Lost sight timer should increase
             test.assertTrue(e.lostSightTimer > 0);
@@ -456,7 +456,7 @@
 
     test.describe('Enemy System - Environment Collision', () => {
         test.beforeEach(() => {
-            EnemySystem.init(Enemy, null);
+            EnemyOrchestrator.init(Enemy, null);
         });
 
         test.it('should push apart overlapping enemies', () => {
@@ -476,7 +476,7 @@
                 }
             };
 
-            EnemySystem._resolveEnvironmentCollisions(enemy1, [enemy1, enemy2], null, null);
+            EnemyOrchestrator._resolveEnvironmentCollisions(enemy1, [enemy1, enemy2], null, null);
 
             // Enemies should be pushed apart
             test.assertTrue(enemy1.position.x < 0);
@@ -499,7 +499,7 @@
                 }
             };
 
-            EnemySystem._resolveEnvironmentCollisions(enemy, [enemy], [obstacle], null);
+            EnemyOrchestrator._resolveEnvironmentCollisions(enemy, [enemy], [obstacle], null);
 
             // Enemy should be pushed away from obstacle
             test.assertTrue(enemy.position.x < 0);
@@ -523,7 +523,7 @@
             };
 
             const initialX = enemy.position.x;
-            EnemySystem._resolveEnvironmentCollisions(enemy, [enemy], [obstacle], null);
+            EnemyOrchestrator._resolveEnvironmentCollisions(enemy, [enemy], [obstacle], null);
 
             // Enemy should not be pushed (obstacle inactive)
             test.assertEqual(enemy.position.x, initialX);
@@ -547,7 +547,7 @@
             };
 
             const initialX = enemy.position.x;
-            EnemySystem._resolveEnvironmentCollisions(enemy, [enemy], [obstacle], null);
+            EnemyOrchestrator._resolveEnvironmentCollisions(enemy, [enemy], [obstacle], null);
 
             // Enemy should not be pushed (obstacle already hit)
             test.assertEqual(enemy.position.x, initialX);
@@ -569,7 +569,7 @@
                 }
             };
 
-            EnemySystem._resolveEnvironmentCollisions(enemy, [enemy], null, [shelf]);
+            EnemyOrchestrator._resolveEnvironmentCollisions(enemy, [enemy], null, [shelf]);
 
             // Enemy should be pushed away from shelf
             test.assertTrue(enemy.position.x < 0);
@@ -604,7 +604,7 @@
                 }
             };
 
-            EnemySystem._resolveEnvironmentCollisions(enemy1, [enemy1, enemy2], null, null);
+            EnemyOrchestrator._resolveEnvironmentCollisions(enemy1, [enemy1, enemy2], null, null);
 
             // Should be pushed apart (distance 4 < minDist 5)
             test.assertTrue(enemy1.position.x < 0);
@@ -627,7 +627,7 @@
             };
 
             const initialX = enemy1.position.x;
-            EnemySystem._resolveEnvironmentCollisions(enemy1, [enemy1, enemy2], null, null);
+            EnemyOrchestrator._resolveEnvironmentCollisions(enemy1, [enemy1, enemy2], null, null);
 
             // Should not be pushed (distance 10 > minDist 5)
             test.assertEqual(enemy1.position.x, initialX);
@@ -647,7 +647,7 @@
         });
 
         test.it('should set spawnPosition in createMesh userData', () => {
-            EnemySystem.init(Enemy, null);
+            EnemyOrchestrator.init(Enemy, null);
             // Mock THREE
             const mockTHREE = {
                 Group: function() {
@@ -656,7 +656,7 @@
                 }
             };
             // Can't fully test without EnemyVisual, but verify the method exists
-            test.assertTrue(typeof EnemySystem.createMesh === 'function');
+            test.assertTrue(typeof EnemyOrchestrator.createMesh === 'function');
         });
 
         test.it('should have home behavior constants defined', () => {
@@ -678,7 +678,7 @@
 
     test.describe('Enemy System - Smart Wander', () => {
         test.beforeEach(() => {
-            EnemySystem.init(Enemy, null);
+            EnemyOrchestrator.init(Enemy, null);
         });
 
         test.it('should return home when too far from spawn', () => {
@@ -695,7 +695,7 @@
             const initialX = enemy.position.x;
 
             // Wander should move towards home (spawn position)
-            EnemySystem._behaviorWander(enemy, data, 1, 10);
+            EnemyOrchestrator._behaviorWander(enemy, data, 1, 10);
 
             // Should move towards home (x = 0)
             test.assertTrue(enemy.position.x < initialX, 'Should move towards home');
@@ -718,7 +718,7 @@
 
             // Multiple wander updates
             for (let i = 0; i < 5; i++) {
-                EnemySystem._behaviorWander(enemy, data, 0.5, 10);
+                EnemyOrchestrator._behaviorWander(enemy, data, 0.5, 10);
             }
 
             // Should still be within home radius (8 units)
@@ -731,15 +731,15 @@
         });
 
         test.it('should have homeReturnSpeed getter', () => {
-            test.assertEqual(EnemySystem.homeReturnSpeed, 0.25);
+            test.assertEqual(EnemyOrchestrator.homeReturnSpeed, 0.25);
         });
 
         test.it('should have homeRadius getter', () => {
-            test.assertEqual(EnemySystem.homeRadius, 8);
+            test.assertEqual(EnemyOrchestrator.homeRadius, 8);
         });
 
         test.it('should have searchLastSeenChance getter', () => {
-            test.assertEqual(EnemySystem.searchLastSeenChance, 0.4);
+            test.assertEqual(EnemyOrchestrator.searchLastSeenChance, 0.4);
         });
 
         test.it('should use lastSeenPlayerPos when wandering', () => {
@@ -765,22 +765,22 @@
 
     test.describe('Enemy System - Cleanup', () => {
         test.beforeEach(() => {
-            EnemySystem.init(Enemy, null);
+            EnemyOrchestrator.init(Enemy, null);
         });
 
         test.it('should despawn enemies behind camera', () => {
             // Despawn distance is 60 from config
-            const despawnDist = EnemySystem.despawnDistance;
-            const e = EnemySystem.spawn('SKELETON', 0, despawnDist + 5, null); // Beyond despawn distance
-            EnemySystem.update({ x: 0, y: 0, z: 0 }, { z: 0 }, 0.1, 10);
-            test.assertEqual(EnemySystem.getCount(), 0);
+            const despawnDist = EnemyOrchestrator.despawnDistance;
+            const e = EnemyOrchestrator.spawn('SKELETON', 0, despawnDist + 5, null); // Beyond despawn distance
+            EnemyOrchestrator.update({ x: 0, y: 0, z: 0 }, { z: 0 }, 0.1, 10);
+            test.assertEqual(EnemyOrchestrator.getCount(), 0);
         });
 
         test.it('should despawn destroyed enemies', () => {
-            const e = EnemySystem.spawn('SKELETON', 0, -10, null);
+            const e = EnemyOrchestrator.spawn('SKELETON', 0, -10, null);
             e.active = false;
-            EnemySystem.update({ x: 0, y: 0, z: 0 }, { z: 0 }, 0.1, 10);
-            test.assertEqual(EnemySystem.getCount(), 0);
+            EnemyOrchestrator.update({ x: 0, y: 0, z: 0 }, { z: 0 }, 0.1, 10);
+            test.assertEqual(EnemyOrchestrator.getCount(), 0);
         });
     });
 
@@ -927,57 +927,57 @@
 
     test.describe('Enemy System - Dino Spawn', () => {
         test.beforeEach(() => {
-            EnemySystem.init(Enemy, null);
-            EnemySystem._dinoSpawnCount = 0;
+            EnemyOrchestrator.init(Enemy, null);
+            EnemyOrchestrator._dinoSpawnCount = 0;
         });
 
         test.it('should have dino spawn state properties', () => {
-            test.assertTrue(EnemySystem._dinoSpawnCount !== undefined);
-            test.assertTrue(EnemySystem.dinoSpawnInterval !== undefined);
+            test.assertTrue(EnemyOrchestrator._dinoSpawnCount !== undefined);
+            test.assertTrue(EnemyOrchestrator.dinoSpawnInterval !== undefined);
         });
 
         test.it('should have dinoSpawnInterval of 5000', () => {
-            test.assertEqual(EnemySystem.dinoSpawnInterval, 5000);
+            test.assertEqual(EnemyOrchestrator.dinoSpawnInterval, 5000);
         });
 
         test.it('should return SKELETON below 5000 points', () => {
-            const type = EnemySystem.getSpawnType(4999);
+            const type = EnemyOrchestrator.getSpawnType(4999);
             test.assertEqual(type, 'SKELETON');
         });
 
         test.it('should return DINOSAUR at 5000 points', () => {
-            const type = EnemySystem.getSpawnType(5000);
+            const type = EnemyOrchestrator.getSpawnType(5000);
             test.assertEqual(type, 'DINOSAUR');
-            test.assertEqual(EnemySystem._dinoSpawnCount, 1);
+            test.assertEqual(EnemyOrchestrator._dinoSpawnCount, 1);
         });
 
         test.it('should return SKELETON after dino already spawned', () => {
-            EnemySystem._dinoSpawnCount = 1;
-            const type = EnemySystem.getSpawnType(7500);
+            EnemyOrchestrator._dinoSpawnCount = 1;
+            const type = EnemyOrchestrator.getSpawnType(7500);
             test.assertEqual(type, 'SKELETON'); // 7500 = 1 dino expected, already spawned 1
         });
 
         test.it('should return DINOSAUR at each 5000 point interval', () => {
             // First threshold
-            const type1 = EnemySystem.getSpawnType(5000);
+            const type1 = EnemyOrchestrator.getSpawnType(5000);
             test.assertEqual(type1, 'DINOSAUR');
-            test.assertEqual(EnemySystem._dinoSpawnCount, 1);
+            test.assertEqual(EnemyOrchestrator._dinoSpawnCount, 1);
 
             // Second threshold
-            const type2 = EnemySystem.getSpawnType(10000);
+            const type2 = EnemyOrchestrator.getSpawnType(10000);
             test.assertEqual(type2, 'DINOSAUR');
-            test.assertEqual(EnemySystem._dinoSpawnCount, 2);
+            test.assertEqual(EnemyOrchestrator._dinoSpawnCount, 2);
 
             // Third threshold
-            const type3 = EnemySystem.getSpawnType(15000);
+            const type3 = EnemyOrchestrator.getSpawnType(15000);
             test.assertEqual(type3, 'DINOSAUR');
-            test.assertEqual(EnemySystem._dinoSpawnCount, 3);
+            test.assertEqual(EnemyOrchestrator._dinoSpawnCount, 3);
         });
 
         test.it('should reset dino state on reset', () => {
-            EnemySystem._dinoSpawnCount = 5;
-            EnemySystem.reset();
-            test.assertEqual(EnemySystem._dinoSpawnCount, 0);
+            EnemyOrchestrator._dinoSpawnCount = 5;
+            EnemyOrchestrator.reset();
+            test.assertEqual(EnemyOrchestrator._dinoSpawnCount, 0);
         });
     });
 

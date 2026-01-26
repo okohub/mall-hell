@@ -2,7 +2,7 @@
 // SLINGSHOT - Self-Contained Weapon Module
 // ============================================
 // Complete slingshot weapon: config, theme, mesh, animation, state
-// Implements the weapon interface for WeaponManager
+// Implements the weapon interface for WeaponOrchestrator
 
 const Slingshot = {
     // ==========================================

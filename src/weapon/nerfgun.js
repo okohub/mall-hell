@@ -2,7 +2,7 @@
 // NERF GUN - Self-Contained Weapon Module
 // ============================================
 // Single-shot foam dart launcher
-// Implements the weapon interface for WeaponManager
+// Implements the weapon interface for WeaponOrchestrator
 
 const NerfGun = {
     // ==========================================

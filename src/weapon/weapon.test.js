@@ -1,7 +1,7 @@
 // ============================================
 // WEAPON DOMAIN - Unit Tests
 // ============================================
-// Tests for WeaponManager, Slingshot, WaterGun, NerfGun, Pickup
+// Tests for WeaponOrchestrator, Slingshot, WaterGun, NerfGun, Pickup
 
 (function(test) {
     'use strict';
@@ -65,86 +65,86 @@
     // WEAPON MANAGER TESTS
     // ==========================================
 
-    test.describe('WeaponManager - Initialization', () => {
+    test.describe('WeaponOrchestrator - Initialization', () => {
         test.it('should have init method', () => {
-            test.assertTrue(typeof WeaponManager.init === 'function');
+            test.assertTrue(typeof WeaponOrchestrator.init === 'function');
         });
 
         test.it('should have register method', () => {
-            test.assertTrue(typeof WeaponManager.register === 'function');
+            test.assertTrue(typeof WeaponOrchestrator.register === 'function');
         });
 
         test.it('should have equip method', () => {
-            test.assertTrue(typeof WeaponManager.equip === 'function');
+            test.assertTrue(typeof WeaponOrchestrator.equip === 'function');
         });
 
         test.it('should initialize with empty registry', () => {
-            WeaponManager.init(null);
-            test.assertTrue(WeaponManager.weapons !== undefined);
-            test.assertEqual(WeaponManager.currentWeaponId, null);
+            WeaponOrchestrator.init(null);
+            test.assertTrue(WeaponOrchestrator.weapons !== undefined);
+            test.assertEqual(WeaponOrchestrator.currentWeaponId, null);
         });
     });
 
-    test.describe('WeaponManager - Registration', () => {
+    test.describe('WeaponOrchestrator - Registration', () => {
         test.beforeEach(() => {
-            WeaponManager.init(null);
+            WeaponOrchestrator.init(null);
         });
 
         test.it('should register weapon module', () => {
-            const result = WeaponManager.register(Slingshot);
+            const result = WeaponOrchestrator.register(Slingshot);
             test.assertTrue(result);
-            test.assertTrue(WeaponManager.weapons['slingshot'] !== undefined);
+            test.assertTrue(WeaponOrchestrator.weapons['slingshot'] !== undefined);
         });
 
         test.it('should register multiple weapons', () => {
-            WeaponManager.register(Slingshot);
-            WeaponManager.register(WaterGun);
-            WeaponManager.register(NerfGun);
-            test.assertTrue(WeaponManager.weapons['slingshot'] !== undefined);
-            test.assertTrue(WeaponManager.weapons['watergun'] !== undefined);
-            test.assertTrue(WeaponManager.weapons['nerfgun'] !== undefined);
+            WeaponOrchestrator.register(Slingshot);
+            WeaponOrchestrator.register(WaterGun);
+            WeaponOrchestrator.register(NerfGun);
+            test.assertTrue(WeaponOrchestrator.weapons['slingshot'] !== undefined);
+            test.assertTrue(WeaponOrchestrator.weapons['watergun'] !== undefined);
+            test.assertTrue(WeaponOrchestrator.weapons['nerfgun'] !== undefined);
         });
 
         test.it('should reject weapon without id', () => {
-            const result = WeaponManager.register({});
+            const result = WeaponOrchestrator.register({});
             test.assertFalse(result);
         });
     });
 
-    test.describe('WeaponManager - Delegation', () => {
+    test.describe('WeaponOrchestrator - Delegation', () => {
         test.beforeEach(() => {
-            WeaponManager.init(null);
-            WeaponManager.register(Slingshot);
+            WeaponOrchestrator.init(null);
+            WeaponOrchestrator.register(Slingshot);
             // Can't fully equip without THREE, so just set current weapon manually
-            WeaponManager.currentWeaponId = 'slingshot';
-            WeaponManager.currentWeapon = Slingshot;
+            WeaponOrchestrator.currentWeaponId = 'slingshot';
+            WeaponOrchestrator.currentWeapon = Slingshot;
             Slingshot.resetState();
         });
 
         test.it('should delegate getTension', () => {
-            test.assertEqual(WeaponManager.getTension(), 0);
+            test.assertEqual(WeaponOrchestrator.getTension(), 0);
         });
 
         test.it('should delegate isCharging', () => {
-            test.assertFalse(WeaponManager.isCharging());
+            test.assertFalse(WeaponOrchestrator.isCharging());
         });
 
         test.it('should delegate getAmmoDisplay', () => {
-            const display = WeaponManager.getAmmoDisplay();
+            const display = WeaponOrchestrator.getAmmoDisplay();
             test.assertTrue(display !== undefined);
         });
 
         test.it('should get weapon range', () => {
-            const range = WeaponManager.getRange();
+            const range = WeaponOrchestrator.getRange();
             test.assertEqual(range, 120, 'Slingshot range should be 120');
         });
 
         test.it('should get current weapon', () => {
-            test.assertEqual(WeaponManager.getCurrent(), Slingshot);
+            test.assertEqual(WeaponOrchestrator.getCurrent(), Slingshot);
         });
 
         test.it('should get current weapon id', () => {
-            test.assertEqual(WeaponManager.getCurrentId(), 'slingshot');
+            test.assertEqual(WeaponOrchestrator.getCurrentId(), 'slingshot');
         });
     });
 
@@ -152,19 +152,19 @@
     // FIRE RESULT DELEGATION TESTS
     // ==========================================
 
-    test.describe('WeaponManager - Fire Result Returns', () => {
+    test.describe('WeaponOrchestrator - Fire Result Returns', () => {
         test.beforeEach(() => {
-            WeaponManager.init(null);
-            WeaponManager.register(Slingshot);
-            WeaponManager.register(WaterGun);
-            WeaponManager.register(LaserGun);
-            WeaponManager.register(NerfGun);
+            WeaponOrchestrator.init(null);
+            WeaponOrchestrator.register(Slingshot);
+            WeaponOrchestrator.register(WaterGun);
+            WeaponOrchestrator.register(LaserGun);
+            WeaponOrchestrator.register(NerfGun);
         });
 
         test.it('should return fire result from update() for auto-fire weapons', () => {
             // Setup LaserGun as current weapon (auto-fire)
-            WeaponManager.currentWeaponId = 'lasergun';
-            WeaponManager.currentWeapon = LaserGun;
+            WeaponOrchestrator.currentWeaponId = 'lasergun';
+            WeaponOrchestrator.currentWeapon = LaserGun;
             LaserGun.resetState();
 
             // Start firing
@@ -172,101 +172,101 @@
             test.assertTrue(LaserGun.state.isFiring, 'LaserGun should be firing');
 
             // update() should return fire result when weapon fires
-            const result = WeaponManager.update(0.1, 1000);
+            const result = WeaponOrchestrator.update(0.1, 1000);
             test.assertTrue(result !== null, 'update() should return fire result');
             test.assertTrue(result.speed > 0, 'Fire result should have speed');
             test.assertEqual(result.projectileType, 'laser', 'Should have laser projectile type');
         });
 
         test.it('should return null from update() when not firing', () => {
-            WeaponManager.currentWeaponId = 'lasergun';
-            WeaponManager.currentWeapon = LaserGun;
+            WeaponOrchestrator.currentWeaponId = 'lasergun';
+            WeaponOrchestrator.currentWeapon = LaserGun;
             LaserGun.resetState();
 
             // Don't start firing
-            const result = WeaponManager.update(0.1, 1000);
+            const result = WeaponOrchestrator.update(0.1, 1000);
             test.assertEqual(result, null, 'Should return null when not firing');
         });
 
         test.it('should return fire result from onFireStart() for single-shot weapons', () => {
             // Setup NerfGun as current weapon
-            WeaponManager.currentWeaponId = 'nerfgun';
-            WeaponManager.currentWeapon = NerfGun;
+            WeaponOrchestrator.currentWeaponId = 'nerfgun';
+            WeaponOrchestrator.currentWeapon = NerfGun;
             NerfGun.resetState();
 
             // onFireStart() should return fire result immediately for single-shot
-            const result = WeaponManager.onFireStart(1000);
+            const result = WeaponOrchestrator.onFireStart(1000);
             test.assertTrue(result !== null, 'onFireStart() should return fire result');
             test.assertTrue(result.speed > 0, 'Fire result should have speed');
             test.assertEqual(result.projectileType, 'dart', 'Should have dart projectile type');
         });
 
         test.it('should return no fire result from onFireStart() for charge weapons', () => {
-            WeaponManager.currentWeaponId = 'slingshot';
-            WeaponManager.currentWeapon = Slingshot;
+            WeaponOrchestrator.currentWeaponId = 'slingshot';
+            WeaponOrchestrator.currentWeapon = Slingshot;
             Slingshot.resetState();
 
             // Charge weapons don't fire on start (return null or undefined)
-            const result = WeaponManager.onFireStart(1000);
+            const result = WeaponOrchestrator.onFireStart(1000);
             test.assertTrue(!result, 'Charge weapons should not return fire result on fire start');
             test.assertTrue(Slingshot.state.isCharging, 'Slingshot should start charging');
         });
 
         test.it('should return fire result from onFireRelease() for charge weapons', () => {
-            WeaponManager.currentWeaponId = 'slingshot';
-            WeaponManager.currentWeapon = Slingshot;
+            WeaponOrchestrator.currentWeaponId = 'slingshot';
+            WeaponOrchestrator.currentWeapon = Slingshot;
             Slingshot.resetState();
 
             // Start charging
-            WeaponManager.onFireStart(1000);
-            WeaponManager.update(0.5, 1500);
+            WeaponOrchestrator.onFireStart(1000);
+            WeaponOrchestrator.update(0.5, 1500);
 
             // Release should fire
-            const result = WeaponManager.onFireRelease(1500);
+            const result = WeaponOrchestrator.onFireRelease(1500);
             test.assertTrue(result !== null, 'onFireRelease() should return fire result');
             test.assertTrue(result.speed > 60, 'Fire result should have proper speed');
             test.assertEqual(result.projectileType, 'stone', 'Should have stone projectile type');
         });
 
         test.it('should return null from onFireRelease() for auto-fire weapons', () => {
-            WeaponManager.currentWeaponId = 'lasergun';
-            WeaponManager.currentWeapon = LaserGun;
+            WeaponOrchestrator.currentWeaponId = 'lasergun';
+            WeaponOrchestrator.currentWeapon = LaserGun;
             LaserGun.resetState();
 
             // Auto-fire weapons don't fire on release
             LaserGun.onFireStart(1000);
-            const result = WeaponManager.onFireRelease(1100);
+            const result = WeaponOrchestrator.onFireRelease(1100);
             test.assertEqual(result, null, 'Auto-fire weapons should return null on release');
         });
     });
 
-    test.describe('WeaponManager - Crosshair', () => {
+    test.describe('WeaponOrchestrator - Crosshair', () => {
         test.beforeEach(() => {
-            WeaponManager.init(null);
-            WeaponManager.register(Slingshot);
-            WeaponManager.currentWeaponId = 'slingshot';
-            WeaponManager.currentWeapon = Slingshot;
+            WeaponOrchestrator.init(null);
+            WeaponOrchestrator.register(Slingshot);
+            WeaponOrchestrator.currentWeaponId = 'slingshot';
+            WeaponOrchestrator.currentWeapon = Slingshot;
         });
 
         test.it('should have fixed crosshair at center', () => {
             // Game uses fixed crosshair at center (slightly above)
             // No auto-aim - player aims manually
-            const pos = WeaponManager.getCrosshairPosition();
+            const pos = WeaponOrchestrator.getCrosshairPosition();
             test.assertTrue(pos !== undefined, 'Crosshair position should be defined');
         });
 
         test.it('should set aim profile', () => {
-            const result = WeaponManager.setAimProfile('NONE');
+            const result = WeaponOrchestrator.setAimProfile('NONE');
             test.assertTrue(result);
-            test.assertEqual(WeaponManager.aimProfile, 'NONE');
+            test.assertEqual(WeaponOrchestrator.aimProfile, 'NONE');
         });
 
         test.it('should check if aiming enabled', () => {
-            WeaponManager.setAimProfile('STANDARD');
-            test.assertTrue(WeaponManager.isAimingEnabled());
+            WeaponOrchestrator.setAimProfile('STANDARD');
+            test.assertTrue(WeaponOrchestrator.isAimingEnabled());
 
-            WeaponManager.setAimProfile('NONE');
-            test.assertFalse(WeaponManager.isAimingEnabled());
+            WeaponOrchestrator.setAimProfile('NONE');
+            test.assertFalse(WeaponOrchestrator.isAimingEnabled());
         });
     });
 
@@ -642,44 +642,44 @@
     // PICKUP SYSTEM TESTS
     // ==========================================
 
-    test.describe('PickupSystem', () => {
+    test.describe('PickupOrchestrator', () => {
         test.it('should have init method', () => {
-            test.assertTrue(typeof PickupSystem.init === 'function');
+            test.assertTrue(typeof PickupOrchestrator.init === 'function');
         });
 
         test.it('should have reset method', () => {
-            test.assertTrue(typeof PickupSystem.reset === 'function');
+            test.assertTrue(typeof PickupOrchestrator.reset === 'function');
         });
 
         test.it('should have spawn method', () => {
-            test.assertTrue(typeof PickupSystem.spawn === 'function');
+            test.assertTrue(typeof PickupOrchestrator.spawn === 'function');
         });
 
         test.it('should have update method', () => {
-            test.assertTrue(typeof PickupSystem.update === 'function');
+            test.assertTrue(typeof PickupOrchestrator.update === 'function');
         });
 
         test.it('should have collect method', () => {
-            test.assertTrue(typeof PickupSystem.collect === 'function');
+            test.assertTrue(typeof PickupOrchestrator.collect === 'function');
         });
 
         test.it('should have trySpawnForRoom method', () => {
-            test.assertTrue(typeof PickupSystem.trySpawnForRoom === 'function');
+            test.assertTrue(typeof PickupOrchestrator.trySpawnForRoom === 'function');
         });
 
         test.it('should have cleanupBehind method', () => {
-            test.assertTrue(typeof PickupSystem.cleanupBehind === 'function');
+            test.assertTrue(typeof PickupOrchestrator.cleanupBehind === 'function');
         });
 
         test.it('should track pickup count', () => {
-            PickupSystem.pickups = [];
-            test.assertEqual(PickupSystem.getCount(), 0);
+            PickupOrchestrator.pickups = [];
+            test.assertEqual(PickupOrchestrator.getCount(), 0);
         });
 
         test.it('trySpawnForRoom accepts obstacles and shelves params', () => {
             // Test that the method exists and can be called with obstacles/shelves
             // Note: Function.length only counts params before first default value
-            test.assertTrue(typeof PickupSystem.trySpawnForRoom === 'function');
+            test.assertTrue(typeof PickupOrchestrator.trySpawnForRoom === 'function');
             // Just verify the function exists - actual collision avoidance is tested in UI
         });
 
@@ -693,8 +693,8 @@
             test.assertTrue(instance.config.isAmmo, 'Should be ammo type');
 
             // Test the private mesh creation method
-            PickupSystem.THREE = THREE;
-            const mesh = PickupSystem._createAmmoMesh(instance, THREE);
+            PickupOrchestrator.THREE = THREE;
+            const mesh = PickupOrchestrator._createAmmoMesh(instance, THREE);
 
             test.assertTrue(mesh instanceof THREE.Group, 'Mesh should be a Group');
             test.assertTrue(mesh.children.length >= 3, 'Ammo crate should have multiple parts (body, stripes, corners)');

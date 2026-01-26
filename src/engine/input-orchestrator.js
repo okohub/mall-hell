@@ -4,7 +4,7 @@
 // Handles keyboard input with customizable bindings
 // and action-based callbacks.
 
-const InputSystem = {
+const InputOrchestrator = {
     // Current key states (action name -> boolean)
     keys: {
         forward: false,

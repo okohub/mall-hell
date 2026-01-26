@@ -4,7 +4,7 @@
 // Handles spawning of enemies and obstacles in rooms.
 // Pure logic - actual entity creation is delegated via callbacks.
 
-const SpawnSystem = {
+const SpawnOrchestrator = {
     // ==========================================
     // CONFIGURATION
     // ==========================================

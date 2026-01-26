@@ -2,7 +2,7 @@
 // LASER GUN - Self-Contained Weapon Module
 // ============================================
 // Auto-fire energy weapon: hold to shoot rapid laser bolts
-// Implements the weapon interface for WeaponManager
+// Implements the weapon interface for WeaponOrchestrator
 
 const LaserGun = {
     // ==========================================

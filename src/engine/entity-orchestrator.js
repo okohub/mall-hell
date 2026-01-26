@@ -4,7 +4,7 @@
 // Manages entity spawning, despawning, and cleanup.
 // Works with any scene/group system.
 
-const EntitySystem = {
+const EntityOrchestrator = {
     // Scene reference
     _scene: null,
 

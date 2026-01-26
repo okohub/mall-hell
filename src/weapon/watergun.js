@@ -2,7 +2,7 @@
 // WATER GUN - Self-Contained Weapon Module
 // ============================================
 // Pump-action water blaster: fires arcing water balloons with splash damage
-// Implements the weapon interface for WeaponManager
+// Implements the weapon interface for WeaponOrchestrator
 
 const WaterGun = {
     // ==========================================

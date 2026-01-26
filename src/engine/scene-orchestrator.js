@@ -4,7 +4,7 @@
 // Handles scene, camera, renderer setup and scene groups.
 // THREE.js is passed as a parameter (no global dependency).
 
-const SceneSystem = {
+const SceneOrchestrator = {
     // THREE.js reference
     _THREE: null,
 

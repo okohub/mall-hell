@@ -4,7 +4,7 @@
 // Manages post-processing effects (bloom, vignette, color grading).
 // Self-contained with inline EffectComposer for r128 compatibility.
 
-const PostProcessSystem = {
+const PostProcessOrchestrator = {
     // References
     composer: null,
     bloomPass: null,

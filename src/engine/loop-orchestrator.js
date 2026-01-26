@@ -4,7 +4,7 @@
 // Manages the game loop with requestAnimationFrame,
 // delta time calculation, and update/render callbacks.
 
-const LoopSystem = {
+const LoopOrchestrator = {
     // THREE.js reference (for Clock)
     _THREE: null,
     _clock: null,

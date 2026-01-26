@@ -4,7 +4,7 @@
 // Pure utility functions for collision detection.
 // No dependencies - works with plain position objects.
 
-const CollisionSystem = {
+const CollisionOrchestrator = {
     // Config getters (use Engine.defaults.collision if available)
     get config() {
         return (typeof Engine !== 'undefined' && Engine.defaults && Engine.defaults.collision)

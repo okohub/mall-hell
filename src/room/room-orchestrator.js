@@ -4,7 +4,7 @@
 // Manages room grid, tracking, and spawning
 // Uses Room data and RoomTheme for configuration
 
-const RoomSystem = {
+const RoomOrchestrator = {
     // Grid storage
     rooms: {},          // Map of "gridX_gridZ" -> room data
     visitedRooms: null, // Set of visited room keys

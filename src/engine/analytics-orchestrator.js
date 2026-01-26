@@ -4,7 +4,7 @@
 // Abstracted analytics layer that supports multiple providers
 // All methods are failsafe - errors never break the game
 
-const AnalyticsSystem = {
+const AnalyticsOrchestrator = {
     // ==========================================
     // CONFIGURATION
     // ==========================================

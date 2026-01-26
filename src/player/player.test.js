@@ -1,7 +1,7 @@
 // ============================================
 // PLAYER DOMAIN - Unit Tests
 // ============================================
-// Tests for Player data, PlayerVisual, and PlayerSystem
+// Tests for Player data, PlayerVisual, and PlayerOrchestrator
 
 (function(test) {
     'use strict';
@@ -57,224 +57,224 @@
 
     test.describe('Player System - Initialization', () => {
         test.it('should initialize with player data', () => {
-            PlayerSystem.init(Player);
-            test.assertEqual(PlayerSystem.playerData, Player, 'playerData should be set');
+            PlayerOrchestrator.init(Player);
+            test.assertEqual(PlayerOrchestrator.playerData, Player, 'playerData should be set');
         });
 
         test.it('should reset to starting position', () => {
-            PlayerSystem.init(Player);
-            PlayerSystem.reset();
-            test.assertEqual(PlayerSystem.position.x, Player.startPosition.x, 'x should match start position');
-            test.assertEqual(PlayerSystem.position.z, Player.startPosition.z, 'z should match start position');
-            test.assertEqual(PlayerSystem.rotation, Player.startPosition.rotation, 'rotation should match start');
+            PlayerOrchestrator.init(Player);
+            PlayerOrchestrator.reset();
+            test.assertEqual(PlayerOrchestrator.position.x, Player.startPosition.x, 'x should match start position');
+            test.assertEqual(PlayerOrchestrator.position.z, Player.startPosition.z, 'z should match start position');
+            test.assertEqual(PlayerOrchestrator.rotation, Player.startPosition.rotation, 'rotation should match start');
         });
 
         test.it('should reset health to max', () => {
-            PlayerSystem.init(Player);
-            PlayerSystem.health = 50;
-            PlayerSystem.reset();
-            test.assertEqual(PlayerSystem.health, Player.health.MAX, 'health should reset to max');
+            PlayerOrchestrator.init(Player);
+            PlayerOrchestrator.health = 50;
+            PlayerOrchestrator.reset();
+            test.assertEqual(PlayerOrchestrator.health, Player.health.MAX, 'health should reset to max');
         });
 
         test.it('should reset speed and turn rate', () => {
-            PlayerSystem.init(Player);
-            PlayerSystem.speed = 5;
-            PlayerSystem.currentTurnRate = 1;
-            PlayerSystem.reset();
-            test.assertEqual(PlayerSystem.speed, 0, 'speed should reset to 0');
-            test.assertEqual(PlayerSystem.currentTurnRate, 0, 'turn rate should reset to 0');
+            PlayerOrchestrator.init(Player);
+            PlayerOrchestrator.speed = 5;
+            PlayerOrchestrator.currentTurnRate = 1;
+            PlayerOrchestrator.reset();
+            test.assertEqual(PlayerOrchestrator.speed, 0, 'speed should reset to 0');
+            test.assertEqual(PlayerOrchestrator.currentTurnRate, 0, 'turn rate should reset to 0');
         });
     });
 
     test.describe('Player System - Movement', () => {
         test.beforeEach(() => {
-            PlayerSystem.init(Player);
-            PlayerSystem.reset();
+            PlayerOrchestrator.init(Player);
+            PlayerOrchestrator.reset();
         });
 
         test.it('should update turning', () => {
-            const initialRotation = PlayerSystem.rotation;
-            PlayerSystem.updateTurning(true, false, 0.1); // Turn left for 0.1s
-            test.assertTrue(PlayerSystem.rotation > initialRotation, 'rotation should increase when turning left');
+            const initialRotation = PlayerOrchestrator.rotation;
+            PlayerOrchestrator.updateTurning(true, false, 0.1); // Turn left for 0.1s
+            test.assertTrue(PlayerOrchestrator.rotation > initialRotation, 'rotation should increase when turning left');
         });
 
         test.it('should update speed with forward input', () => {
-            PlayerSystem.updateSpeed(true, false, 0.1); // Accelerate for 0.1s
-            test.assertTrue(PlayerSystem.speed > 0, 'speed should increase with forward input');
+            PlayerOrchestrator.updateSpeed(true, false, 0.1); // Accelerate for 0.1s
+            test.assertTrue(PlayerOrchestrator.speed > 0, 'speed should increase with forward input');
         });
 
         test.it('should decelerate with backward input', () => {
-            PlayerSystem.speed = 5;
-            PlayerSystem.updateSpeed(false, true, 0.1); // Brake for 0.1s
-            test.assertTrue(PlayerSystem.speed < 5, 'speed should decrease with backward input');
+            PlayerOrchestrator.speed = 5;
+            PlayerOrchestrator.updateSpeed(false, true, 0.1); // Brake for 0.1s
+            test.assertTrue(PlayerOrchestrator.speed < 5, 'speed should decrease with backward input');
         });
 
         test.it('should apply friction when no input', () => {
-            PlayerSystem.speed = 5;
-            PlayerSystem.updateSpeed(false, false, 0.1); // No input for 0.1s
-            test.assertTrue(PlayerSystem.speed < 5, 'speed should decrease with friction');
+            PlayerOrchestrator.speed = 5;
+            PlayerOrchestrator.updateSpeed(false, false, 0.1); // No input for 0.1s
+            test.assertTrue(PlayerOrchestrator.speed < 5, 'speed should decrease with friction');
         });
 
         test.it('should clamp speed to max', () => {
-            PlayerSystem.speed = 100;
-            PlayerSystem.updateSpeed(true, false, 0.1);
-            const config = PlayerSystem.getMovementConfig();
-            test.assertTrue(PlayerSystem.speed <= config.MAX_SPEED, 'speed should be clamped to max');
+            PlayerOrchestrator.speed = 100;
+            PlayerOrchestrator.updateSpeed(true, false, 0.1);
+            const config = PlayerOrchestrator.getMovementConfig();
+            test.assertTrue(PlayerOrchestrator.speed <= config.MAX_SPEED, 'speed should be clamped to max');
         });
 
         test.it('should clamp speed to reverse max', () => {
-            PlayerSystem.speed = -100;
-            PlayerSystem.updateSpeed(false, true, 0.1);
-            const config = PlayerSystem.getMovementConfig();
-            test.assertTrue(PlayerSystem.speed >= -config.REVERSE_SPEED, 'speed should be clamped to reverse max');
+            PlayerOrchestrator.speed = -100;
+            PlayerOrchestrator.updateSpeed(false, true, 0.1);
+            const config = PlayerOrchestrator.getMovementConfig();
+            test.assertTrue(PlayerOrchestrator.speed >= -config.REVERSE_SPEED, 'speed should be clamped to reverse max');
         });
 
         test.it('should calculate velocity from rotation and speed', () => {
-            PlayerSystem.speed = 10;
-            PlayerSystem.rotation = 0;
-            const velocity = PlayerSystem.getVelocity();
+            PlayerOrchestrator.speed = 10;
+            PlayerOrchestrator.rotation = 0;
+            const velocity = PlayerOrchestrator.getVelocity();
             test.assertTrue(velocity.z < 0, 'velocity z should be negative (forward)');
             test.assertEqual(velocity.x, 0, 'velocity x should be 0 when facing forward');
         });
 
         test.it('should calculate new position', () => {
-            PlayerSystem.speed = 10;
-            PlayerSystem.rotation = 0;
-            const oldZ = PlayerSystem.position.z;
-            const newPos = PlayerSystem.calculateNewPosition(0.1);
+            PlayerOrchestrator.speed = 10;
+            PlayerOrchestrator.rotation = 0;
+            const oldZ = PlayerOrchestrator.position.z;
+            const newPos = PlayerOrchestrator.calculateNewPosition(0.1);
             test.assertTrue(newPos.z < oldZ, 'new z position should be less (moving forward)');
         });
     });
 
     test.describe('Player System - Collision', () => {
         test.beforeEach(() => {
-            PlayerSystem.init(Player);
-            PlayerSystem.reset();
+            PlayerOrchestrator.init(Player);
+            PlayerOrchestrator.reset();
         });
 
         test.it('should apply movement when no collision', () => {
             const newPos = { x: 50, z: 80 };
             const noCollision = { blocked: false, blockedX: false, blockedZ: false };
-            PlayerSystem.applyMovement(newPos, noCollision);
-            test.assertEqual(PlayerSystem.position.x, 50, 'x should update');
-            test.assertEqual(PlayerSystem.position.z, 80, 'z should update');
+            PlayerOrchestrator.applyMovement(newPos, noCollision);
+            test.assertEqual(PlayerOrchestrator.position.x, 50, 'x should update');
+            test.assertEqual(PlayerOrchestrator.position.z, 80, 'z should update');
         });
 
         test.it('should block x movement on x collision', () => {
-            const oldX = PlayerSystem.position.x;
+            const oldX = PlayerOrchestrator.position.x;
             const newPos = { x: 50, z: 80 };
             const collisionX = { blocked: true, blockedX: true, blockedZ: false };
-            PlayerSystem.applyMovement(newPos, collisionX);
-            test.assertEqual(PlayerSystem.position.x, oldX, 'x should not change');
-            test.assertEqual(PlayerSystem.position.z, 80, 'z should update');
+            PlayerOrchestrator.applyMovement(newPos, collisionX);
+            test.assertEqual(PlayerOrchestrator.position.x, oldX, 'x should not change');
+            test.assertEqual(PlayerOrchestrator.position.z, 80, 'z should update');
         });
 
         test.it('should block z movement on z collision', () => {
-            const oldZ = PlayerSystem.position.z;
+            const oldZ = PlayerOrchestrator.position.z;
             const newPos = { x: 50, z: 80 };
             const collisionZ = { blocked: true, blockedX: false, blockedZ: true };
-            PlayerSystem.applyMovement(newPos, collisionZ);
-            test.assertEqual(PlayerSystem.position.x, 50, 'x should update');
-            test.assertEqual(PlayerSystem.position.z, oldZ, 'z should not change');
+            PlayerOrchestrator.applyMovement(newPos, collisionZ);
+            test.assertEqual(PlayerOrchestrator.position.x, 50, 'x should update');
+            test.assertEqual(PlayerOrchestrator.position.z, oldZ, 'z should not change');
         });
 
         test.it('should trigger wall bump on collision with speed', () => {
-            PlayerSystem.speed = 8;
+            PlayerOrchestrator.speed = 8;
             const newPos = { x: 50, z: 80 };
             const collision = { blocked: true, blockedX: true, blockedZ: false };
-            PlayerSystem.applyMovement(newPos, collision);
-            test.assertTrue(PlayerSystem.wallBumpIntensity > 0, 'wall bump should be triggered');
-            test.assertTrue(PlayerSystem.speed < 8, 'speed should be reduced on impact');
+            PlayerOrchestrator.applyMovement(newPos, collision);
+            test.assertTrue(PlayerOrchestrator.wallBumpIntensity > 0, 'wall bump should be triggered');
+            test.assertTrue(PlayerOrchestrator.speed < 8, 'speed should be reduced on impact');
         });
 
         test.it('should decay wall bump', () => {
-            PlayerSystem.wallBumpIntensity = 0.5;
-            PlayerSystem.updateWallBump();
-            test.assertTrue(PlayerSystem.wallBumpIntensity < 0.5, 'bump intensity should decay');
+            PlayerOrchestrator.wallBumpIntensity = 0.5;
+            PlayerOrchestrator.updateWallBump();
+            test.assertTrue(PlayerOrchestrator.wallBumpIntensity < 0.5, 'bump intensity should decay');
         });
     });
 
     test.describe('Player System - Health', () => {
         test.beforeEach(() => {
-            PlayerSystem.init(Player);
-            PlayerSystem.reset();
+            PlayerOrchestrator.init(Player);
+            PlayerOrchestrator.reset();
         });
 
         test.it('should return correct health', () => {
-            test.assertEqual(PlayerSystem.getHealth(), Player.health.MAX, 'health should be max');
+            test.assertEqual(PlayerOrchestrator.getHealth(), Player.health.MAX, 'health should be max');
         });
 
         test.it('should damage player', () => {
-            PlayerSystem.damage(20);
-            test.assertEqual(PlayerSystem.health, 80, 'health should decrease by damage amount');
+            PlayerOrchestrator.damage(20);
+            test.assertEqual(PlayerOrchestrator.health, 80, 'health should decrease by damage amount');
         });
 
         test.it('should not damage when invulnerable', () => {
-            PlayerSystem.isInvulnerable = true;
-            const result = PlayerSystem.damage(20);
+            PlayerOrchestrator.isInvulnerable = true;
+            const result = PlayerOrchestrator.damage(20);
             test.assertFalse(result, 'damage should return false when invulnerable');
-            test.assertEqual(PlayerSystem.health, Player.health.MAX, 'health should not change');
+            test.assertEqual(PlayerOrchestrator.health, Player.health.MAX, 'health should not change');
         });
 
         test.it('should set invulnerability on damage', () => {
-            PlayerSystem.damage(20);
-            test.assertTrue(PlayerSystem.isInvulnerable, 'should be invulnerable after damage');
-            test.assertTrue(PlayerSystem.lastDamageTime > 0, 'lastDamageTime should be set');
+            PlayerOrchestrator.damage(20);
+            test.assertTrue(PlayerOrchestrator.isInvulnerable, 'should be invulnerable after damage');
+            test.assertTrue(PlayerOrchestrator.lastDamageTime > 0, 'lastDamageTime should be set');
         });
 
         test.it('should not go below 0 health', () => {
-            PlayerSystem.damage(200);
-            test.assertEqual(PlayerSystem.health, 0, 'health should be clamped to 0');
+            PlayerOrchestrator.damage(200);
+            test.assertEqual(PlayerOrchestrator.health, 0, 'health should be clamped to 0');
         });
 
         test.it('should detect death', () => {
-            test.assertFalse(PlayerSystem.isDead(), 'should not be dead at max health');
-            PlayerSystem.health = 0;
-            test.assertTrue(PlayerSystem.isDead(), 'should be dead at 0 health');
+            test.assertFalse(PlayerOrchestrator.isDead(), 'should not be dead at max health');
+            PlayerOrchestrator.health = 0;
+            test.assertTrue(PlayerOrchestrator.isDead(), 'should be dead at 0 health');
         });
 
         test.it('should detect low health', () => {
-            test.assertFalse(PlayerSystem.isLowHealth(), 'should not be low health at max');
-            PlayerSystem.health = 25;
-            test.assertTrue(PlayerSystem.isLowHealth(), 'should be low health at 25');
+            test.assertFalse(PlayerOrchestrator.isLowHealth(), 'should not be low health at max');
+            PlayerOrchestrator.health = 25;
+            test.assertTrue(PlayerOrchestrator.isLowHealth(), 'should be low health at 25');
         });
 
         test.it('should damage from enemy', () => {
-            PlayerSystem.damageFromEnemy();
-            test.assertEqual(PlayerSystem.health, Player.health.MAX - Player.health.ENEMY_DAMAGE, 'should take enemy damage');
+            PlayerOrchestrator.damageFromEnemy();
+            test.assertEqual(PlayerOrchestrator.health, Player.health.MAX - Player.health.ENEMY_DAMAGE, 'should take enemy damage');
         });
 
         test.it('should damage from obstacle', () => {
-            PlayerSystem.damageFromObstacle();
-            test.assertEqual(PlayerSystem.health, Player.health.MAX - Player.health.OBSTACLE_DAMAGE, 'should take obstacle damage');
+            PlayerOrchestrator.damageFromObstacle();
+            test.assertEqual(PlayerOrchestrator.health, Player.health.MAX - Player.health.OBSTACLE_DAMAGE, 'should take obstacle damage');
         });
 
         test.it('should heal player', () => {
-            PlayerSystem.health = 50;
-            PlayerSystem.heal(30);
-            test.assertEqual(PlayerSystem.health, 80, 'health should increase');
+            PlayerOrchestrator.health = 50;
+            PlayerOrchestrator.heal(30);
+            test.assertEqual(PlayerOrchestrator.health, 80, 'health should increase');
         });
 
         test.it('should not heal above max', () => {
-            PlayerSystem.heal(50);
-            test.assertEqual(PlayerSystem.health, Player.health.MAX, 'health should be clamped to max');
+            PlayerOrchestrator.heal(50);
+            test.assertEqual(PlayerOrchestrator.health, Player.health.MAX, 'health should be clamped to max');
         });
 
         test.it('should calculate health percent', () => {
-            test.assertEqual(PlayerSystem.getHealthPercent(), 100, 'health percent should be 100 at max');
-            PlayerSystem.health = 50;
-            test.assertEqual(PlayerSystem.getHealthPercent(), 50, 'health percent should be 50');
+            test.assertEqual(PlayerOrchestrator.getHealthPercent(), 100, 'health percent should be 100 at max');
+            PlayerOrchestrator.health = 50;
+            test.assertEqual(PlayerOrchestrator.getHealthPercent(), 50, 'health percent should be 50');
         });
     });
 
     test.describe('Player System - Camera', () => {
         test.beforeEach(() => {
-            PlayerSystem.init(Player);
-            PlayerSystem.reset();
+            PlayerOrchestrator.init(Player);
+            PlayerOrchestrator.reset();
         });
 
         test.it('should return camera state', () => {
-            const cameraState = PlayerSystem.getCameraState();
+            const cameraState = PlayerOrchestrator.getCameraState();
             test.assertTrue(cameraState.x !== undefined, 'should have x');
             test.assertTrue(cameraState.y !== undefined, 'should have y');
             test.assertTrue(cameraState.z !== undefined, 'should have z');
@@ -284,44 +284,44 @@
         });
 
         test.it('should include bump offset in camera state', () => {
-            PlayerSystem.wallBumpIntensity = 1.0;
-            PlayerSystem.wallBumpDirection = { x: 1, z: 0 };
-            const cameraState = PlayerSystem.getCameraState();
-            test.assertTrue(cameraState.x !== PlayerSystem.position.x, 'camera x should include bump offset');
+            PlayerOrchestrator.wallBumpIntensity = 1.0;
+            PlayerOrchestrator.wallBumpDirection = { x: 1, z: 0 };
+            const cameraState = PlayerOrchestrator.getCameraState();
+            test.assertTrue(cameraState.x !== PlayerOrchestrator.position.x, 'camera x should include bump offset');
         });
     });
 
     test.describe('Player System - Getters/Setters', () => {
         test.beforeEach(() => {
-            PlayerSystem.init(Player);
-            PlayerSystem.reset();
+            PlayerOrchestrator.init(Player);
+            PlayerOrchestrator.reset();
         });
 
         test.it('should get position', () => {
-            const pos = PlayerSystem.getPosition();
-            test.assertEqual(pos.x, PlayerSystem.position.x, 'x should match');
-            test.assertEqual(pos.z, PlayerSystem.position.z, 'z should match');
+            const pos = PlayerOrchestrator.getPosition();
+            test.assertEqual(pos.x, PlayerOrchestrator.position.x, 'x should match');
+            test.assertEqual(pos.z, PlayerOrchestrator.position.z, 'z should match');
         });
 
         test.it('should set position', () => {
-            PlayerSystem.setPosition(100, 200);
-            test.assertEqual(PlayerSystem.position.x, 100, 'x should be set');
-            test.assertEqual(PlayerSystem.position.z, 200, 'z should be set');
+            PlayerOrchestrator.setPosition(100, 200);
+            test.assertEqual(PlayerOrchestrator.position.x, 100, 'x should be set');
+            test.assertEqual(PlayerOrchestrator.position.z, 200, 'z should be set');
         });
 
         test.it('should get/set rotation', () => {
-            PlayerSystem.setRotation(1.5);
-            test.assertEqual(PlayerSystem.getRotation(), 1.5, 'rotation should match');
+            PlayerOrchestrator.setRotation(1.5);
+            test.assertEqual(PlayerOrchestrator.getRotation(), 1.5, 'rotation should match');
         });
 
         test.it('should get speed', () => {
-            PlayerSystem.speed = 5;
-            test.assertEqual(PlayerSystem.getSpeed(), 5, 'speed should match');
+            PlayerOrchestrator.speed = 5;
+            test.assertEqual(PlayerOrchestrator.getSpeed(), 5, 'speed should match');
         });
 
         test.it('should get lean angle', () => {
-            PlayerSystem.currentLeanAngle = 0.1;
-            test.assertEqual(PlayerSystem.getLeanAngle(), 0.1, 'lean angle should match');
+            PlayerOrchestrator.currentLeanAngle = 0.1;
+            test.assertEqual(PlayerOrchestrator.getLeanAngle(), 0.1, 'lean angle should match');
         });
     });
 

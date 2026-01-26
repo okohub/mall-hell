@@ -4,7 +4,7 @@
 // Maintains weapon registry, tracks current weapon, delegates operations.
 // Each weapon is self-contained with its own logic, mesh, and animation.
 
-const WeaponManager = {
+const WeaponOrchestrator = {
     // ==========================================
     // STATE
     // ==========================================
@@ -55,7 +55,7 @@ const WeaponManager = {
      */
     register(weapon) {
         if (!weapon || !weapon.id) {
-            console.error('WeaponManager: Cannot register weapon without id');
+            console.error('WeaponOrchestrator: Cannot register weapon without id');
             return false;
         }
         this.weapons[weapon.id] = weapon;
@@ -73,7 +73,7 @@ const WeaponManager = {
     equip(weaponId, THREE, materials, camera) {
         const weapon = this.weapons[weaponId];
         if (!weapon) {
-            console.error(`WeaponManager: Unknown weapon '${weaponId}'`);
+            console.error(`WeaponOrchestrator: Unknown weapon '${weaponId}'`);
             return false;
         }
 

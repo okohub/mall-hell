@@ -4,7 +4,7 @@
 // Manages game state with transitions and callbacks.
 // Optional dependency on Engine for state definitions.
 
-const StateSystem = {
+const StateOrchestrator = {
     // Current state
     _currentState: null,
 

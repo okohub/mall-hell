@@ -4,7 +4,7 @@
 // Manages obstacle and shelf spawning, collision, cleanup
 // Uses Obstacle and Shelf data (assumes they are loaded globally)
 
-const EnvironmentSystem = {
+const EnvironmentOrchestrator = {
     // Active objects
     obstacles: [],
     shelves: [],

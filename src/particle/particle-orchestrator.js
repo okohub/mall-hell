@@ -4,7 +4,7 @@
 // Manages particle spawning, movement, and lifecycle.
 // Self-contained with no external dependencies.
 
-const ParticleSystem = {
+const ParticleOrchestrator = {
     // Active particles array (managed externally in index.html)
     // This system provides utilities for particle creation and management
 

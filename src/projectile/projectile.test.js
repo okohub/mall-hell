@@ -118,29 +118,29 @@
 
     test.describe('Projectile System - Initialization', () => {
         test.beforeEach(() => {
-            ProjectileSystem.projectiles = [];
-            ProjectileSystem.scene = null;
+            ProjectileOrchestrator.projectiles = [];
+            ProjectileOrchestrator.scene = null;
         });
 
         test.it('should initialize with data reference', () => {
-            ProjectileSystem.init(Projectile, null);
-            test.assertEqual(ProjectileSystem.projectileData, Projectile);
+            ProjectileOrchestrator.init(Projectile, null);
+            test.assertEqual(ProjectileOrchestrator.projectileData, Projectile);
         });
 
         test.it('should reset clears projectiles', () => {
-            ProjectileSystem.projectiles = [{ active: true }];
-            ProjectileSystem.reset();
-            test.assertEqual(ProjectileSystem.projectiles.length, 0);
+            ProjectileOrchestrator.projectiles = [{ active: true }];
+            ProjectileOrchestrator.reset();
+            test.assertEqual(ProjectileOrchestrator.projectiles.length, 0);
         });
     });
 
     test.describe('Projectile System - Spawning', () => {
         test.beforeEach(() => {
-            ProjectileSystem.init(Projectile, null);
+            ProjectileOrchestrator.init(Projectile, null);
         });
 
         test.it('should spawn projectile without THREE', () => {
-            const p = ProjectileSystem.spawn(
+            const p = ProjectileOrchestrator.spawn(
                 'stone',
                 { x: 0, y: 1, z: 0 },
                 { x: 0, y: 0, z: -1 },
@@ -156,89 +156,89 @@
         });
 
         test.it('should track spawned projectiles', () => {
-            ProjectileSystem.spawn('stone', { x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 }, 100, 1, 1, null);
-            ProjectileSystem.spawn('stone', { x: 1, y: 0, z: 0 }, { x: 0, y: 0, z: -1 }, 100, 1, 1, null);
-            test.assertEqual(ProjectileSystem.getCount(), 2);
+            ProjectileOrchestrator.spawn('stone', { x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 }, 100, 1, 1, null);
+            ProjectileOrchestrator.spawn('stone', { x: 1, y: 0, z: 0 }, { x: 0, y: 0, z: -1 }, 100, 1, 1, null);
+            test.assertEqual(ProjectileOrchestrator.getCount(), 2);
         });
 
         test.it('should limit max projectiles', () => {
             // maxProjectiles is now from config (50 by default)
-            const maxProjectiles = ProjectileSystem.maxProjectiles;
+            const maxProjectiles = ProjectileOrchestrator.maxProjectiles;
             for (let i = 0; i < maxProjectiles + 5; i++) {
-                ProjectileSystem.spawn('stone', { x: i, y: 0, z: 0 }, { x: 0, y: 0, z: -1 }, 100, 1, 1, null);
+                ProjectileOrchestrator.spawn('stone', { x: i, y: 0, z: 0 }, { x: 0, y: 0, z: -1 }, 100, 1, 1, null);
             }
-            test.assertEqual(ProjectileSystem.getCount(), maxProjectiles);
+            test.assertEqual(ProjectileOrchestrator.getCount(), maxProjectiles);
         });
     });
 
     test.describe('Projectile System - Movement', () => {
         test.beforeEach(() => {
-            ProjectileSystem.init(Projectile, null);
+            ProjectileOrchestrator.init(Projectile, null);
         });
 
         test.it('should move projectiles on update', () => {
-            const p = ProjectileSystem.spawn(
+            const p = ProjectileOrchestrator.spawn(
                 'stone',
                 { x: 0, y: 1, z: 0 },
                 { x: 0, y: 0, z: -1 },
                 100, 1, 1, null
             );
             const initialZ = p.position.z;
-            ProjectileSystem.update(0.1, { z: 0 }); // 0.1 seconds
+            ProjectileOrchestrator.update(0.1, { z: 0 }); // 0.1 seconds
             test.assertTrue(p.position.z < initialZ); // Moved forward (negative Z)
         });
 
         test.it('should despawn out of bounds projectiles', () => {
-            const p = ProjectileSystem.spawn(
+            const p = ProjectileOrchestrator.spawn(
                 'stone',
                 { x: 0, y: 1, z: 0 },
                 { x: 0, y: 0, z: -1 },
                 1000, 1, 1, null
             );
             // Move far away
-            ProjectileSystem.update(1, { z: 0 }); // 1 second at 1000 speed = 1000 units
-            test.assertEqual(ProjectileSystem.getCount(), 0);
+            ProjectileOrchestrator.update(1, { z: 0 }); // 1 second at 1000 speed = 1000 units
+            test.assertEqual(ProjectileOrchestrator.getCount(), 0);
         });
     });
 
     test.describe('Projectile System - Collision', () => {
         test.beforeEach(() => {
-            ProjectileSystem.init(Projectile, null);
+            ProjectileOrchestrator.init(Projectile, null);
         });
 
         test.it('should detect collision within radius', () => {
-            const p = ProjectileSystem.spawn(
+            const p = ProjectileOrchestrator.spawn(
                 'stone',
                 { x: 0, y: 1, z: 0 },
                 { x: 0, y: 0, z: -1 },
                 100, 1, 1, null
             );
             const target = { position: { x: 0.1, y: 1, z: 0.1 } };
-            const hit = ProjectileSystem.checkCollision(p, target, 1);
+            const hit = ProjectileOrchestrator.checkCollision(p, target, 1);
             test.assertTrue(hit);
         });
 
         test.it('should not detect collision outside radius', () => {
-            const p = ProjectileSystem.spawn(
+            const p = ProjectileOrchestrator.spawn(
                 'stone',
                 { x: 0, y: 1, z: 0 },
                 { x: 0, y: 0, z: -1 },
                 100, 1, 1, null
             );
             const target = { position: { x: 5, y: 1, z: 5 } };
-            const hit = ProjectileSystem.checkCollision(p, target, 1);
+            const hit = ProjectileOrchestrator.checkCollision(p, target, 1);
             test.assertFalse(hit);
         });
 
         test.it('should despawn non-piercing projectile on hit', () => {
-            const p = ProjectileSystem.spawn(
+            const p = ProjectileOrchestrator.spawn(
                 'stone',
                 { x: 0, y: 1, z: 0 },
                 { x: 0, y: 0, z: -1 },
                 100, 1, 1, null
             );
-            ProjectileSystem.onHit(p, {});
-            test.assertEqual(ProjectileSystem.getCount(), 0);
+            ProjectileOrchestrator.onHit(p, {});
+            test.assertEqual(ProjectileOrchestrator.getCount(), 0);
         });
     });
 
@@ -254,7 +254,7 @@
             }
             const dir = new THREE.Vector3(0, 0, -1);
             const pos = new THREE.Vector3(0, 1, 0);
-            const mesh = ProjectileSystem.createMesh(THREE, dir, pos, 100, {
+            const mesh = ProjectileOrchestrator.createMesh(THREE, dir, pos, 100, {
                 projectileType: 'stone'
             });
             test.assertTrue(mesh instanceof THREE.Group);
@@ -269,7 +269,7 @@
             }
             const dir = new THREE.Vector3(0, 0, -1);
             const pos = new THREE.Vector3(0, 1, 0);
-            const mesh = ProjectileSystem.createMesh(THREE, dir, pos, 80, {
+            const mesh = ProjectileOrchestrator.createMesh(THREE, dir, pos, 80, {
                 projectileType: 'water'
             });
             test.assertTrue(mesh instanceof THREE.Group);
@@ -284,7 +284,7 @@
             }
             const dir = new THREE.Vector3(0, 0, -1);
             const pos = new THREE.Vector3(0, 1, 0);
-            const mesh = ProjectileSystem.createMesh(THREE, dir, pos, 100, {
+            const mesh = ProjectileOrchestrator.createMesh(THREE, dir, pos, 100, {
                 projectileType: 'dart'
             });
             test.assertTrue(mesh instanceof THREE.Group);
@@ -299,7 +299,7 @@
             }
             const dir = new THREE.Vector3(0, 0, -1);
             const pos = new THREE.Vector3(0, 1, 0);
-            const mesh = ProjectileSystem.createMesh(THREE, dir, pos, 100, {});
+            const mesh = ProjectileOrchestrator.createMesh(THREE, dir, pos, 100, {});
             test.assertEqual(mesh.userData.projectileType, 'stone');
         });
     });

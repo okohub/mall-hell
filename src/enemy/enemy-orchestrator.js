@@ -4,7 +4,7 @@
 // Manages enemy spawning, AI, damage, and cleanup
 // Uses Enemy data definitions (assumes Enemy is loaded globally)
 
-const EnemySystem = {
+const EnemyOrchestrator = {
     // Active enemies
     enemies: [],
 

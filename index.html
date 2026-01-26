@@ -171,35 +171,35 @@
 
     <!-- UI Domain -->
     <script src="./src/ui/ui.js"></script>
-    <script src="./src/ui/ui-system.js"></script>
+    <script src="./src/ui/ui-orchestrator.js"></script>
 
     <!-- Engine Domain (core systems - load first) -->
     <script src="./src/engine/engine.js"></script>
-    <script src="./src/engine/collision-system.js"></script>
-    <script src="./src/engine/input-system.js"></script>
-    <script src="./src/engine/state-system.js"></script>
-    <script src="./src/engine/loop-system.js"></script>
-    <script src="./src/engine/scene-system.js"></script>
-    <script src="./src/engine/entity-system.js"></script>
+    <script src="./src/engine/collision-orchestrator.js"></script>
+    <script src="./src/engine/input-orchestrator.js"></script>
+    <script src="./src/engine/state-orchestrator.js"></script>
+    <script src="./src/engine/loop-orchestrator.js"></script>
+    <script src="./src/engine/scene-orchestrator.js"></script>
+    <script src="./src/engine/entity-orchestrator.js"></script>
     <script src="./src/engine/game-session.js"></script>
-    <script src="./src/engine/post-process-system.js"></script>
-    <script src="./src/engine/analytics-system.js"></script>
+    <script src="./src/engine/post-process-orchestrator.js"></script>
+    <script src="./src/engine/analytics-orchestrator.js"></script>
 
     <!-- Room Domain -->
     <script src="./src/room/room.js"></script>
     <script src="./src/room/room-theme.js"></script>
     <script src="./src/room/room-mesh.js"></script>
-    <script src="./src/room/room-system.js"></script>
+    <script src="./src/room/room-orchestrator.js"></script>
 
     <!-- Player Domain -->
     <script src="./src/player/player.js"></script>
     <script src="./src/player/player-theme.js"></script>
     <script src="./src/player/player-mesh.js"></script>
-    <script src="./src/player/player-system.js"></script>
+    <script src="./src/player/player-orchestrator.js"></script>
 
     <!-- Weapon Domain -->
     <script src="./src/weapon/weapon.js"></script>
-    <script src="./src/weapon/weapon-manager.js"></script>
+    <script src="./src/weapon/weapon-orchestrator.js"></script>
 
     <!-- Slingshot -->
     <script src="./src/weapon/slingshot-mesh.js"></script>
@@ -223,20 +223,20 @@
 
     <!-- Pickup System -->
     <script src="./src/weapon/pickup.js"></script>
-    <script src="./src/weapon/pickup-system.js"></script>
+    <script src="./src/weapon/pickup-orchestrator.js"></script>
 
     <!-- Projectile Domain -->
     <script src="./src/projectile/projectile.js"></script>
     <script src="./src/projectile/projectile-theme.js"></script>
     <script src="./src/projectile/projectile-mesh.js"></script>
-    <script src="./src/projectile/projectile-system.js"></script>
-    <script src="./src/particle/particle-system.js"></script>
+    <script src="./src/projectile/projectile-orchestrator.js"></script>
+    <script src="./src/particle/particle-orchestrator.js"></script>
 
     <!-- Enemy Domain -->
     <script src="./src/enemy/enemy.js"></script>
     <script src="./src/enemy/enemy-theme.js"></script>
     <script src="./src/enemy/enemy-mesh.js"></script>
-    <script src="./src/enemy/enemy-system.js"></script>
+    <script src="./src/enemy/enemy-orchestrator.js"></script>
 
     <!-- Environment Domain (Obstacles + Shelves) -->
     <script src="./src/environment/obstacle.js"></script>
@@ -245,17 +245,17 @@
     <script src="./src/environment/shelf.js"></script>
     <script src="./src/environment/shelf-theme.js"></script>
     <script src="./src/environment/shelf-mesh.js"></script>
-    <script src="./src/environment/environment-system.js"></script>
-    <script src="./src/environment/spawn-system.js"></script>
+    <script src="./src/environment/environment-orchestrator.js"></script>
+    <script src="./src/environment/spawn-orchestrator.js"></script>
 
     <script>
         // Domain modules loaded:
-        // - Room: Room, RoomTheme, RoomMesh, RoomSystem
-        // - Player: Player, PlayerTheme, PlayerMesh, PlayerSystem
-        // - Weapon: Weapon, WeaponManager, Slingshot, WaterGun, LaserGun, NerfGun, WeaponPickup, PickupSystem
-        // - Projectile: Projectile, ProjectileTheme, ProjectileMesh (as ProjectileVisual), ProjectileSystem
-        // - Enemy: Enemy, EnemyTheme, EnemyMesh (as EnemyVisual), EnemySystem
-        // - Environment: Obstacle, ObstacleTheme, ObstacleMesh (as ObstacleVisual), Shelf, ShelfTheme, ShelfMesh, EnvironmentSystem
+        // - Room: Room, RoomTheme, RoomMesh, RoomOrchestrator
+        // - Player: Player, PlayerTheme, PlayerMesh, PlayerOrchestrator
+        // - Weapon: Weapon, WeaponOrchestrator, Slingshot, WaterGun, LaserGun, NerfGun, WeaponPickup, PickupOrchestrator
+        // - Projectile: Projectile, ProjectileTheme, ProjectileMesh (as ProjectileVisual), ProjectileOrchestrator
+        // - Enemy: Enemy, EnemyTheme, EnemyMesh (as EnemyVisual), EnemyOrchestrator
+        // - Environment: Obstacle, ObstacleTheme, ObstacleMesh (as ObstacleVisual), Shelf, ShelfTheme, ShelfMesh, EnvironmentOrchestrator
 
         // ============================================
         // GAME CONSTANTS
@@ -269,19 +269,19 @@
         const CART_SPEED = Player.movement.SPEED;
         const MALL_THEMES = RoomTheme.themes;
 
-        // ShelfSystem shim - delegates to Shelf for RoomSystem compatibility
+        // ShelfSystem shim - delegates to Shelf for RoomOrchestrator compatibility
         const ShelfSystem = {
             getShelfTemplate: (id) => Shelf.getTemplate(id),
             getProductGeometry: (id) => Shelf.getProductType(id),
             pickProductColor: (theme) => Shelf.pickColor(theme.productColors || theme)
         };
 
-        // Initialize RoomSystem with layout from Room.layout
-        RoomSystem.init(Room, RoomTheme);
-        RoomSystem.loadLayout(MALL_THEMES);
+        // Initialize RoomOrchestrator with layout from Room.layout
+        RoomOrchestrator.init(Room, RoomTheme);
+        RoomOrchestrator.loadLayout(MALL_THEMES);
 
-        // Mall Grid interface (delegates to RoomSystem)
-        const mallGrid = RoomSystem;
+        // Mall Grid interface (delegates to RoomOrchestrator)
+        const mallGrid = RoomOrchestrator;
 
         // Game State - only variables that need local tracking
         let lastShootTime = 0;
@@ -327,20 +327,20 @@
         // Post-processing state
         let composer = null, damageVignetteStrength = 0;
 
-        // DOM Elements (only what's needed - UISystem handles the rest)
+        // DOM Elements (only what's needed - UIOrchestrator handles the rest)
         const container = document.getElementById('game-container');
         const scoreElement = document.getElementById('score');
         const hud = document.getElementById('hud');
         const ammoDisplay = document.getElementById('ammo-display');
         const healthContainer = document.getElementById('health-container');
 
-        // Initialize Three.js using SceneSystem
+        // Initialize Three.js using SceneOrchestrator
         function initThree() {
-            SceneSystem.init(THREE, container);
-            scene = SceneSystem.scene; camera = SceneSystem.camera; renderer = SceneSystem.renderer;
-            MaterialsTheme.init(THREE); UISystem.init();
-            AnalyticsSystem.init({ measurementId: 'G-1GQ02MKM01', provider: 'gtag', debug: false });
-            AnalyticsSystem.gamePageView();
+            SceneOrchestrator.init(THREE, container);
+            scene = SceneOrchestrator.scene; camera = SceneOrchestrator.camera; renderer = SceneOrchestrator.renderer;
+            MaterialsTheme.init(THREE); UIOrchestrator.init();
+            AnalyticsOrchestrator.init({ measurementId: 'G-1GQ02MKM01', provider: 'gtag', debug: false });
+            AnalyticsOrchestrator.gamePageView();
             initSceneGroups();
 
             // Lighting
@@ -356,23 +356,23 @@
             const p = PlayerMesh.createPlayerCart(THREE);
             playerCart = p.cart; playerChild = p.child; slingshotArm = p.slingshot;
             playerCart.position.set(0, 0, -5); scene.add(playerCart);
-            WeaponManager.init(scene);
-            [Slingshot, WaterGun, LaserGun, NerfGun].forEach(w => WeaponManager.register(w));
-            WeaponManager.equip('slingshot', THREE, MaterialsTheme, camera);
-            PickupSystem.init(scene, THREE);
+            WeaponOrchestrator.init(scene);
+            [Slingshot, WaterGun, LaserGun, NerfGun].forEach(w => WeaponOrchestrator.register(w));
+            WeaponOrchestrator.equip('slingshot', THREE, MaterialsTheme, camera);
+            PickupOrchestrator.init(scene, THREE);
         }
 
         function initPostProcessing() {
-            const r = PostProcessSystem.init(THREE, renderer, scene, camera, { bloomStrength: 0.4, bloomThreshold: 0.8, damageIntensity: 0.0 });
+            const r = PostProcessOrchestrator.init(THREE, renderer, scene, camera, { bloomStrength: 0.4, bloomThreshold: 0.8, damageIntensity: 0.0 });
             composer = r.composer; window.composer = composer;
         }
 
         function createEnvironment() {
-            RoomSystem.getAllRooms().forEach(room => room && RoomSystem.createRoomMeshes(THREE, room, { scene, shelfArray: shelves, shelfSystem: ShelfSystem }));
+            RoomOrchestrator.getAllRooms().forEach(room => room && RoomOrchestrator.createRoomMeshes(THREE, room, { scene, shelfArray: shelves, shelfSystem: ShelfSystem }));
         }
 
         function createEnemy(x, z, enemyType = 'SKELETON') {
-            const g = EnemySystem.createMesh(THREE, enemyType, x, z);
+            const g = EnemyOrchestrator.createMesh(THREE, enemyType, x, z);
             if (g) { scene.add(g); enemies.push(g); }
             return g;
         }
@@ -385,9 +385,9 @@
         }
 
         function createProjectile(direction, spawnPos, speed, fireResult = null) {
-            const ps = WeaponManager.getProjectileSpeed();
+            const ps = WeaponOrchestrator.getProjectileSpeed();
             const projectileType = fireResult?.projectileType || 'stone';
-            const g = ProjectileSystem.createMesh(THREE, direction, spawnPos, speed ?? ps.max, {
+            const g = ProjectileOrchestrator.createMesh(THREE, direction, spawnPos, speed ?? ps.max, {
                 speedMin: ps.min,
                 speedMax: ps.max,
                 fallbackCamera: camera,
@@ -397,27 +397,27 @@
             return g;
         }
 
-        function spawnParticles(pos, color, count) { ParticleSystem.spawn(THREE, pos, color, count, particles, scene); }
+        function spawnParticles(pos, color, count) { ParticleOrchestrator.spawn(THREE, pos, color, count, particles, scene); }
 
         const addScore = (pts, pos) => GameSession.addScore(pts, pos);
-        const startCharging = () => { if (!StateSystem.is('PLAYING')) return; const r = WeaponManager.onFireStart(Date.now()); if (r) shoot(r.speed, r); };
-        const updateCharging = (dt) => { const r = WeaponManager.update(dt, Date.now()); if (r) shoot(r.speed, r); };
-        const cancelCharging = () => WeaponManager.cancelAction();
-        const releaseAndFire = () => { const r = WeaponManager.onFireRelease(Date.now()); if (r) shoot(r.speed, r); };
+        const startCharging = () => { if (!StateOrchestrator.is('PLAYING')) return; const r = WeaponOrchestrator.onFireStart(Date.now()); if (r) shoot(r.speed, r); };
+        const updateCharging = (dt) => { const r = WeaponOrchestrator.update(dt, Date.now()); if (r) shoot(r.speed, r); };
+        const cancelCharging = () => WeaponOrchestrator.cancelAction();
+        const releaseAndFire = () => { const r = WeaponOrchestrator.onFireRelease(Date.now()); if (r) shoot(r.speed, r); };
 
         function shoot(speed, fireResult = null) {
             lastShootTime = Date.now();
-            if (cameraMode === 'hybrid-fps') WeaponManager.triggerFireAnim();
+            if (cameraMode === 'hybrid-fps') WeaponOrchestrator.triggerFireAnim();
 
-            const { spawnPos, direction } = ProjectileSystem.calculateFire(THREE, camera, crosshairX, crosshairY);
+            const { spawnPos, direction } = ProjectileOrchestrator.calculateFire(THREE, camera, crosshairX, crosshairY);
             if (fireResult?.spread) { direction.x += fireResult.spread.x; direction.y += fireResult.spread.y; direction.normalize(); }
             createProjectile(direction, spawnPos, speed, fireResult);
             updateAmmoDisplay();
         }
 
         function updateAmmoDisplay() {
-            const ammo = WeaponManager.getAmmo();
-            const display = WeaponManager.getAmmoDisplay() || 'READY';
+            const ammo = WeaponOrchestrator.getAmmo();
+            const display = WeaponOrchestrator.getAmmoDisplay() || 'READY';
             const isEmpty = ammo <= 0;
             ammoDisplay.textContent = isEmpty ? 'NO AMMO' : display;
             ammoDisplay.style.borderColor = isEmpty ? '#e94560' : '#3498db';
@@ -426,86 +426,86 @@
         function resetGame() {
             lastShootTime = 0; isFrozen = false;
             GameSession.reset(); GameSession.setCamera(camera);
-            InputSystem.reset(); PlayerSystem.reset();
-            WeaponManager.reset(); WeaponManager.equip('slingshot', THREE, MaterialsTheme, camera);
-            PickupSystem.reset();
-            SpawnSystem.resetPlanning(); // Reset room planning state
-            EnemySystem._dinoSpawnCount = 0; // Reset dino spawn tracking
-            UISystem.resetEnemyProgress(); // Reset enemy progress tracking
+            InputOrchestrator.reset(); PlayerOrchestrator.reset();
+            WeaponOrchestrator.reset(); WeaponOrchestrator.equip('slingshot', THREE, MaterialsTheme, camera);
+            PickupOrchestrator.reset();
+            SpawnOrchestrator.resetPlanning(); // Reset room planning state
+            EnemyOrchestrator._dinoSpawnCount = 0; // Reset dino spawn tracking
+            UIOrchestrator.resetEnemyProgress(); // Reset enemy progress tracking
             crosshairX = window.innerWidth / 2; crosshairY = window.innerHeight / 2;
             lockedTarget = null; currentRoom = null; visitedRooms.clear();
-            scoreElement.textContent = '0'; updateTimerDisplay(); UISystem.resetHealthBar(PLAYER_MAX_HEALTH);
+            scoreElement.textContent = '0'; updateTimerDisplay(); UIOrchestrator.resetHealthBar(PLAYER_MAX_HEALTH);
             [projectiles, enemies, obstacles, particles].forEach(arr => arr.forEach(o => scene.remove(o)));
             projectiles = []; enemies = []; obstacles = []; particles = [];
-            playerCart.position.set(PlayerSystem.position.x, 0, PlayerSystem.position.z);
-            playerCart.rotation.set(0, PlayerSystem.rotation, 0);
-            camera.position.set(PlayerSystem.position.x, 2.2, PlayerSystem.position.z);
-            camera.rotation.set(-0.12, PlayerSystem.rotation, 0);
+            playerCart.position.set(PlayerOrchestrator.position.x, 0, PlayerOrchestrator.position.z);
+            playerCart.rotation.set(0, PlayerOrchestrator.rotation, 0);
+            camera.position.set(PlayerOrchestrator.position.x, 2.2, PlayerOrchestrator.position.z);
+            camera.rotation.set(-0.12, PlayerOrchestrator.rotation, 0);
         }
 
-        const updateCursor = () => UISystem.updateCursor(StateSystem.is('PLAYING'), renderer.domElement);
+        const updateCursor = () => UIOrchestrator.updateCursor(StateOrchestrator.is('PLAYING'), renderer.domElement);
 
         function startGame() {
-            resetGame(); GameSession.start(); StateSystem.forceTransition('PLAYING'); UISystem.showGameplay();
+            resetGame(); GameSession.start(); StateOrchestrator.forceTransition('PLAYING'); UIOrchestrator.showGameplay();
             crosshairX = window.innerWidth / 2; crosshairY = window.innerHeight / 2;
             updateCursor(); spawnInitialObjects();
             // Initialize minimap with all rooms
-            UISystem.initMinimap(RoomSystem.getAllRooms());
-            UISystem.showMinimap();
+            UIOrchestrator.initMinimap(RoomOrchestrator.getAllRooms());
+            UIOrchestrator.showMinimap();
             // Show objective text
-            UISystem.showObjective();
-            AnalyticsSystem.gameStart();
+            UIOrchestrator.showObjective();
+            AnalyticsOrchestrator.gameStart();
         }
 
         function endGame(died = false) {
-            StateSystem.forceTransition('GAME_OVER');
+            StateOrchestrator.forceTransition('GAME_OVER');
             const s = GameSession.getScore();
             const playTime = GameSession.DURATION - GameSession.getTimer();
-            UISystem.showGameOver(s, UI.getScoreRating(s), died); updateCursor();
-            AnalyticsSystem.gameOver({ score: s, playTime: Math.round(playTime), died, rating: UI.getScoreRating(s) });
+            UIOrchestrator.showGameOver(s, UI.getScoreRating(s), died); updateCursor();
+            AnalyticsOrchestrator.gameOver({ score: s, playTime: Math.round(playTime), died, rating: UI.getScoreRating(s) });
         }
 
         function damagePlayer(amount, source = 'unknown') {
-            if (!StateSystem.is('PLAYING') || !PlayerSystem.damage(amount)) return;
-            UISystem.updateHealthBar(PlayerSystem.getHealth(), PLAYER_MAX_HEALTH);
-            UISystem.showDamageOverlay();
+            if (!StateOrchestrator.is('PLAYING') || !PlayerOrchestrator.damage(amount)) return;
+            UIOrchestrator.updateHealthBar(PlayerOrchestrator.getHealth(), PLAYER_MAX_HEALTH);
+            UIOrchestrator.showDamageOverlay();
             damageVignetteStrength = Math.min(1.0, damageVignetteStrength + amount / 50);
-            AnalyticsSystem.damageTaken(amount, source, PlayerSystem.getHealth());
-            if (PlayerSystem.isDead()) endGame(true);
+            AnalyticsOrchestrator.damageTaken(amount, source, PlayerOrchestrator.getHealth());
+            if (PlayerOrchestrator.isDead()) endGame(true);
         }
 
         function pauseGame() {
-            if (!StateSystem.is('PLAYING')) return;
-            StateSystem.forceTransition('PAUSED'); cancelCharging();
-            UISystem.showPause(GameSession.getScore()); updateCursor();
+            if (!StateOrchestrator.is('PLAYING')) return;
+            StateOrchestrator.forceTransition('PAUSED'); cancelCharging();
+            UIOrchestrator.showPause(GameSession.getScore()); updateCursor();
         }
 
         function resumeGame() {
-            if (!StateSystem.is('PAUSED')) return;
-            StateSystem.forceTransition('PLAYING'); UISystem.hidePause();
-            LoopSystem.resetDelta(); updateCursor();
+            if (!StateOrchestrator.is('PAUSED')) return;
+            StateOrchestrator.forceTransition('PLAYING'); UIOrchestrator.hidePause();
+            LoopOrchestrator.resetDelta(); updateCursor();
         }
 
         function quitToMenu() {
-            StateSystem.forceTransition('MENU'); UISystem.showMenu(); resetGame(); updateCursor();
+            StateOrchestrator.forceTransition('MENU'); UIOrchestrator.showMenu(); resetGame(); updateCursor();
         }
 
-        const togglePause = () => StateSystem.is('PLAYING') ? pauseGame() : StateSystem.is('PAUSED') ? resumeGame() : null;
-        const toggleFreeze = () => { if (StateSystem.is('PLAYING')) { isFrozen = !isFrozen; if (!isFrozen) LoopSystem.resetDelta(); } };
-        const updateTimerDisplay = () => UISystem.updateTimerDisplay(GameSession.getTimer(), GameSession.DURATION);
+        const togglePause = () => StateOrchestrator.is('PLAYING') ? pauseGame() : StateOrchestrator.is('PAUSED') ? resumeGame() : null;
+        const toggleFreeze = () => { if (StateOrchestrator.is('PLAYING')) { isFrozen = !isFrozen; if (!isFrozen) LoopOrchestrator.resetDelta(); } };
+        const updateTimerDisplay = () => UIOrchestrator.updateTimerDisplay(GameSession.getTimer(), GameSession.DURATION);
 
-        // Spawn callbacks - passed to SpawnSystem for mesh creation
+        // Spawn callbacks - passed to SpawnOrchestrator for mesh creation
         const spawnCallbacks = {
             createEnemy: (x, z, type) => {
                 const enemy = createEnemy(x, z, type);
-                if (type === 'DINOSAUR') UISystem.showBossWarning('DINO BOSS!');
+                if (type === 'DINOSAUR') UIOrchestrator.showBossWarning('DINO BOSS!');
                 return enemy;
             },
             createObstacle: (x, z, type) => createObstacle(x, z, type),
             onRoomMaterialized: (room, roomKey) => {
                 visitedRooms.add(roomKey);
                 // Spawn weapon pickup in materialized room
-                PickupSystem.trySpawnForRoom(
+                PickupOrchestrator.trySpawnForRoom(
                     { x: room.worldX, z: room.worldZ },
                     Room.structure.UNIT,
                     Room.structure.UNIT,
@@ -518,35 +518,35 @@
         // Plan all rooms and spawn nearby ones (lazy loading for performance)
         function spawnInitialObjects() {
             // Phase 1: Plan all rooms (fast, data only - no mesh creation)
-            const planResult = SpawnSystem.planAllRooms(
-                RoomSystem.getAllRooms(),
+            const planResult = SpawnOrchestrator.planAllRooms(
+                RoomOrchestrator.getAllRooms(),
                 Room.structure,
-                (score) => EnemySystem.getSpawnType(score),
+                (score) => EnemyOrchestrator.getSpawnType(score),
                 GameSession.getScore()
             );
 
             // Set total enemy count for progress tracking
-            UISystem.setTotalEnemies(planResult.totalEnemies);
+            UIOrchestrator.setTotalEnemies(planResult.totalEnemies);
 
-            // Phase 2: Materialize starting room + adjacent (uses RoomSystem for spatial queries)
-            const startRoom = mallGrid.getRoomAtWorld(PlayerSystem.position.x, PlayerSystem.position.z);
-            SpawnSystem.materializeNearbyRooms(startRoom, mallGrid, RoomSystem, spawnCallbacks);
+            // Phase 2: Materialize starting room + adjacent (uses RoomOrchestrator for spatial queries)
+            const startRoom = mallGrid.getRoomAtWorld(PlayerOrchestrator.position.x, PlayerOrchestrator.position.z);
+            SpawnOrchestrator.materializeNearbyRooms(startRoom, mallGrid, RoomOrchestrator, spawnCallbacks);
         }
 
         function updateCurrentRoom() {
-            const room = mallGrid.getRoomAtWorld(PlayerSystem.position.x, PlayerSystem.position.z);
+            const room = mallGrid.getRoomAtWorld(PlayerOrchestrator.position.x, PlayerOrchestrator.position.z);
             if (room && room !== currentRoom) {
                 currentRoom = room;
-                // Materialize current room + adjacent rooms (RoomSystem handles spatial logic)
-                SpawnSystem.materializeNearbyRooms(room, mallGrid, RoomSystem, spawnCallbacks);
+                // Materialize current room + adjacent rooms (RoomOrchestrator handles spatial logic)
+                SpawnOrchestrator.materializeNearbyRooms(room, mallGrid, RoomOrchestrator, spawnCallbacks);
             }
         }
 
         function update(dt) {
-            if (!StateSystem.is('PLAYING') || isFrozen) return;
+            if (!StateOrchestrator.is('PLAYING') || isFrozen) return;
 
             // Update invulnerability
-            PlayerSystem.updateInvulnerability();
+            PlayerOrchestrator.updateInvulnerability();
 
             // Update game timer via GameSession
             if (GameSession.updateTimer(dt)) {
@@ -554,12 +554,12 @@
                 return;
             }
 
-            RoomSystem.updateAmbientLighting(ambientLight, PlayerSystem.position, mallGrid, THREE);
+            RoomOrchestrator.updateAmbientLighting(ambientLight, PlayerOrchestrator.position, mallGrid, THREE);
             // Player movement with collision against walls, obstacles, and shelves
-            PlayerSystem.fullUpdate({
-                keys: InputSystem.keys,
+            PlayerOrchestrator.fullUpdate({
+                keys: InputOrchestrator.keys,
                 dt,
-                collisionCheck: (nX, nZ, oX, oZ) => CollisionSystem.checkAllCollisions(nX, nZ, oX, oZ, {
+                collisionCheck: (nX, nZ, oX, oZ) => CollisionOrchestrator.checkAllCollisions(nX, nZ, oX, oZ, {
                     gridSystem: mallGrid,
                     roomConfig: Room.structure,
                     obstacles,
@@ -573,7 +573,7 @@
                     const sparkColors = [0xff6600, 0xff9900, 0xffcc00, 0xffff66, 0xffffff];
                     for (let i = 0; i < sparkCount; i++) {
                         const color = sparkColors[Math.floor(Math.random() * sparkColors.length)];
-                        ParticleSystem.spawn(THREE, pos, color, 1, particles, scene, {
+                        ParticleOrchestrator.spawn(THREE, pos, color, 1, particles, scene, {
                             velocitySpread: 10 + intensity * 8,
                             upwardVelocity: { min: 3, max: 12 },
                             life: 0.2 + Math.random() * 0.3,
@@ -587,51 +587,51 @@
 
             // Push player out of any overlapping objects (run multiple times for nested overlaps)
             for (let i = 0; i < 5; i++) {
-                if (!CollisionSystem.pushOutOfOverlaps(PlayerSystem.position, obstacles, shelves, Player.visual.COLLISION_RADIUS)) break;
+                if (!CollisionOrchestrator.pushOutOfOverlaps(PlayerOrchestrator.position, obstacles, shelves, Player.visual.COLLISION_RADIUS)) break;
             }
             // Hard clamp to room bounds (last resort - never go through walls)
-            CollisionSystem.clampToRoomBounds(PlayerSystem.position, mallGrid, Room.structure, Player.visual.COLLISION_RADIUS);
-            playerCart.position.x = PlayerSystem.position.x;
-            playerCart.position.z = PlayerSystem.position.z;
+            CollisionOrchestrator.clampToRoomBounds(PlayerOrchestrator.position, mallGrid, Room.structure, Player.visual.COLLISION_RADIUS);
+            playerCart.position.x = PlayerOrchestrator.position.x;
+            playerCart.position.z = PlayerOrchestrator.position.z;
 
             // FPS mode
             playerCart.visible = true;
             if (playerChild) playerChild.visible = false;
             if (slingshotArm) slingshotArm.visible = false;
-            if (WeaponManager.fpsMesh) { WeaponManager.showFPSWeapon(); WeaponManager.updateTransform(PlayerSystem.currentTurnRate); }
-            updateCharging(dt); WeaponManager.animateFPS(dt); updateAmmoDisplay(); updateCurrentRoom();
+            if (WeaponOrchestrator.fpsMesh) { WeaponOrchestrator.showFPSWeapon(); WeaponOrchestrator.updateTransform(PlayerOrchestrator.currentTurnRate); }
+            updateCharging(dt); WeaponOrchestrator.animateFPS(dt); updateAmmoDisplay(); updateCurrentRoom();
 
             // Auto-aim
-            const aim = WeaponManager.updateAim({ camera, playerPosition: PlayerSystem.position, enemies, obstacles, shelves, collisionSystem: CollisionSystem, gridSystem: mallGrid, roomConfig: Room.structure, playerRadius: Player.visual.COLLISION_RADIUS, boundsMargin: CROSSHAIR_BOUNDS_MARGIN });
-            crosshairX = aim.crosshairX; crosshairY = aim.crosshairY; lockedTarget = WeaponManager.getLockedTarget();
+            const aim = WeaponOrchestrator.updateAim({ camera, playerPosition: PlayerOrchestrator.position, enemies, obstacles, shelves, collisionSystem: CollisionOrchestrator, gridSystem: mallGrid, roomConfig: Room.structure, playerRadius: Player.visual.COLLISION_RADIUS, boundsMargin: CROSSHAIR_BOUNDS_MARGIN });
+            crosshairX = aim.crosshairX; crosshairY = aim.crosshairY; lockedTarget = WeaponOrchestrator.getLockedTarget();
 
             // Pickups
-            PickupSystem.update(dt, { x: PlayerSystem.position.x, y: 0, z: PlayerSystem.position.z }, Date.now()).forEach(p => {
-                const prevWeapon = WeaponManager.getCurrentId();
-                const r = PickupSystem.collect(p, WeaponManager, THREE, MaterialsTheme, camera);
+            PickupOrchestrator.update(dt, { x: PlayerOrchestrator.position.x, y: 0, z: PlayerOrchestrator.position.z }, Date.now()).forEach(p => {
+                const prevWeapon = WeaponOrchestrator.getCurrentId();
+                const r = PickupOrchestrator.collect(p, WeaponOrchestrator, THREE, MaterialsTheme, camera);
                 if (r?.switched) {
-                    UISystem.showPickupNotification?.(p.config.name);
-                    AnalyticsSystem.weaponSwitch(r.weaponId, prevWeapon);
-                    AnalyticsSystem.pickupCollected('weapon', r.weaponId);
+                    UIOrchestrator.showPickupNotification?.(p.config.name);
+                    AnalyticsOrchestrator.weaponSwitch(r.weaponId, prevWeapon);
+                    AnalyticsOrchestrator.pickupCollected('weapon', r.weaponId);
                 } else if (r?.ammoAdded > 0) {
-                    UISystem.showPickupNotification?.(`+${r.ammoAdded} Ammo`);
-                    AnalyticsSystem.pickupCollected(p.config.isAmmo ? 'ammo' : 'weapon_ammo', p.config.id);
+                    UIOrchestrator.showPickupNotification?.(`+${r.ammoAdded} Ammo`);
+                    AnalyticsOrchestrator.pickupCollected(p.config.isAmmo ? 'ammo' : 'weapon_ammo', p.config.id);
                 }
             });
-            PickupSystem.cleanupBehind(PlayerSystem.position.z);
+            PickupOrchestrator.cleanupBehind(PlayerOrchestrator.position.z);
 
             // UI updates
-            UISystem.updateCrosshairUI(crosshairX, crosshairY, aim.hasTarget);
-            UISystem.updateTensionUI(crosshairX, crosshairY, WeaponManager.isCharging(), WeaponManager.getTension(), WeaponManager.getMaxTension());
+            UIOrchestrator.updateCrosshairUI(crosshairX, crosshairY, aim.hasTarget);
+            UIOrchestrator.updateTensionUI(crosshairX, crosshairY, WeaponOrchestrator.isCharging(), WeaponOrchestrator.getTension(), WeaponOrchestrator.getMaxTension());
             // Count enemies by type
             const activeEnemies = enemies.filter(e => e.userData.active);
             const enemyCounts = {
                 skeleton: activeEnemies.filter(e => e.userData.type === 'SKELETON').length,
                 dinosaur: activeEnemies.filter(e => e.userData.type === 'DINOSAUR').length
             };
-            UISystem.updateEnemyCount(enemyCounts);
+            UIOrchestrator.updateEnemyCount(enemyCounts);
             // Update minimap with LIVE enemy positions
-            UISystem.updateMinimap({
+            UIOrchestrator.updateMinimap({
                 currentRoom,
                 enemies: activeEnemies,
                 gridSystem: mallGrid,
@@ -639,82 +639,82 @@
             });
 
             // Entity updates
-            ProjectileSystem.updateMeshArray(projectiles, { dt, cameraPosition: camera.position });
+            ProjectileOrchestrator.updateMeshArray(projectiles, { dt, cameraPosition: camera.position });
 
-            EnemySystem.updateAll(enemies, {
-                playerPosition: PlayerSystem.position,
+            EnemyOrchestrator.updateAll(enemies, {
+                playerPosition: PlayerOrchestrator.position,
                 playerCart,
                 dt,
                 baseSpeed: CART_SPEED,
-                isInvulnerable: PlayerSystem.getIsInvulnerable(),
+                isInvulnerable: PlayerOrchestrator.getIsInvulnerable(),
                 onPlayerCollision: () => damagePlayer(Player.health.ENEMY_DAMAGE, 'enemy'),
-                collisionCheck: (nX, nZ, oX, oZ) => CollisionSystem.checkAllCollisions(nX, nZ, oX, oZ, { gridSystem: mallGrid, roomConfig: Room.structure, obstacles, shelves, playerRadius: 1.5 }),
-                hasLineOfSight: (fX, fZ, tX, tZ) => CollisionSystem.hasLineOfSight(fX, fZ, tX, tZ, mallGrid, Room.structure),
-                clampToRoomBounds: (pos) => CollisionSystem.clampToRoomBounds(pos, mallGrid, Room.structure, 1.5),
+                collisionCheck: (nX, nZ, oX, oZ) => CollisionOrchestrator.checkAllCollisions(nX, nZ, oX, oZ, { gridSystem: mallGrid, roomConfig: Room.structure, obstacles, shelves, playerRadius: 1.5 }),
+                hasLineOfSight: (fX, fZ, tX, tZ) => CollisionOrchestrator.hasLineOfSight(fX, fZ, tX, tZ, mallGrid, Room.structure),
+                clampToRoomBounds: (pos) => CollisionOrchestrator.clampToRoomBounds(pos, mallGrid, Room.structure, 1.5),
                 obstacles,
                 shelves
             });
             // Update obstacles (no damage - player collides via movement check above)
-            EnvironmentSystem.updateObstaclesArray(obstacles, { playerCart, dt });
-            ParticleSystem.updateAll(particles, dt, { gravity: 15, fadeRate: 2 });
+            EnvironmentOrchestrator.updateObstaclesArray(obstacles, { playerCart, dt });
+            ParticleOrchestrator.updateAll(particles, dt, { gravity: 15, fadeRate: 2 });
 
             // Dinosaur spawn - escalation mechanic (every 1000 points)
             // No skeleton respawning - "Clear the Mall" design
-            if (EnemySystem.checkDinoSpawn(GameSession.getScore())) {
+            if (EnemyOrchestrator.checkDinoSpawn(GameSession.getScore())) {
                 // Spawn dino in player's current room or nearby
-                const spawnRoom = currentRoom || mallGrid.getRoomAtWorld(PlayerSystem.position.x, PlayerSystem.position.z);
+                const spawnRoom = currentRoom || mallGrid.getRoomAtWorld(PlayerOrchestrator.position.x, PlayerOrchestrator.position.z);
                 if (spawnRoom && spawnRoom.theme !== 'ENTRANCE') {
-                    const pos = SpawnSystem.findValidPosition(spawnRoom, Room.structure, [], 5);
+                    const pos = SpawnOrchestrator.findValidPosition(spawnRoom, Room.structure, [], 5);
                     if (pos) {
                         const dino = createEnemy(pos.x, pos.z, 'DINOSAUR');
-                        if (dino) UISystem.showBossWarning('DINO BOSS!');
+                        if (dino) UIOrchestrator.showBossWarning('DINO BOSS!');
                     }
                 }
             }
 
             // Runtime pickup spawning - maintains pickup availability
-            SpawnSystem.tryRuntimePickupSpawn({
+            SpawnOrchestrator.tryRuntimePickupSpawn({
                 currentRoom,
-                playerPosition: PlayerSystem.position,
+                playerPosition: PlayerOrchestrator.position,
                 visitedRooms,
                 gridSystem: mallGrid,
                 roomConfig: Room.structure,
-                currentPickupCount: PickupSystem.getCount(),
+                currentPickupCount: PickupOrchestrator.getCount(),
                 dt,
-                pickupSystem: PickupSystem,
+                pickupSystem: PickupOrchestrator,
                 obstacles,
                 shelves
             });
 
             // Collision detection
-            CollisionSystem.processProjectileHits(projectiles, enemies, obstacles, {
+            CollisionOrchestrator.processProjectileHits(projectiles, enemies, obstacles, {
                 THREE,
                 gridSystem: mallGrid,
                 roomConfig: Room.structure,
                 shelves,
                 onEnemyHit: (enemy, damage, closestPoint, result) => {
-                    UISystem.showHitMarker();
+                    UIOrchestrator.showHitMarker();
                     const hb = enemy.userData.healthBar;
-                    if (hb && typeof EnemyVisual !== 'undefined') EnemyVisual.updateHealthBar(hb, EnemySystem.getHealthPercent(enemy));
+                    if (hb && typeof EnemyVisual !== 'undefined') EnemyVisual.updateHealthBar(hb, EnemyOrchestrator.getHealthPercent(enemy));
                     const color = (enemy.userData.config || ENEMY_TYPES.CART).visual?.bodyColor || 0xe94560;
                     const enemyType = enemy.userData.config?.id || 'cart';
                     if (result.destroyed) {
                         addScore(result.scoreDestroy, enemy.position); spawnParticles(enemy.position, color, 15);
-                        UISystem.addKilledEnemy(); // Track progress
-                        AnalyticsSystem.enemyKill(enemyType, result.scoreDestroy);
+                        UIOrchestrator.addKilledEnemy(); // Track progress
+                        AnalyticsOrchestrator.enemyKill(enemyType, result.scoreDestroy);
                     } else {
                         addScore(result.scoreHit, enemy.position); spawnParticles(closestPoint, 0xf39c12, 3);
                     }
                 },
                 onObstacleHit: (obs) => {
-                    UISystem.showHitMarker(); addScore(150, obs.position); spawnParticles(obs.position, 0xf1c40f, 10);
-                    AnalyticsSystem.obstacleHit(obs.userData?.type || 'unknown', 150);
+                    UIOrchestrator.showHitMarker(); addScore(150, obs.position); spawnParticles(obs.position, 0xf1c40f, 10);
+                    AnalyticsOrchestrator.obstacleHit(obs.userData?.type || 'unknown', 150);
                 },
                 onWallHit: (pos) => { spawnParticles(pos, 0x888888, 5); }
             });
 
             // Cleanup inactive objects
-            const c = EntitySystem.cleanupAllInactive({ projectiles, enemies, obstacles, particles }, scene);
+            const c = EntityOrchestrator.cleanupAllInactive({ projectiles, enemies, obstacles, particles }, scene);
             projectiles = c.projectiles; enemies = c.enemies; obstacles = c.obstacles; particles = c.particles;
         }
 
@@ -739,25 +739,25 @@
 
         // Initialize systems
         initThree();
-        StateSystem.init('MENU');
-        LoopSystem.init(THREE);
-        LoopSystem.setUpdateCallback(update);
-        LoopSystem.setRenderCallback((dt) => {
+        StateOrchestrator.init('MENU');
+        LoopOrchestrator.init(THREE);
+        LoopOrchestrator.setUpdateCallback(update);
+        LoopOrchestrator.setRenderCallback((dt) => {
             damageVignetteStrength *= 0.95;
-            PostProcessSystem.setDamageIntensity(damageVignetteStrength);
+            PostProcessOrchestrator.setDamageIntensity(damageVignetteStrength);
             composer ? composer.render(dt) : renderer.render(scene, camera);
         });
-        InputSystem.init();
-        EntitySystem.init(scene);
-        InputSystem.onActionStart('fire', () => StateSystem.is('PLAYING') && startCharging());
-        InputSystem.onActionRelease('fire', () => StateSystem.is('PLAYING') && releaseAndFire());
-        InputSystem.onActionStart('pause', togglePause);
-        InputSystem.onActionStart('freeze', toggleFreeze);
-        EntitySystem.registerType('enemy', { maxCount: 10, despawnDistance: 20 });
-        EntitySystem.registerType('obstacle', { maxCount: 15, despawnDistance: 30 });
-        EntitySystem.registerType('projectile', { maxCount: 50, despawnDistance: 20 });
-        EntitySystem.registerType('particle', { maxCount: 100, despawnDistance: 50 });
-        EnemySystem.init(Enemy, scene);
+        InputOrchestrator.init();
+        EntityOrchestrator.init(scene);
+        InputOrchestrator.onActionStart('fire', () => StateOrchestrator.is('PLAYING') && startCharging());
+        InputOrchestrator.onActionRelease('fire', () => StateOrchestrator.is('PLAYING') && releaseAndFire());
+        InputOrchestrator.onActionStart('pause', togglePause);
+        InputOrchestrator.onActionStart('freeze', toggleFreeze);
+        EntityOrchestrator.registerType('enemy', { maxCount: 10, despawnDistance: 20 });
+        EntityOrchestrator.registerType('obstacle', { maxCount: 15, despawnDistance: 30 });
+        EntityOrchestrator.registerType('projectile', { maxCount: 50, despawnDistance: 20 });
+        EntityOrchestrator.registerType('particle', { maxCount: 100, despawnDistance: 50 });
+        EnemyOrchestrator.init(Enemy, scene);
         GameSession.init({ camera });
 
         // Expose internals for test framework (TestBridge injected only during tests)
@@ -767,25 +767,25 @@
             setScore: (v) => GameSession.setScore(v),
             getGameTimer: () => GameSession.getTimer(),
             setGameTimer: (v) => GameSession.setTimer(v),
-            // Player state - delegate to PlayerSystem
-            getPlayerPosition: () => PlayerSystem.position,
-            setPlayerPosition: (v) => { PlayerSystem.position = v; },
-            getPlayerRotation: () => PlayerSystem.rotation,
-            setPlayerRotation: (v) => { PlayerSystem.rotation = v; },
-            getPlayerHealth: () => PlayerSystem.health,
-            setPlayerHealth: (v) => { PlayerSystem.health = v; },
-            getWallBumpIntensity: () => PlayerSystem.wallBumpIntensity,
-            setWallBumpIntensity: (v) => { PlayerSystem.wallBumpIntensity = v; },
-            // Weapon state - delegate to WeaponManager
-            getSlingshotTension: () => WeaponManager.getTension(),
-            setSlingshotTension: (v) => WeaponManager.setTension?.(v),
-            getIsChargingSlingshot: () => WeaponManager.isCharging(),
-            setIsChargingSlingshot: (v) => v ? WeaponManager.onFireStart(Date.now()) : WeaponManager.cancelAction(),
+            // Player state - delegate to PlayerOrchestrator
+            getPlayerPosition: () => PlayerOrchestrator.position,
+            setPlayerPosition: (v) => { PlayerOrchestrator.position = v; },
+            getPlayerRotation: () => PlayerOrchestrator.rotation,
+            setPlayerRotation: (v) => { PlayerOrchestrator.rotation = v; },
+            getPlayerHealth: () => PlayerOrchestrator.health,
+            setPlayerHealth: (v) => { PlayerOrchestrator.health = v; },
+            getWallBumpIntensity: () => PlayerOrchestrator.wallBumpIntensity,
+            setWallBumpIntensity: (v) => { PlayerOrchestrator.wallBumpIntensity = v; },
+            // Weapon state - delegate to WeaponOrchestrator
+            getSlingshotTension: () => WeaponOrchestrator.getTension(),
+            setSlingshotTension: (v) => WeaponOrchestrator.setTension?.(v),
+            getIsChargingSlingshot: () => WeaponOrchestrator.isCharging(),
+            setIsChargingSlingshot: (v) => v ? WeaponOrchestrator.onFireStart(Date.now()) : WeaponOrchestrator.cancelAction(),
             getLastShootTime: () => lastShootTime,
             setLastShootTime: (v) => { lastShootTime = v; },
             getCameraMode: () => cameraMode,
             setCameraMode: () => {},  // Read-only in v3
-            getFpsWeapon: () => WeaponManager.fpsMesh,
+            getFpsWeapon: () => WeaponOrchestrator.fpsMesh,
             getProjectiles: () => projectiles,
             getEnemies: () => enemies,
             getObstacles: () => obstacles,
@@ -794,8 +794,8 @@
             startCharging, releaseAndFire, cancelCharging, updateAmmoDisplay,
             manualUpdate: (dt = 0.016) => update(dt),
             triggerWallBump: (intensity, dirX, dirZ) => {
-                PlayerSystem.wallBumpIntensity = intensity;
-                PlayerSystem.wallBumpDirection = { x: dirX, z: dirZ };
+                PlayerOrchestrator.wallBumpIntensity = intensity;
+                PlayerOrchestrator.wallBumpDirection = { x: dirX, z: dirZ };
             },
             // Object references
             scene, camera, renderer, playerCart, playerChild
@@ -808,7 +808,7 @@
         hud.style.display = 'none';
 
         // Start the game loop
-        LoopSystem.start();
+        LoopOrchestrator.start();
     </script>
 </body>
 </html>

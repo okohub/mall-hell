@@ -87,17 +87,17 @@
 
             const THREE = runner.gameWindow.THREE;
             const EnemyVisual = runner.gameWindow.EnemyVisual;
-            const EnemySystem = runner.gameWindow.EnemySystem;
+            const EnemyOrchestrator = runner.gameWindow.EnemyOrchestrator;
             const Enemy = runner.gameWindow.Enemy;
 
-            if (!EnemyVisual || !EnemySystem || !Enemy) {
-                throw new Error('EnemyVisual, EnemySystem, or Enemy not found');
+            if (!EnemyVisual || !EnemyOrchestrator || !Enemy) {
+                throw new Error('EnemyVisual, EnemyOrchestrator, or Enemy not found');
             }
 
             const config = Enemy.types.SKELETON;
             const enemy = EnemyVisual.createEnemy(THREE, config);
 
-            const enemyData = EnemySystem.createEnemyData('SKELETON');
+            const enemyData = EnemyOrchestrator.createEnemyData('SKELETON');
             Object.assign(enemy.userData, enemyData);
 
             const ud = enemy.userData;
@@ -178,10 +178,10 @@
 
             if (!enemies || enemies.length === 0) {
                 // This might happen if spawnInitialObjects hasn't run yet
-                // Check if EnemySystem has enemies tracked
-                const EnemySystem = runner.gameWindow.EnemySystem;
-                if (EnemySystem && EnemySystem.enemies && EnemySystem.enemies.length > 0) {
-                    enemies = EnemySystem.enemies;
+                // Check if EnemyOrchestrator has enemies tracked
+                const EnemyOrchestrator = runner.gameWindow.EnemyOrchestrator;
+                if (EnemyOrchestrator && EnemyOrchestrator.enemies && EnemyOrchestrator.enemies.length > 0) {
+                    enemies = EnemyOrchestrator.enemies;
                 } else {
                     throw new Error('No enemies spawned at game start');
                 }
@@ -282,23 +282,23 @@
     );
 
     // Boss Spawn Tests
-    runner.addTest('boss-spawn-system', 'Boss Enemy', 'EnemySystem has getSpawnType method',
+    runner.addTest('boss-spawn-system', 'Boss Enemy', 'EnemyOrchestrator has getSpawnType method',
         'Verifies the getSpawnType method exists and spawns dino every 1000 points',
         async () => {
             runner.resetGame();
             await runner.wait(200);
 
-            const EnemySystem = runner.gameWindow.EnemySystem;
-            if (!EnemySystem) {
-                throw new Error('EnemySystem not found');
+            const EnemyOrchestrator = runner.gameWindow.EnemyOrchestrator;
+            if (!EnemyOrchestrator) {
+                throw new Error('EnemyOrchestrator not found');
             }
 
-            if (typeof EnemySystem.getSpawnType !== 'function') {
+            if (typeof EnemyOrchestrator.getSpawnType !== 'function') {
                 throw new Error('getSpawnType method not found');
             }
 
-            if (EnemySystem.dinoSpawnInterval !== 5000) {
-                throw new Error(`Dino interval should be 5000, got ${EnemySystem.dinoSpawnInterval}`);
+            if (EnemyOrchestrator.dinoSpawnInterval !== 5000) {
+                throw new Error(`Dino interval should be 5000, got ${EnemyOrchestrator.dinoSpawnInterval}`);
             }
         }
     );
@@ -371,33 +371,33 @@
             runner.simulateClick(startBtn);
             await runner.wait(500);
 
-            const EnemySystem = runner.gameWindow.EnemySystem;
+            const EnemyOrchestrator = runner.gameWindow.EnemyOrchestrator;
 
-            if (!EnemySystem) {
-                throw new Error('EnemySystem not found');
+            if (!EnemyOrchestrator) {
+                throw new Error('EnemyOrchestrator not found');
             }
 
             // Reset dino spawn state
-            EnemySystem._dinoSpawnCount = 0;
+            EnemyOrchestrator._dinoSpawnCount = 0;
 
             // Check SKELETON below 5000 points
-            const type0 = EnemySystem.getSpawnType(4999);
+            const type0 = EnemyOrchestrator.getSpawnType(4999);
             if (type0 !== 'SKELETON') {
                 throw new Error(`getSpawnType(4999) should return SKELETON, got ${type0}`);
             }
 
             // Check DINOSAUR at 5000 points
-            const type5000 = EnemySystem.getSpawnType(5000);
+            const type5000 = EnemyOrchestrator.getSpawnType(5000);
             if (type5000 !== 'DINOSAUR') {
                 throw new Error(`getSpawnType(5000) should return DINOSAUR, got ${type5000}`);
             }
 
-            if (EnemySystem._dinoSpawnCount !== 1) {
-                throw new Error(`_dinoSpawnCount should be 1, got ${EnemySystem._dinoSpawnCount}`);
+            if (EnemyOrchestrator._dinoSpawnCount !== 1) {
+                throw new Error(`_dinoSpawnCount should be 1, got ${EnemyOrchestrator._dinoSpawnCount}`);
             }
 
             // Check SKELETON on next call (dino already spawned for this threshold)
-            const type5000again = EnemySystem.getSpawnType(5000);
+            const type5000again = EnemyOrchestrator.getSpawnType(5000);
             if (type5000again !== 'SKELETON') {
                 throw new Error(`getSpawnType(5000) again should return SKELETON, got ${type5000again}`);
             }
@@ -410,32 +410,32 @@
             runner.resetGame();
             await runner.wait(200);
 
-            const EnemySystem = runner.gameWindow.EnemySystem;
-            if (!EnemySystem) {
-                throw new Error('EnemySystem not found');
+            const EnemyOrchestrator = runner.gameWindow.EnemyOrchestrator;
+            if (!EnemyOrchestrator) {
+                throw new Error('EnemyOrchestrator not found');
             }
 
-            if (typeof EnemySystem.checkDinoSpawn !== 'function') {
+            if (typeof EnemyOrchestrator.checkDinoSpawn !== 'function') {
                 throw new Error('checkDinoSpawn method not found');
             }
 
             // Reset dino spawn state
-            EnemySystem._dinoSpawnCount = 0;
+            EnemyOrchestrator._dinoSpawnCount = 0;
 
             // Should return false below 5000
-            const result4999 = EnemySystem.checkDinoSpawn(4999);
+            const result4999 = EnemyOrchestrator.checkDinoSpawn(4999);
             if (result4999 !== false) {
                 throw new Error(`checkDinoSpawn(4999) should return false, got ${result4999}`);
             }
 
             // Should return true at 5000
-            const result5000 = EnemySystem.checkDinoSpawn(5000);
+            const result5000 = EnemyOrchestrator.checkDinoSpawn(5000);
             if (result5000 !== true) {
                 throw new Error(`checkDinoSpawn(5000) should return true, got ${result5000}`);
             }
 
             // Should return false on second call (already spawned)
-            const result5000again = EnemySystem.checkDinoSpawn(5000);
+            const result5000again = EnemyOrchestrator.checkDinoSpawn(5000);
             if (result5000again !== false) {
                 throw new Error(`checkDinoSpawn(5000) again should return false, got ${result5000again}`);
             }

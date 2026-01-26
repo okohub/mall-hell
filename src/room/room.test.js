@@ -1,7 +1,7 @@
 // ============================================
 // ROOM DOMAIN - Unit Tests
 // ============================================
-// Tests for Room data, RoomTheme, RoomMesh, and RoomSystem
+// Tests for Room data, RoomTheme, RoomMesh, and RoomOrchestrator
 
 (function(test) {
     'use strict';
@@ -114,67 +114,67 @@
 
     test.describe('Room System - Initialization', () => {
         test.it('should initialize with data references', () => {
-            RoomSystem.init(Room, RoomTheme);
-            test.assertEqual(RoomSystem.roomData, Room);
-            test.assertEqual(RoomSystem.themeData, RoomTheme);
+            RoomOrchestrator.init(Room, RoomTheme);
+            test.assertEqual(RoomOrchestrator.roomData, Room);
+            test.assertEqual(RoomOrchestrator.themeData, RoomTheme);
         });
 
         test.it('should reset state', () => {
-            RoomSystem.init(Room, RoomTheme);
-            RoomSystem.addRoom(0, 0, 'PRODUCE', []);
-            RoomSystem.reset();
-            test.assertEqual(Object.keys(RoomSystem.rooms).length, 0);
-            test.assertEqual(RoomSystem.currentRoom, null);
+            RoomOrchestrator.init(Room, RoomTheme);
+            RoomOrchestrator.addRoom(0, 0, 'PRODUCE', []);
+            RoomOrchestrator.reset();
+            test.assertEqual(Object.keys(RoomOrchestrator.rooms).length, 0);
+            test.assertEqual(RoomOrchestrator.currentRoom, null);
         });
     });
 
     test.describe('Room System - Room Management', () => {
         test.beforeEach(() => {
-            RoomSystem.init(Room, RoomTheme);
+            RoomOrchestrator.init(Room, RoomTheme);
         });
 
         test.it('should add room', () => {
-            const room = RoomSystem.addRoom(1, 2, 'DAIRY', ['north']);
+            const room = RoomOrchestrator.addRoom(1, 2, 'DAIRY', ['north']);
             test.assertEqual(room.gridX, 1);
             test.assertEqual(room.gridZ, 2);
             test.assertEqual(room.theme, 'DAIRY');
         });
 
         test.it('should get room by grid position', () => {
-            RoomSystem.addRoom(1, 2, 'DAIRY', []);
-            const room = RoomSystem.getRoom(1, 2);
+            RoomOrchestrator.addRoom(1, 2, 'DAIRY', []);
+            const room = RoomOrchestrator.getRoom(1, 2);
             test.assertTrue(room !== null);
             test.assertEqual(room.theme, 'DAIRY');
         });
 
         test.it('should get room by world position', () => {
-            RoomSystem.addRoom(1, 2, 'FROZEN', []);
-            const room = RoomSystem.getRoomAtWorld(45, 75);
+            RoomOrchestrator.addRoom(1, 2, 'FROZEN', []);
+            const room = RoomOrchestrator.getRoomAtWorld(45, 75);
             test.assertTrue(room !== null);
             test.assertEqual(room.theme, 'FROZEN');
         });
 
         test.it('should return null for non-existent room', () => {
-            const room = RoomSystem.getRoom(99, 99);
+            const room = RoomOrchestrator.getRoom(99, 99);
             test.assertEqual(room, null);
         });
 
         test.it('should check room existence', () => {
-            RoomSystem.addRoom(1, 1, 'PRODUCE', []);
-            test.assertTrue(RoomSystem.hasRoom(1, 1));
-            test.assertFalse(RoomSystem.hasRoom(5, 5));
+            RoomOrchestrator.addRoom(1, 1, 'PRODUCE', []);
+            test.assertTrue(RoomOrchestrator.hasRoom(1, 1));
+            test.assertFalse(RoomOrchestrator.hasRoom(5, 5));
         });
 
         test.it('should get all rooms', () => {
-            RoomSystem.addRoom(0, 0, 'PRODUCE', []);
-            RoomSystem.addRoom(1, 0, 'DAIRY', []);
-            const all = RoomSystem.getAllRooms();
+            RoomOrchestrator.addRoom(0, 0, 'PRODUCE', []);
+            RoomOrchestrator.addRoom(1, 0, 'DAIRY', []);
+            const all = RoomOrchestrator.getAllRooms();
             test.assertEqual(all.length, 2);
         });
 
         test.it('should get room theme', () => {
-            const room = RoomSystem.addRoom(1, 1, 'SNACKS', []);
-            const theme = RoomSystem.getRoomTheme(room);
+            const room = RoomOrchestrator.addRoom(1, 1, 'SNACKS', []);
+            const theme = RoomOrchestrator.getRoomTheme(room);
             test.assertTrue(theme !== null);
             test.assertEqual(theme.name, 'SNACKS');
         });
@@ -182,93 +182,93 @@
 
     test.describe('Room System - Room Tracking', () => {
         test.beforeEach(() => {
-            RoomSystem.init(Room, RoomTheme);
-            RoomSystem.addRoom(1, 2, 'PRODUCE', []);
-            RoomSystem.addRoom(1, 3, 'DAIRY', []);
+            RoomOrchestrator.init(Room, RoomTheme);
+            RoomOrchestrator.addRoom(1, 2, 'PRODUCE', []);
+            RoomOrchestrator.addRoom(1, 3, 'DAIRY', []);
         });
 
         test.it('should update current room', () => {
-            const room = RoomSystem.updateCurrentRoom(45, 75);
+            const room = RoomOrchestrator.updateCurrentRoom(45, 75);
             test.assertTrue(room !== null);
-            test.assertEqual(RoomSystem.getCurrentRoom(), room);
+            test.assertEqual(RoomOrchestrator.getCurrentRoom(), room);
         });
 
         test.it('should return null if room unchanged', () => {
-            RoomSystem.updateCurrentRoom(45, 75);
-            const result = RoomSystem.updateCurrentRoom(46, 76); // Same room
+            RoomOrchestrator.updateCurrentRoom(45, 75);
+            const result = RoomOrchestrator.updateCurrentRoom(46, 76); // Same room
             test.assertEqual(result, null);
         });
 
         test.it('should mark room as visited', () => {
-            const isFirst = RoomSystem.markVisited(1, 2);
+            const isFirst = RoomOrchestrator.markVisited(1, 2);
             test.assertTrue(isFirst, 'first visit should return true');
-            test.assertTrue(RoomSystem.isVisited(1, 2));
+            test.assertTrue(RoomOrchestrator.isVisited(1, 2));
 
-            const isSecond = RoomSystem.markVisited(1, 2);
+            const isSecond = RoomOrchestrator.markVisited(1, 2);
             test.assertFalse(isSecond, 'second visit should return false');
         });
 
         test.it('should track visited rooms separately', () => {
-            RoomSystem.markVisited(1, 2);
-            test.assertTrue(RoomSystem.isVisited(1, 2));
-            test.assertFalse(RoomSystem.isVisited(1, 3));
+            RoomOrchestrator.markVisited(1, 2);
+            test.assertTrue(RoomOrchestrator.isVisited(1, 2));
+            test.assertFalse(RoomOrchestrator.isVisited(1, 3));
         });
     });
 
     test.describe('Room System - Neighbors', () => {
         test.beforeEach(() => {
-            RoomSystem.init(Room, RoomTheme);
-            RoomSystem.addRoom(1, 1, 'PRODUCE', ['south', 'east']);
-            RoomSystem.addRoom(1, 2, 'DAIRY', ['north']);
-            RoomSystem.addRoom(2, 1, 'FROZEN', ['west']);
+            RoomOrchestrator.init(Room, RoomTheme);
+            RoomOrchestrator.addRoom(1, 1, 'PRODUCE', ['south', 'east']);
+            RoomOrchestrator.addRoom(1, 2, 'DAIRY', ['north']);
+            RoomOrchestrator.addRoom(2, 1, 'FROZEN', ['west']);
         });
 
         test.it('should get neighbor in direction', () => {
-            const neighbor = RoomSystem.getNeighbor(1, 1, 'south');
+            const neighbor = RoomOrchestrator.getNeighbor(1, 1, 'south');
             test.assertTrue(neighbor !== null);
             test.assertEqual(neighbor.theme, 'DAIRY');
         });
 
         test.it('should return null for no neighbor', () => {
-            const neighbor = RoomSystem.getNeighbor(1, 1, 'north');
+            const neighbor = RoomOrchestrator.getNeighbor(1, 1, 'north');
             test.assertEqual(neighbor, null);
         });
 
         test.it('should get all neighbors', () => {
-            const neighbors = RoomSystem.getNeighbors(1, 1);
+            const neighbors = RoomOrchestrator.getNeighbors(1, 1);
             test.assertTrue(neighbors.south !== undefined);
             test.assertTrue(neighbors.east !== undefined);
             test.assertEqual(neighbors.north, undefined);
         });
 
         test.it('should check door existence', () => {
-            test.assertTrue(RoomSystem.hasDoor(1, 1, 'south'));
-            test.assertTrue(RoomSystem.hasDoor(1, 1, 'east'));
-            test.assertFalse(RoomSystem.hasDoor(1, 1, 'north'));
+            test.assertTrue(RoomOrchestrator.hasDoor(1, 1, 'south'));
+            test.assertTrue(RoomOrchestrator.hasDoor(1, 1, 'east'));
+            test.assertFalse(RoomOrchestrator.hasDoor(1, 1, 'north'));
         });
 
         test.it('should check room connection', () => {
-            test.assertTrue(RoomSystem.areConnected(1, 1, 1, 2));
-            test.assertTrue(RoomSystem.areConnected(1, 1, 2, 1));
-            test.assertFalse(RoomSystem.areConnected(1, 2, 2, 1)); // Not adjacent
+            test.assertTrue(RoomOrchestrator.areConnected(1, 1, 1, 2));
+            test.assertTrue(RoomOrchestrator.areConnected(1, 1, 2, 1));
+            test.assertFalse(RoomOrchestrator.areConnected(1, 2, 2, 1)); // Not adjacent
         });
     });
 
     test.describe('Room System - Grid Generation', () => {
         test.beforeEach(() => {
-            RoomSystem.init(Room, RoomTheme);
+            RoomOrchestrator.init(Room, RoomTheme);
         });
 
         test.it('should generate grid of rooms', () => {
-            const rooms = RoomSystem.generateGrid(3, 3, 'PRODUCE');
+            const rooms = RoomOrchestrator.generateGrid(3, 3, 'PRODUCE');
             test.assertEqual(rooms.length, 9);
         });
 
         test.it('should add doors between adjacent rooms', () => {
-            RoomSystem.generateGrid(2, 2, 'PRODUCE');
+            RoomOrchestrator.generateGrid(2, 2, 'PRODUCE');
             // Center room should have all 4 neighbors
             // Corner room (0,0) should have south and east
-            const corner = RoomSystem.getRoom(0, 0);
+            const corner = RoomOrchestrator.getRoom(0, 0);
             test.assertTrue(corner.doors.includes('south'));
             test.assertTrue(corner.doors.includes('east'));
             test.assertFalse(corner.doors.includes('north'));
@@ -276,9 +276,9 @@
         });
 
         test.it('should set theme for room', () => {
-            RoomSystem.addRoom(0, 0, 'PRODUCE', []);
-            RoomSystem.setTheme(0, 0, 'DAIRY');
-            const room = RoomSystem.getRoom(0, 0);
+            RoomOrchestrator.addRoom(0, 0, 'PRODUCE', []);
+            RoomOrchestrator.setTheme(0, 0, 'DAIRY');
+            const room = RoomOrchestrator.getRoom(0, 0);
             test.assertEqual(room.theme, 'DAIRY');
         });
     });
@@ -366,11 +366,11 @@
             }
             // Create a non-JUNCTION room
             const room = Room.createRoomData(0, 0, 'PRODUCE', ['north']);
-            RoomSystem.reset();
-            RoomSystem.addRoom(room);
+            RoomOrchestrator.reset();
+            RoomOrchestrator.addRoom(room);
 
             const shelfArray = [];
-            RoomSystem.createRoomMeshes(THREE, room, { shelfArray });
+            RoomOrchestrator.createRoomMeshes(THREE, room, { shelfArray });
 
             // Find center display in shelfArray (has 5x5 dimensions)
             const centerDisplay = shelfArray.find(s =>
@@ -388,11 +388,11 @@
                 return;
             }
             const room = Room.createRoomData(0, 0, 'JUNCTION', ['north', 'south', 'east', 'west']);
-            RoomSystem.reset();
-            RoomSystem.addRoom(room);
+            RoomOrchestrator.reset();
+            RoomOrchestrator.addRoom(room);
 
             const shelfArray = [];
-            RoomSystem.createRoomMeshes(THREE, room, { shelfArray });
+            RoomOrchestrator.createRoomMeshes(THREE, room, { shelfArray });
 
             // Check no 5x5 display was added
             const centerDisplay = shelfArray.find(s =>

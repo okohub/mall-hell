@@ -4,7 +4,7 @@
 // Manages projectile spawning, movement, and collision
 // Uses Projectile data definitions (assumes Projectile is loaded globally)
 
-const ProjectileSystem = {
+const ProjectileOrchestrator = {
     // Active projectiles
     projectiles: [],
 
