@@ -58,8 +58,8 @@ const SkeletonMesh = {
         // After cart rotation: cart front at +Z, cart handle at -Z
         // Skeleton stands at -Z (behind cart from player's view), facing handle
         const skeleton = this._createFullSkeleton(THREE, v);
-        // Position: at -Z (behind the rotated cart), raised so body shows above cart rim
-        skeleton.position.set(0, 1.8, -2.8);
+        // Position: at -Z (behind the rotated cart)
+        skeleton.position.set(0, 0, -2.8);
         // Rotation: face -Z (towards cart handle) - player sees skeleton's BACK
         skeleton.rotation.y = 0;
         group.add(skeleton);
@@ -334,7 +334,7 @@ const SkeletonMesh = {
         });
 
         // Scale factor for overall skeleton size
-        const scale = 1.25;
+        const scale = 1.15;
 
         // === PELVIS (hip center) ===
         const pelvis = this._createPelvis(THREE, boneMat);
@@ -354,7 +354,7 @@ const SkeletonMesh = {
         // === SPINE & RIBCAGE (connected to pelvis) ===
         const torso = this._createTorso(THREE, boneMat);
         torso.position.y = 1.1 * scale;
-        torso.scale.setScalar(scale * 1.5); // Make torso bigger and more visible
+        torso.scale.setScalar(scale);
         skeleton.add(torso);
         skeleton.userData.torso = torso;
 
@@ -539,37 +539,37 @@ const SkeletonMesh = {
     _createTorso(THREE, boneMat) {
         const torso = new THREE.Group();
 
-        // Spine vertebrae (made thicker and more prominent)
+        // Spine vertebrae
         for (let i = 0; i < 6; i++) {
             const vertebra = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.055, 0.06, 0.13, 8),
+                new THREE.CylinderGeometry(0.035, 0.04, 0.1, 8),
                 boneMat
             );
-            vertebra.position.y = -i * 0.14;
+            vertebra.position.y = -i * 0.12;
             torso.add(vertebra);
 
             // Spinous process (back bump)
             const process = new THREE.Mesh(
-                new THREE.ConeGeometry(0.035, 0.09, 4),
+                new THREE.ConeGeometry(0.02, 0.06, 4),
                 boneMat
             );
-            process.position.set(0, -i * 0.14, 0.08);
+            process.position.set(0, -i * 0.12, 0.05);
             process.rotation.x = -Math.PI / 4;
             torso.add(process);
         }
 
-        // Ribcage (made bigger and more prominent)
+        // Ribcage
         for (let row = 0; row < 5; row++) {
-            const y = -row * 0.16;
-            const ribSize = 0.22 - row * 0.02;
+            const y = -row * 0.14;
+            const ribSize = 0.18 - row * 0.015;
 
             [-1, 1].forEach(side => {
-                // Rib bone (curved, thicker)
+                // Rib bone (curved)
                 const rib = new THREE.Mesh(
-                    new THREE.TorusGeometry(ribSize, 0.028, 6, 12, Math.PI * 0.6),
+                    new THREE.TorusGeometry(ribSize, 0.018, 4, 10, Math.PI * 0.55),
                     boneMat
                 );
-                rib.position.set(side * 0.06, y, -0.04);
+                rib.position.set(side * 0.05, y, -0.03);
                 rib.rotation.y = side * Math.PI * 0.35;
                 rib.rotation.z = side * Math.PI * 0.1;
                 rib.rotation.x = 0.2;
@@ -577,25 +577,25 @@ const SkeletonMesh = {
             });
         }
 
-        // Clavicles (collar bones - made bigger)
+        // Clavicles (collar bones)
         [-1, 1].forEach(side => {
             const clavicle = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.035, 0.03, 0.3, 8),
+                new THREE.CylinderGeometry(0.022, 0.018, 0.22, 6),
                 boneMat
             );
-            clavicle.position.set(side * 0.15, 0.18, -0.03);
+            clavicle.position.set(side * 0.12, 0.15, -0.02);
             clavicle.rotation.z = side * Math.PI / 3;
             clavicle.rotation.x = 0.2;
             torso.add(clavicle);
         });
 
-        // Shoulder joints (made bigger)
-        [-0.32, 0.32].forEach(x => {
+        // Shoulder joints
+        [-0.25, 0.25].forEach(x => {
             const shoulder = new THREE.Mesh(
-                new THREE.SphereGeometry(0.055, 10, 10),
+                new THREE.SphereGeometry(0.04, 8, 8),
                 boneMat
             );
-            shoulder.position.set(x, 0.15, 0);
+            shoulder.position.set(x, 0.12, 0);
             torso.add(shoulder);
         });
 
