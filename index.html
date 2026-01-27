@@ -389,6 +389,7 @@
             [Slingshot, WaterGun, LaserGun, NerfGun].forEach(w => WeaponOrchestrator.register(w));
             WeaponOrchestrator.equip('slingshot', THREE, MaterialsTheme, camera);
             PickupOrchestrator.init(scene, THREE);
+            PowerUpOrchestrator.init();
         }
 
         function initPostProcessing() {
@@ -466,6 +467,7 @@
             InputOrchestrator.reset(); PlayerOrchestrator.reset();
             WeaponOrchestrator.reset(); WeaponOrchestrator.equip('slingshot', THREE, MaterialsTheme, camera);
             PickupOrchestrator.reset();
+            PowerUpOrchestrator.reset();
             SpawnOrchestrator.resetPlanning(); // Reset room planning state
             EnemyOrchestrator._dinoSpawnCount = 0; // Reset dino spawn tracking
             UIOrchestrator.resetEnemyProgress(); // Reset enemy progress tracking
@@ -702,6 +704,13 @@
                 obstacles,
                 shelves
             });
+            PowerUpOrchestrator.update(dt, Date.now());
+            if (PowerUpOrchestrator.isActive('speed_boost')) {
+                const timeRemaining = PowerUpOrchestrator.getTimeRemaining('speed_boost', Date.now());
+                UIOrchestrator.updatePowerUpTimer(timeRemaining, 'speed_boost');
+            } else {
+                UIOrchestrator.updatePowerUpTimer(0, 'speed_boost');
+            }
             // Update obstacles (no damage - player collides via movement check above)
             EnvironmentOrchestrator.updateObstaclesArray(obstacles, { playerCart, dt });
             ParticleOrchestrator.updateAll(particles, dt, { gravity: 15, fadeRate: 2 });

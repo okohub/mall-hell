@@ -198,4 +198,42 @@
         }
     );
 
+    // Test 6: Power-up expires after duration
+    runner.addTest('powerup-expires-after-duration', 'Pickup+PowerUp', 'Power-up expires after duration',
+        'Verifies power-up deactivates after 10 seconds',
+        async () => {
+            // Access game internals
+            const PowerUpOrchestrator = runner.gameWindow.PowerUpOrchestrator;
+
+            // Initialize system
+            PowerUpOrchestrator.init();
+
+            // Activate at specific time
+            const startTime = Date.now();
+            PowerUpOrchestrator.activate('speed_boost', startTime);
+
+            // Verify active immediately
+            if (!PowerUpOrchestrator.isActive('speed_boost')) {
+                throw new Error('Power-up should be active immediately after activation');
+            }
+
+            // Simulate time passing (before expiration)
+            PowerUpOrchestrator.update(0.1, startTime + 5000); // 5 seconds later
+            if (!PowerUpOrchestrator.isActive('speed_boost')) {
+                throw new Error('Power-up should still be active at 5 seconds');
+            }
+
+            // Simulate time passing (after expiration)
+            PowerUpOrchestrator.update(0.1, startTime + 11000); // 11 seconds later
+            if (PowerUpOrchestrator.isActive('speed_boost')) {
+                throw new Error('Power-up should be inactive after 11 seconds');
+            }
+
+            // Verify multiplier reset
+            if (PowerUpOrchestrator.getSpeedMultiplier() !== 1.0) {
+                throw new Error(`Expected multiplier 1.0, got ${PowerUpOrchestrator.getSpeedMultiplier()}`);
+            }
+        }
+    );
+
 })(window.runner || runner);
