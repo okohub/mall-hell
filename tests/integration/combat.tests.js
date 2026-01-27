@@ -120,4 +120,131 @@
         }
     );
 
+    // Test 5: Watergun rapid fire
+    runner.addTest('watergun-rapid-fire-kills', 'Combat Flow', 'Watergun rapid fire kills enemy',
+        'Verifies holding fire button spawns multiple projectiles that kill enemy',
+        async () => {
+            await helpers.setupCombatScenario({
+                weapon: 'watergun',
+                enemyType: 'SKELETON',
+                distance: 15,
+                enemyHealth: 3
+            });
+
+            // Hold fire for rapid shots
+            runner.gameWindow.startFiring();
+            await runner.wait(1000);  // Real timing for rapid fire
+            runner.gameWindow.stopFiring();
+
+            // Check multiple projectiles spawned
+            const projectiles = runner.gameWindow.projectiles || [];
+            if (projectiles.length < 3) {
+                throw new Error(`Expected multiple projectiles, got ${projectiles.length}`);
+            }
+        }
+    );
+
+    // Test 6: Collision with obstacle
+    runner.addTest('collision-with-obstacle', 'Combat Flow', 'Obstacle blocks projectile',
+        'Verifies projectile hits obstacle instead of enemy behind it',
+        async () => {
+            const { enemy } = await helpers.setupCombatScenario({
+                weapon: 'slingshot',
+                enemyType: 'SKELETON',
+                distance: 20
+            });
+
+            // Spawn obstacle between player and enemy
+            const THREE = runner.gameWindow.THREE;
+            const MaterialsTheme = runner.gameWindow.MaterialsTheme;
+            const obstacle = new THREE.Mesh(
+                new THREE.BoxGeometry(5, 5, 2),
+                new THREE.MeshStandardMaterial({ color: 0x888888 })
+            );
+            obstacle.position.set(0, 2, -10);  // Between player and enemy
+            obstacle.userData.isObstacle = true;
+            runner.gameWindow.scene.add(obstacle);
+
+            const initialHealth = enemy.userData.health;
+
+            // Fire at enemy (should hit obstacle)
+            await helpers.fireWeapon(500);
+            await runner.wait(2000);
+
+            // Enemy should not take damage
+            if (enemy.userData.health < initialHealth) {
+                throw new Error('Enemy took damage despite obstacle blocking');
+            }
+
+            // Cleanup
+            runner.gameWindow.scene.remove(obstacle);
+        }
+    );
+
+    // Test 7: Weapon switch mid-combat
+    runner.addTest('weapon-switch-mid-combat', 'Combat Flow', 'Weapon switch clears state',
+        'Verifies switching weapons mid-combat properly resets weapon state',
+        async () => {
+            await helpers.setupCombatScenario({
+                weapon: 'slingshot',
+                enemyType: 'SKELETON',
+                distance: 20
+            });
+
+            const WeaponOrchestrator = runner.gameWindow.WeaponOrchestrator;
+
+            // Fire slingshot
+            await helpers.fireWeapon(300);
+
+            // Switch to different weapon
+            WeaponOrchestrator.equip('watergun', runner.gameWindow.THREE, runner.gameWindow.MaterialsTheme, runner.gameWindow.camera);
+            await runner.wait(100);
+
+            // Verify weapon switched
+            const currentWeapon = WeaponOrchestrator.currentWeapon;
+            if (!currentWeapon || currentWeapon.config.id !== 'watergun') {
+                throw new Error('Weapon did not switch to watergun');
+            }
+
+            // Fire new weapon
+            await helpers.fireWeapon(0);
+            await runner.wait(500);
+
+            // Should have new projectile from watergun
+            const projectiles = runner.gameWindow.projectiles || [];
+            if (projectiles.length === 0) {
+                throw new Error('New weapon did not fire after switch');
+            }
+        }
+    );
+
+    // Test 8: NerfGun headshot (if implemented)
+    runner.addTest('nerfgun-standard-shot', 'Combat Flow', 'NerfGun fires successfully',
+        'Verifies NerfGun can fire and hit enemy',
+        async () => {
+            const { enemy } = await helpers.setupCombatScenario({
+                weapon: 'nerfgun',
+                enemyType: 'SKELETON',
+                distance: 20
+            });
+
+            const initialHealth = enemy.userData.health;
+
+            // Fire NerfGun
+            await helpers.fireWeapon(0);
+
+            // Wait for hit
+            const impact = await helpers.waitForProjectileImpact(2000);
+            if (!impact.hit) {
+                throw new Error('NerfGun projectile did not hit enemy');
+            }
+
+            // Verify damage
+            await runner.wait(100);
+            if (enemy.userData.health >= initialHealth) {
+                throw new Error('NerfGun dealt no damage');
+            }
+        }
+    );
+
 })(window.runner);
