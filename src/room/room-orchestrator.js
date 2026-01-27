@@ -431,40 +431,42 @@ const RoomOrchestrator = {
             const roomMinZ = room.gridZ * ROOM_UNIT;
             const roomMaxZ = roomMinZ + ROOM_UNIT;
 
-            // West wall shelves
+            // West wall shelves (flush against inner wall surface)
+            // Wall thickness 0.5 centered = ±0.25, shelf depth 1.2, center at +0.25 + 0.6
             if (!doors.includes('west') && typeof RoomMesh !== 'undefined') {
                 [-6, 0, 6].forEach(offset => {
-                    const shelf = RoomMesh.createShelfUnit(THREE, theme, roomMinX + 2.5, worldZ + offset, false, shelfOrchestrator);
+                    const shelf = RoomMesh.createShelfUnit(THREE, theme, roomMinX + 0.85, worldZ + offset, false, shelfOrchestrator);
                     result.meshes.push(shelf);
                     if (scene) scene.add(shelf);
                     if (shelfArray) shelfArray.push(shelf);
                 });
             }
 
-            // East wall shelves
+            // East wall shelves (flush against inner wall surface)
             if (!doors.includes('east') && typeof RoomMesh !== 'undefined') {
                 [-6, 0, 6].forEach(offset => {
-                    const shelf = RoomMesh.createShelfUnit(THREE, theme, roomMaxX - 2.5, worldZ + offset, true, shelfOrchestrator);
+                    const shelf = RoomMesh.createShelfUnit(THREE, theme, roomMaxX - 0.85, worldZ + offset, true, shelfOrchestrator);
                     result.meshes.push(shelf);
                     if (scene) scene.add(shelf);
                     if (shelfArray) shelfArray.push(shelf);
                 });
             }
 
-            // North wall shelves
+            // North wall shelves (flush against inner wall surface)
+            // Shelf depth 0.8, center at +0.25 + 0.4
             if (!doors.includes('north') && typeof RoomMesh !== 'undefined') {
                 [-6, 6].forEach(offset => {
-                    const shelf = RoomMesh.createWallShelf(THREE, theme, worldX + offset, roomMinZ + 2.5, 0, shelfOrchestrator);
+                    const shelf = RoomMesh.createWallShelf(THREE, theme, worldX + offset, roomMinZ + 0.65, 0, shelfOrchestrator);
                     result.meshes.push(shelf);
                     if (scene) scene.add(shelf);
                     if (shelfArray) shelfArray.push(shelf);
                 });
             }
 
-            // South wall shelves
+            // South wall shelves (flush against inner wall surface)
             if (!doors.includes('south') && typeof RoomMesh !== 'undefined') {
                 [-6, 6].forEach(offset => {
-                    const shelf = RoomMesh.createWallShelf(THREE, theme, worldX + offset, roomMaxZ - 2.5, Math.PI, shelfOrchestrator);
+                    const shelf = RoomMesh.createWallShelf(THREE, theme, worldX + offset, roomMaxZ - 0.65, Math.PI, shelfOrchestrator);
                     result.meshes.push(shelf);
                     if (scene) scene.add(shelf);
                     if (shelfArray) shelfArray.push(shelf);

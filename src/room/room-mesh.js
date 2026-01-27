@@ -401,12 +401,18 @@ const RoomMesh = {
     createShelfUnit(THREE, theme, x, z, facingLeft, shelfOrchestrator) {
         const group = new THREE.Group();
         group.position.set(x, 0, z);
-        if (facingLeft) group.rotation.y = Math.PI;
+        // Rotate to be parallel to east/west walls (run along Z axis)
+        group.rotation.y = facingLeft ? -Math.PI / 2 : Math.PI / 2;
 
         // Get template
         const template = (typeof Shelf !== 'undefined') ?
             Shelf.getTemplate('WALL_TALL') :
             { frameSize: { w: 4, h: 8, d: 1.5 }, shelfCount: 3, productsPerShelf: 4 };
+
+        // Set collision dimensions in userData
+        group.userData.width = template.frameSize.w;
+        group.userData.depth = template.frameSize.d;
+        group.userData.height = template.frameSize.h;
 
         // Frame
         const frameGeo = new THREE.BoxGeometry(template.frameSize.w, template.frameSize.h, template.frameSize.d);
@@ -463,6 +469,11 @@ const RoomMesh = {
         const template = (typeof Shelf !== 'undefined') ?
             Shelf.getTemplate('WALL_STANDARD') :
             { shelfCount: 3, productsPerShelf: 4 };
+
+        // Set collision dimensions in userData (WALL_STANDARD has w:4, h:6, d:0.8)
+        group.userData.width = 4;
+        group.userData.depth = 0.8;
+        group.userData.height = 6;
 
         // Frame
         const frameGeo = new THREE.BoxGeometry(4, 6, 0.8);
