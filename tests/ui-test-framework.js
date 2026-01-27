@@ -209,6 +209,11 @@ class UITestRunner {
     }
 
     resetGame() {
+        // CRITICAL: Stop any running game loop FIRST to prevent race conditions
+        if (this.gameWindow.LoopOrchestrator) {
+            this.gameWindow.LoopOrchestrator.stop();
+        }
+
         // Reset state first via StateSystem
         this.gameWindow.gameState = 'MENU';
 
@@ -256,14 +261,23 @@ class UITestRunner {
 
     startStateMonitor() {
         setInterval(() => {
-            document.getElementById('current-state').textContent = this.getGameState() || '-';
-            document.getElementById('current-score').textContent = this.getScore() || '0';
-            const progress = this.getDistance() ?
-                ((this.getDistance() / 800) * 100).toFixed(1) + '%' : '0%';
-            document.getElementById('current-progress').textContent = progress;
-            const hud = this.getElement('#hud');
-            document.getElementById('hud-visible').textContent =
-                hud ? (this.isVisible(hud) ? 'Yes' : 'No') : '-';
+            // These elements only exist in ui-tests.html, not integration-tests.html
+            const stateEl = document.getElementById('current-state');
+            const scoreEl = document.getElementById('current-score');
+            const progressEl = document.getElementById('current-progress');
+            const hudEl = document.getElementById('hud-visible');
+
+            if (stateEl) stateEl.textContent = this.getGameState() || '-';
+            if (scoreEl) scoreEl.textContent = this.getScore() || '0';
+            if (progressEl) {
+                const progress = this.getDistance() ?
+                    ((this.getDistance() / 800) * 100).toFixed(1) + '%' : '0%';
+                progressEl.textContent = progress;
+            }
+            if (hudEl) {
+                const hud = this.getElement('#hud');
+                hudEl.textContent = hud ? (this.isVisible(hud) ? 'Yes' : 'No') : '-';
+            }
         }, 200);
     }
 

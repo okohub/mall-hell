@@ -91,7 +91,7 @@
                     <div class="title-wrapper">
                         <div class="title">MALL HELL</div>
                     </div>
-                    <div class="version">VERSION 5.1</div>
+                    <div class="version">VERSION 5.3</div>
                     <div class="subtitle">SUPERMARKET MAYHEM</div>
                     <div class="instructions" id="instructions">
                         <div class="control-item">
@@ -455,7 +455,8 @@
             lockedTarget = null; currentRoom = null; visitedRooms.clear();
             scoreElement.textContent = '0'; updateTimerDisplay(); UIOrchestrator.resetHealthBar(PLAYER_MAX_HEALTH);
             [projectiles, enemies, obstacles, particles].forEach(arr => arr.forEach(o => scene.remove(o)));
-            projectiles = []; enemies = []; obstacles = []; particles = [];
+            // Clear arrays without reassigning references (for TestBridge compatibility)
+            projectiles.length = 0; enemies.length = 0; obstacles.length = 0; particles.length = 0;
             playerCart.position.set(PlayerOrchestrator.position.x, 0, PlayerOrchestrator.position.z);
             playerCart.rotation.set(0, PlayerOrchestrator.rotation, 0);
             camera.position.set(PlayerOrchestrator.position.x, 2.2, PlayerOrchestrator.position.z);
@@ -466,6 +467,7 @@
 
         function startGame() {
             resetGame(); GameSession.start(); StateOrchestrator.forceTransition('PLAYING'); UIOrchestrator.showGameplay();
+            LoopOrchestrator.start(); // Ensure loop is running (idempotent, safe to call if already running)
             crosshairX = window.innerWidth / 2; crosshairY = window.innerHeight / 2;
             updateCursor(); spawnInitialObjects();
             // Initialize minimap with all rooms
@@ -740,9 +742,12 @@
                 onWallHit: (pos) => { spawnParticles(pos, 0x888888, 5); }
             });
 
-            // Cleanup inactive objects
+            // Cleanup inactive objects (mutate in-place to preserve array references for TestBridge)
             const c = EntityOrchestrator.cleanupAllInactive({ projectiles, enemies, obstacles, particles }, scene);
-            projectiles = c.projectiles; enemies = c.enemies; obstacles = c.obstacles; particles = c.particles;
+            projectiles.length = 0; projectiles.push(...c.projectiles);
+            enemies.length = 0; enemies.push(...c.enemies);
+            obstacles.length = 0; obstacles.push(...c.obstacles);
+            particles.length = 0; particles.push(...c.particles);
         }
 
         // Event Listeners
@@ -813,6 +818,7 @@
             getCameraMode: () => cameraMode,
             setCameraMode: () => {},  // Read-only in v3
             getFpsWeapon: () => WeaponOrchestrator.fpsMesh,
+            slingshotArm,  // Legacy third-person slingshot mesh
             getProjectiles: () => projectiles,
             getEnemies: () => enemies,
             getObstacles: () => obstacles,
@@ -821,7 +827,11 @@
             startGame, pauseGame, resumeGame, endGame, resetGame, damagePlayer,
             startCharging, releaseAndFire, cancelCharging, updateAmmoDisplay,
             startFiring, stopFiring,
-            manualUpdate: (dt = 0.016) => update(dt),
+            manualUpdate: (dt = 0.016) => {
+                // Stop the game loop to prevent double-updates during tests
+                LoopOrchestrator.stop();
+                update(dt);
+            },
             triggerWallBump: (intensity, dirX, dirZ) => {
                 PlayerOrchestrator.wallBumpIntensity = intensity;
                 PlayerOrchestrator.wallBumpDirection = { x: dirX, z: dirZ };

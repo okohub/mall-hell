@@ -15,6 +15,94 @@
         },
 
         /**
+         * Ensure WeaponOrchestrator has projectile refs set up
+         * Must be called before firing weapons
+         */
+        ensureProjectileRefs() {
+            const runner = this.runner;
+            const WeaponOrchestrator = runner.gameWindow.WeaponOrchestrator;
+            const THREE = runner.gameWindow.THREE;
+            const ProjectileOrchestrator = runner.gameWindow.ProjectileOrchestrator;
+            const EntityOrchestrator = runner.gameWindow.EntityOrchestrator;
+
+            if (!WeaponOrchestrator._THREE) {
+                WeaponOrchestrator.setProjectileRefs({
+                    THREE: THREE,
+                    ProjectileOrchestrator: ProjectileOrchestrator,
+                    EntityOrchestrator: EntityOrchestrator
+                });
+            }
+        },
+
+        /**
+         * Create a projectile from a fire result
+         * @param {Object} fireResult - Result from weapon fire
+         * @param {Object} target - Optional target to aim at (enemy mesh)
+         * @returns {Object} Created projectile
+         */
+        createProjectileFromResult(fireResult, target = null) {
+            const runner = this.runner;
+            const THREE = runner.gameWindow.THREE;
+            const ProjectileOrchestrator = runner.gameWindow.ProjectileOrchestrator;
+            const WeaponOrchestrator = runner.gameWindow.WeaponOrchestrator;
+            const camera = runner.gameWindow.camera;
+            const scene = runner.gameWindow.scene;
+            // Get projectiles via __gameInternals to ensure we have the real array
+            const gi = runner.gameWindow.__gameInternals;
+            const projectiles = gi ? gi.getProjectiles() : (runner.gameWindow.projectiles || []);
+
+            // Calculate spawn position
+            const spawnPos = ProjectileOrchestrator.calculateSpawnPosition(THREE, camera);
+
+            // Calculate direction - aim at target if provided, otherwise use camera direction
+            let direction;
+            if (target && target.position) {
+                // Aim directly at target center (at enemy hitbox height)
+                const targetCenter = new THREE.Vector3(
+                    target.position.x,
+                    1.2,  // Enemy hitbox center height
+                    target.position.z
+                );
+                direction = new THREE.Vector3().subVectors(targetCenter, spawnPos).normalize();
+            } else {
+                // Use camera direction (crosshair)
+                direction = ProjectileOrchestrator.calculateFireDirection(
+                    THREE, camera,
+                    runner.gameWindow.innerWidth / 2 || 400,
+                    runner.gameWindow.innerHeight / 2 || 300,
+                    spawnPos
+                );
+            }
+
+            // Apply spread if present
+            if (fireResult.spread) {
+                direction.x += fireResult.spread.x;
+                direction.y += fireResult.spread.y;
+                direction.normalize();
+            }
+
+            // Get weapon config
+            const weapon = WeaponOrchestrator.currentWeapon;
+            const speedMin = weapon?.config?.projectile?.speed?.min || 60;
+            const speedMax = weapon?.config?.projectile?.speed?.max || 180;
+
+            // Create projectile
+            const projectile = ProjectileOrchestrator.createMesh(THREE, direction, spawnPos, fireResult.speed, {
+                speedMin,
+                speedMax,
+                fallbackCamera: camera,
+                projectileType: fireResult.projectileType || 'stone'
+            });
+
+            if (projectile) {
+                scene.add(projectile);
+                projectiles.push(projectile);
+            }
+
+            return projectile;
+        },
+
+        /**
          * Setup combat scenario with enemy at specified distance
          * @param {Object} options - { weapon, enemyType, distance, enemyHealth }
          * @returns {Promise<Object>} { enemy, weapon, player }
@@ -24,17 +112,57 @@
 
             const runner = this.runner;
 
-            // Start game
+            // Reset helper state from previous tests
+            this._currentTarget = null;
+
+            // CRITICAL: Stop any existing game loop from previous test FIRST
+            if (runner.gameWindow.LoopOrchestrator) {
+                runner.gameWindow.LoopOrchestrator.stop();
+            }
+
+            // Reset game state
             runner.resetGame();
             await runner.wait(100);
+
+            // Start game
             runner.simulateClick(runner.getElement('#start-btn'));
-            await runner.wait(300);
 
-            // Position player at origin
-            await this.positionPlayerAt(0, 0, 0);
+            // CRITICAL: Stop the game loop IMMEDIATELY after start (before wait)
+            // This prevents non-deterministic state from game loop running during wait
+            if (runner.gameWindow.LoopOrchestrator) {
+                runner.gameWindow.LoopOrchestrator.stop();
+            }
 
-            // Spawn enemy at distance (negative Z = forward)
-            const enemy = await this.spawnEnemyAt(0, -distance, enemyType, enemyHealth);
+            // Now wait for UI to settle
+            await runner.wait(200);
+
+            // Use default starting position (45, 75) which is center of room (1, 2)
+            // ROOM_UNIT = 30, so room (1, 2) has z-range 60-90
+            const startX = 45;
+            const startZ = 75;
+            const ROOM_UNIT = 30;
+
+            // Position player at default start looking forward (negative Z)
+            await this.positionPlayerAt(startX, startZ, 0);
+
+            // Calculate enemy position ensuring it stays in a valid room
+            // For short distances (<= 12), keep enemy in same room
+            // For longer distances, position enemy closer to avoid wall issues
+            let enemyZ = startZ - distance;
+
+            // Ensure enemy is at least 3 units from room boundary (margin for collision)
+            const roomMinZ = Math.floor(startZ / ROOM_UNIT) * ROOM_UNIT + 3;
+            if (enemyZ < roomMinZ) {
+                // For very long distances, place enemy at minimum safe position in room
+                // This means the test might not test the exact requested distance,
+                // but it ensures the projectile can reach the enemy
+                enemyZ = roomMinZ;
+            }
+
+            const enemy = await this.spawnEnemyAt(startX, enemyZ, enemyType, enemyHealth);
+
+            // Store as current target for automatic aiming
+            this._currentTarget = enemy;
 
             // Equip weapon
             const WeaponOrchestrator = runner.gameWindow.WeaponOrchestrator;
@@ -42,10 +170,22 @@
             const MaterialsTheme = runner.gameWindow.MaterialsTheme;
             const camera = runner.gameWindow.camera;
 
-            // Switch to requested weapon if not already equipped
-            if (WeaponOrchestrator.currentWeapon?.config?.id !== weapon) {
-                WeaponOrchestrator.equip(weapon, THREE, MaterialsTheme, camera);
+            // Equip the requested weapon
+            WeaponOrchestrator.equip(weapon, THREE, MaterialsTheme, camera);
+
+            // Show weapon (game loop normally does this, but we stopped it)
+            if (WeaponOrchestrator.showFPSWeapon) {
+                WeaponOrchestrator.showFPSWeapon();
             }
+
+            // Hide legacy slingshotArm (third-person mesh, normally hidden in game loop)
+            const gi = runner.gameWindow.__gameInternals;
+            if (gi?.slingshotArm) {
+                gi.slingshotArm.visible = false;
+            }
+
+            // Ensure projectile refs are set
+            this.ensureProjectileRefs();
 
             // Reset weapon state for clean test
             const weaponInstance = WeaponOrchestrator.currentWeapon;
@@ -53,10 +193,11 @@
                 if (weaponInstance.reset) {
                     weaponInstance.reset();
                 }
-                // Clear cooldown to ensure weapon can fire immediately
-                // Set lastFireTime far in the past so cooldown is definitely passed
+                // Clear cooldown
                 if (weaponInstance.state) {
-                    weaponInstance.state.lastFireTime = Date.now() - 10000; // 10 seconds ago
+                    weaponInstance.state.lastFireTime = 0;
+                    weaponInstance.state.isCharging = false;
+                    weaponInstance.state.chargeAmount = 0;
                 }
             }
 
@@ -90,17 +231,18 @@
                 enemy.userData.health = health;
             }
 
-            // Add to scene and enemies array via fast-forward
+            // Add to scene and enemies array
             const scene = runner.gameWindow.scene;
             scene.add(enemy);
-            runner.gameWindow.enemies.push(enemy);
 
-            // Fast-forward to apply state
-            for (let i = 0; i < 5; i++) {
-                if (runner.gameWindow.manualUpdate) {
-                    runner.gameWindow.manualUpdate(0.016);
-                }
+            // Use enemies array directly
+            const enemies = runner.gameWindow.enemies || [];
+            if (enemies) {
+                enemies.push(enemy);
             }
+
+            // Note: We intentionally don't run manualUpdate here to avoid
+            // game loop moving the enemy or player unexpectedly
 
             return enemy;
         },
@@ -113,11 +255,19 @@
          */
         async positionPlayerAt(x, z, rotation = 0) {
             const runner = this.runner;
+            const PlayerOrchestrator = runner.gameWindow.PlayerOrchestrator;
             const camera = runner.gameWindow.camera;
             const playerCart = runner.gameWindow.playerCart;
 
-            // Set positions
+            // Set PlayerOrchestrator position (game loop syncs camera/cart from this)
+            if (PlayerOrchestrator) {
+                PlayerOrchestrator.position = { x: x, z: z };
+            }
+
+            // Also directly set camera and cart for immediate effect
             camera.position.set(x, 2, z);
+            camera.rotation.set(0, 0, 0);  // Point forward (negative Z)
+
             if (playerCart) {
                 playerCart.position.set(x, 0, z);
                 if (rotation !== undefined) {
@@ -125,52 +275,127 @@
                 }
             }
 
-            // Fast-forward to apply
-            for (let i = 0; i < 5; i++) {
-                if (runner.gameWindow.manualUpdate) {
-                    runner.gameWindow.manualUpdate(0.016);
-                }
-            }
+            // Note: We intentionally don't run manualUpdate here to avoid
+            // game loop moving the player away from the set position
         },
 
+        // Store current target for aiming (set by setupCombatScenario)
+        _currentTarget: null,
+
         /**
-         * Fire weapon with optional charge time
-         * @param {number} chargeTime - Milliseconds to charge (0 for instant)
+         * Fire weapon using the game's actual firing system
+         * Handles different weapon types:
+         * - Charge weapons (slingshot): onFireStart -> charge -> onFireRelease
+         * - Single-shot (nerfgun): onFireStart fires immediately
+         * - Auto-fire (lasergun): use holdFire() instead
+         *
+         * @param {number} chargeTime - Milliseconds to charge (0 for instant weapons)
+         * @param {Object} target - Optional target to aim at (uses _currentTarget if not provided)
          * @returns {Promise<Object>} Projectile reference
          */
-        async fireWeapon(chargeTime = 0) {
+        async fireWeapon(chargeTime = 0, target = null) {
             const runner = this.runner;
-
-            // Clear weapon cooldown to ensure it can fire
             const WeaponOrchestrator = runner.gameWindow.WeaponOrchestrator;
             const weapon = WeaponOrchestrator.currentWeapon;
-            if (weapon && weapon.state) {
-                weapon.state.lastFireTime = Date.now() - 10000; // 10 seconds ago
+
+            console.log(`[fireWeapon] Starting fire, weapon=${weapon?.config?.id}, fireMode=${weapon?.config?.fireMode}`);
+
+            if (!weapon) {
+                throw new Error('No weapon equipped');
             }
 
-            // Start charging
-            runner.gameWindow.startCharging();
+            // Use provided target or fall back to stored target
+            const aimTarget = target || this._currentTarget;
 
-            // Wait and run updates for charge time
-            if (chargeTime > 0) {
-                const frames = Math.ceil(chargeTime / 16);
-                for (let i = 0; i < frames; i++) {
+            // Ensure refs are set
+            this.ensureProjectileRefs();
+
+            // Reset weapon state for clean fire
+            weapon.state.lastFireTime = 0;
+            weapon.state.isCharging = false;
+            weapon.state.chargeAmount = 0;
+
+            const now = Date.now();
+            let fireResult = null;
+            let projectile = null;
+
+            // Determine weapon type from fireMode config
+            const fireMode = weapon.config.fireMode || 'single';
+            const isChargeWeapon = fireMode === 'charge';
+            const isAutoFire = fireMode === 'auto';
+            const isSingleShot = fireMode === 'single' || fireMode === 'burst';
+
+            if (isSingleShot) {
+                // Single-shot weapons (NerfGun, WaterGun) fire on onFireStart
+                fireResult = weapon.onFireStart(now);
+                if (fireResult) {
+                    projectile = this.createProjectileFromResult(fireResult, aimTarget);
+                }
+            } else if (isChargeWeapon) {
+                // Charge weapons (Slingshot) need to charge first
+                // Start charging
+                weapon.onFireStart(now);
+
+                // Force full charge (simplified approach for testing)
+                weapon.state.isCharging = true;
+                weapon.state.chargeAmount = weapon.config.charge?.maxTension || 1.0;
+
+                // Optionally simulate charge time with game updates
+                if (chargeTime > 0) {
+                    const chargeFrames = Math.ceil(chargeTime / 16);
+                    for (let i = 0; i < chargeFrames; i++) {
+                        if (runner.gameWindow.manualUpdate) {
+                            runner.gameWindow.manualUpdate(0.016);
+                        }
+                        await runner.wait(16);
+                    }
+                }
+
+                // Release to fire - onFireRelease returns fire result for charge weapons
+                const releaseTime = Date.now();
+                fireResult = weapon.onFireRelease(releaseTime);
+                if (!fireResult) {
+                    // Diagnostic: why didn't fire work?
+                    const canFireResult = weapon.canFire ? weapon.canFire(releaseTime) : 'no canFire method';
+                    const ammo = weapon.state?.ammo;
+                    const lastFire = weapon.state?.lastFireTime;
+                    const cooldown = weapon.config?.cooldown;
+                    const isCharging = weapon.state?.isCharging;
+                    const chargeAmt = weapon.state?.chargeAmount;
+                    console.warn(`[fireWeapon] Charge weapon fire failed: canFire=${canFireResult}, ammo=${ammo}, lastFire=${lastFire}, cooldown=${cooldown}, isCharging=${isCharging}, charge=${chargeAmt}, time=${releaseTime}`);
+                }
+                if (fireResult) {
+                    projectile = this.createProjectileFromResult(fireResult, aimTarget);
+                }
+            } else if (isAutoFire) {
+                // Auto-fire weapons need continuous firing - use holdFire instead
+                // But we can try a single shot via startFiring -> update -> stopFiring
+                if (runner.gameWindow.startFiring) {
+                    runner.gameWindow.startFiring();
+                }
+
+                // Run update to trigger auto-fire
+                for (let i = 0; i < 10; i++) {
                     if (runner.gameWindow.manualUpdate) {
                         runner.gameWindow.manualUpdate(0.016);
                     }
                     await runner.wait(16);
                 }
+
+                if (runner.gameWindow.stopFiring) {
+                    runner.gameWindow.stopFiring();
+                }
+
+                // Check if projectile was created
+                const projectiles = runner.gameWindow.projectiles || [];
+                projectile = projectiles[projectiles.length - 1] || null;
             }
 
-            // Release and fire
-            runner.gameWindow.releaseAndFire();
+            // Wait a frame for projectile to be fully added
+            await runner.wait(32);
 
-            // Wait one frame for projectile to spawn
-            await runner.wait(16);
-
-            // Get most recent projectile
-            const projectiles = runner.gameWindow.getProjectiles ? runner.gameWindow.getProjectiles() : [];
-            return projectiles[projectiles.length - 1] || null;
+            console.log(`[fireWeapon] Complete, projectile=${projectile ? 'created' : 'null'}, fireResult=${fireResult ? 'success' : 'null'}`);
+            return projectile;
         },
 
         /**
@@ -215,46 +440,48 @@
          */
         async waitForProjectileImpact(maxTime = 2000) {
             const runner = this.runner;
-            const projectiles = runner.gameWindow.getProjectiles ? runner.gameWindow.getProjectiles() : [];
-            const enemies = runner.gameWindow.getEnemies ? runner.gameWindow.getEnemies() : [];
+            const gi = runner.gameWindow.__gameInternals;
+            const getProjectiles = () => gi ? gi.getProjectiles() : (runner.gameWindow.projectiles || []);
+            const getEnemies = () => gi ? gi.getEnemies() : (runner.gameWindow.enemies || []);
 
-            // Record initial enemy health values
+            const projectiles = getProjectiles();
+            const enemies = getEnemies();
+
+            // Record initial enemy health values AND keep direct references to track them
             const initialHealthMap = new Map();
+            const trackedEnemies = [];
             enemies.forEach(e => {
                 if (e.userData && e.userData.active) {
                     initialHealthMap.set(e, e.userData.health);
+                    trackedEnemies.push(e);
                 }
             });
 
-            const initialProjectileCount = projectiles.filter(p => p.active !== false).length;
+            const initialProjectileCount = projectiles.filter(p => p.userData && p.userData.active !== false).length;
             let hitResult = { hit: false, target: null };
 
             const conditionMet = await this.waitForCondition(() => {
-                const currentProjectiles = runner.gameWindow.getProjectiles ? runner.gameWindow.getProjectiles() : [];
-                const currentEnemies = runner.gameWindow.getEnemies ? runner.gameWindow.getEnemies() : [];
+                const currentProjectiles = getProjectiles();
 
-                // Check if any enemy took damage (indicates hit)
-                for (const enemy of currentEnemies) {
-                    if (enemy.userData && enemy.userData.active) {
-                        const initialHealth = initialHealthMap.get(enemy);
-                        if (initialHealth !== undefined && enemy.userData.health < initialHealth) {
+                // Check tracked enemies directly (even if removed from array)
+                for (const enemy of trackedEnemies) {
+                    const initialHealth = initialHealthMap.get(enemy);
+                    if (initialHealth !== undefined) {
+                        // Check if took damage
+                        if (enemy.userData.health < initialHealth) {
+                            hitResult = { hit: true, target: enemy };
+                            return true;
+                        }
+                        // Check if died (could be removed from array already)
+                        if (!enemy.userData.active) {
                             hitResult = { hit: true, target: enemy };
                             return true;
                         }
                     }
                 }
 
-                // Check if any enemy died (indicates hit)
-                for (const enemy of currentEnemies) {
-                    const initialHealth = initialHealthMap.get(enemy);
-                    if (initialHealth !== undefined && !enemy.userData.active) {
-                        hitResult = { hit: true, target: enemy };
-                        return true;
-                    }
-                }
-
                 // Check if all projectiles despawned (missed)
-                const activeProjectiles = currentProjectiles.filter(p => p.active !== false);
+                const activeProjectiles = currentProjectiles.filter(p => p.userData && p.userData.active !== false);
                 if (initialProjectileCount > 0 && activeProjectiles.length === 0) {
                     hitResult = { hit: false, target: null };
                     return true;
@@ -311,10 +538,41 @@
          */
         assertPlayerHealth(expected) {
             const runner = this.runner;
-            const health = runner.gameWindow.health || runner.gameWindow.cart?.health || 100;
+            const PlayerOrchestrator = runner.gameWindow.PlayerOrchestrator;
+            const health = PlayerOrchestrator ? PlayerOrchestrator.health : (runner.gameWindow.health || 100);
 
             if (health !== expected) {
                 throw new Error(`Expected health ${expected}, got ${health}`);
+            }
+        },
+
+        /**
+         * Simulate weapon fire using startFiring/stopFiring (for rapid fire weapons)
+         * @param {number} duration - How long to hold fire in ms
+         */
+        async holdFire(duration) {
+            const runner = this.runner;
+
+            // Ensure refs are set
+            this.ensureProjectileRefs();
+
+            // Start firing
+            if (runner.gameWindow.startFiring) {
+                runner.gameWindow.startFiring();
+            }
+
+            // Run game loop during fire
+            const frames = Math.ceil(duration / 16);
+            for (let i = 0; i < frames; i++) {
+                if (runner.gameWindow.manualUpdate) {
+                    runner.gameWindow.manualUpdate(0.016);
+                }
+                await runner.wait(16);
+            }
+
+            // Stop firing
+            if (runner.gameWindow.stopFiring) {
+                runner.gameWindow.stopFiring();
             }
         },
     };

@@ -91,19 +91,19 @@ Slingshot.state.lastFireTime = 0;
 
 ## Test Isolation
 
-The test runner automatically resets game state before and after each test. Tests should NOT call `runner.resetGame()` manually - the runner handles this.
+The test runner automatically resets game state before and after each test.
 
 **What the runner does:**
-1. Calls `resetGame()` before each test
-2. Waits 100ms for state to settle
-3. Runs the test
-4. Calls `resetGame()` after test (cleanup)
+1. Stops game loop (`LoopOrchestrator.stop()`)
+2. Calls `resetGame()` before each test
+3. Waits 100ms for state to settle
+4. Runs the test
+5. Calls `resetGame()` after test (cleanup)
 
 **What gets reset:**
+- Game loop stopped
 - Game state → MENU
-- UIOrchestrator.showMenu() called
-- Pending UI timeouts cleared
-- Boss warning elements removed
+- Projectiles, enemies, obstacles cleared
 - Score reset to 0
 
 ## Known Limitation: Keyboard Event Simulation

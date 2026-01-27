@@ -120,6 +120,7 @@ mall-hell/
 
 ## Version History
 
+- **v5.3** - Integration test suite (45 tests), improved test isolation, deterministic game loop control
 - **v5.1** - T-Rex boss redesign with proper dinosaur anatomy, test framework improvements
 - **v5.0** - Live minimap with enemy counts, lazy room loading, unified status panel, improved performance
 - **v4.5** - NO AMMO display, distinctive ammo crate visuals, center display collision fix

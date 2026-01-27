@@ -77,9 +77,10 @@
             const PlayerOrchestrator = runner.gameWindow.PlayerOrchestrator;
             const initialHealth = PlayerOrchestrator.health;
 
-            // Spawn enemy very close to player
-            await helpers.spawnEnemyAt(0, -2, 'SKELETON');
-            await helpers.positionPlayerAt(0, 0, 0);
+            // Use valid room position (45, 75) - center of room (1, 2)
+            // Spawn enemy at same position as player for immediate collision
+            await helpers.positionPlayerAt(45, 75, 0);
+            await helpers.spawnEnemyAt(45, 74, 'SKELETON');
 
             // Run game updates to process collision detection
             // EnemyOrchestrator.updateAll() checks enemy-player collision

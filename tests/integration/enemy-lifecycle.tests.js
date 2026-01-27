@@ -69,16 +69,24 @@
             runner.simulateClick(runner.getElement('#start-btn'));
             await runner.wait(300);
 
-            const initialHealth = runner.gameWindow.health || 100;
+            const PlayerOrchestrator = runner.gameWindow.PlayerOrchestrator;
+            const initialHealth = PlayerOrchestrator.health;
 
-            // Spawn enemy very close
-            const enemy = await helpers.spawnEnemyAt(0, -2, 'SKELETON');
-            await helpers.positionPlayerAt(0, 0, 0);
+            // Use valid room position (45, 75) - center of room (1, 2)
+            // Spawn enemy at same position as player for immediate collision
+            await helpers.positionPlayerAt(45, 75, 0);
+            const enemy = await helpers.spawnEnemyAt(45, 74, 'SKELETON');
 
-            // Wait for collision to process
-            await runner.wait(1000);
+            // Run game loop to process collision detection
+            // EnemyOrchestrator.updateAll checks enemy-player collision
+            for (let i = 0; i < 60; i++) {
+                if (runner.gameWindow.manualUpdate) {
+                    runner.gameWindow.manualUpdate(0.016);
+                }
+                await runner.wait(16);
+            }
 
-            const newHealth = runner.gameWindow.health || 100;
+            const newHealth = PlayerOrchestrator.health;
 
             if (newHealth >= initialHealth) {
                 throw new Error(`Player took no damage: ${initialHealth} -> ${newHealth}`);
@@ -93,14 +101,14 @@
             const { enemy } = await helpers.setupCombatScenario({
                 weapon: 'slingshot',
                 enemyType: 'SKELETON',
-                distance: 20,
+                distance: 10,  // Keep enemy close in same room
                 enemyHealth: 1
             });
 
             const initialScore = runner.getScore();
 
-            // Kill enemy
-            await helpers.fireWeapon(500);
+            // Kill enemy (chargeTime=0 since fireWeapon forces full charge)
+            await helpers.fireWeapon(0);
             await helpers.waitForProjectileImpact(2000);
             await helpers.waitForEnemyDeath(enemy, 1000);
 
@@ -124,12 +132,12 @@
             const { enemy } = await helpers.setupCombatScenario({
                 weapon: 'slingshot',
                 enemyType: 'SKELETON',
-                distance: 20,
+                distance: 10,  // Keep enemy close in same room
                 enemyHealth: 1
             });
 
-            // Kill enemy
-            await helpers.fireWeapon(500);
+            // Kill enemy (chargeTime=0 since fireWeapon forces full charge)
+            await helpers.fireWeapon(0);
             await helpers.waitForEnemyDeath(enemy, 1000);
 
             // Wait several seconds

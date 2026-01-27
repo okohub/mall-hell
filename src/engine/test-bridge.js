@@ -179,15 +179,22 @@ const TestBridge = {
             configurable: true
         });
 
-        // Arrays
+        // Arrays - use getters to always return current references
+        // (cleanup may reassign these arrays in the game loop)
         Object.defineProperty(window, 'projectiles', {
             get: () => gi.getProjectiles(),
             configurable: true
         });
 
-        // Direct window assignments for arrays (tests may mutate)
-        window.enemies = gi.getEnemies();
-        window.obstacles = gi.getObstacles();
+        Object.defineProperty(window, 'enemies', {
+            get: () => gi.getEnemies(),
+            configurable: true
+        });
+
+        Object.defineProperty(window, 'obstacles', {
+            get: () => gi.getObstacles(),
+            configurable: true
+        });
 
         // ==========================================
         // THREE.JS OBJECTS
@@ -216,8 +223,8 @@ const TestBridge = {
         window.startCharging = gi.startCharging;
         window.releaseAndFire = gi.releaseAndFire;
         window.cancelCharging = gi.cancelCharging;
-        window.startFiring = gi.startCharging;  // Alias
-        window.stopFiring = gi.releaseAndFire;  // Alias
+        window.startFiring = gi.startFiring;
+        window.stopFiring = gi.stopFiring;
         window.manualUpdate = gi.manualUpdate;
         window.triggerWallBump = gi.triggerWallBump;
         window.updateAmmoDisplay = gi.updateAmmoDisplay;
@@ -279,6 +286,9 @@ const TestBridge = {
 
         // UI domain
         if (typeof UIOrchestrator !== 'undefined') window.UIOrchestrator = UIOrchestrator;
+
+        // Shared modules
+        if (typeof MaterialsTheme !== 'undefined') window.MaterialsTheme = MaterialsTheme;
 
         console.log('TestBridge: Initialized successfully');
     },

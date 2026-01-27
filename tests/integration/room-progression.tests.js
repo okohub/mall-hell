@@ -140,14 +140,21 @@
                 throw new Error('No active enemies spawned');
             }
 
-            // All enemies should be within reasonable range (~3-4 rooms from start)
+            // Get player's starting position (default is 45, 75 in room 1, 2)
+            const camera = runner.gameWindow.camera;
+            const playerX = camera.position.x;
+            const playerZ = camera.position.z;
+
+            // All enemies should be within reasonable range (~3-4 rooms from player)
             const ROOM_UNIT = 30;
             const maxDistance = ROOM_UNIT * 4;
 
             for (const enemy of activeEnemies) {
-                const distance = Math.sqrt(enemy.position.x ** 2 + enemy.position.z ** 2);
+                const dx = enemy.position.x - playerX;
+                const dz = enemy.position.z - playerZ;
+                const distance = Math.sqrt(dx * dx + dz * dz);
                 if (distance > maxDistance) {
-                    throw new Error(`Enemy too far away: ${distance} units (max ${maxDistance})`);
+                    throw new Error(`Enemy too far away: ${distance.toFixed(1)} units from player (max ${maxDistance})`);
                 }
             }
         }
@@ -204,14 +211,14 @@
             const { enemy } = await helpers.setupCombatScenario({
                 weapon: 'slingshot',
                 enemyType: 'SKELETON',
-                distance: 20,
+                distance: 10,  // Keep enemy close in same room
                 enemyHealth: 1
             });
 
             const initialScore = runner.getScore();
 
-            // Kill enemy
-            await helpers.fireWeapon(500);
+            // Kill enemy (chargeTime=0 since fireWeapon forces full charge)
+            await helpers.fireWeapon(0);
             await helpers.waitForEnemyDeath(enemy, 2000);
 
             const newScore = runner.getScore();

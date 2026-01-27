@@ -1,6 +1,6 @@
 # Mall Hell
 
-**Version 5.1** | First-person arcade shooter | Clear the mall of enemies
+**Version 5.3** | First-person arcade shooter | Clear the mall of enemies
 
 ## Quick Commands
 
@@ -10,7 +10,6 @@
 | Test domain | `bun run-tests.js --domain=enemy` |
 | Test group | `bun run-tests.js --group=weapon` |
 | Test single | `bun run-tests.js --test=<id>` |
-| Stop on fail | `bun run-tests.js --fail-fast` |
 | Integration tests | `bun run-tests.js --suite=integration` |
 | Full suite | `bun run test` (only when asked) |
 
@@ -27,12 +26,13 @@
 
 1. **Read before write** - Never modify code you haven't read
 2. **Fix code, not tests** - If tests fail, implementation is wrong
-3. **Domain boundaries** - Each domain is self-contained (not pure DDD, but domain-inspired)
-4. **Single source of truth** - Use constants from `<domain>.js` files, never hardcode
-5. **Orchestrators over instances** - Use `WeaponOrchestrator`, `EnemyOrchestrator`, not specific implementations
-6. **Stateless helpers** - Mesh/animation modules receive all data as parameters (no internal state)
-7. **Integration tests simulate game loop** - Use `runner.gameWindow.manualUpdate(dt)` in loops to advance game state frame-by-frame
-8. **Test isolation** - Reset weapon state between tests (set `lastFireTime = 0`, clear `isCharging`)
+3. **Domain boundaries** - Each domain is self-contained
+4. **Single source of truth** - Use constants from `<domain>.js` files
+5. **Orchestrators over instances** - Use `WeaponOrchestrator`, `EnemyOrchestrator`, etc.
+6. **Stateless helpers** - Mesh/animation modules receive all data as parameters
+7. **Integration tests use manualUpdate** - Call `LoopOrchestrator.stop()` then use `manualUpdate(dt)` for deterministic control
+8. **Test isolation** - Framework stops game loop before each test; reset weapon state between tests
+9. **Valid room positions** - Default start is (45, 75) in room (1,2); position (0,0) is invalid
 
 ## Domain Quick Reference
 
