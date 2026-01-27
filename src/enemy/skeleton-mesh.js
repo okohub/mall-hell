@@ -58,8 +58,8 @@ const SkeletonMesh = {
         // After cart rotation: cart front at +Z, cart handle at -Z
         // Skeleton stands at -Z (behind cart from player's view), facing handle
         const skeleton = this._createFullSkeleton(THREE, v);
-        // Position: at -Z (behind the rotated cart)
-        skeleton.position.set(0, 0, -2.8);
+        // Position: at -Z (behind the rotated cart), raised so body shows above cart rim
+        skeleton.position.set(0, 0.9, -2.8);
         // Rotation: face -Z (towards cart handle) - player sees skeleton's BACK
         skeleton.rotation.y = 0;
         group.add(skeleton);
@@ -334,7 +334,7 @@ const SkeletonMesh = {
         });
 
         // Scale factor for overall skeleton size
-        const scale = 1.15;
+        const scale = 1.25;
 
         // === PELVIS (hip center) ===
         const pelvis = this._createPelvis(THREE, boneMat);
