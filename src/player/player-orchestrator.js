@@ -154,10 +154,15 @@ const PlayerOrchestrator = {
      * @returns {Object} New position {x, z}
      */
     calculateNewPosition(dt) {
+        // Get speed multiplier from power-ups
+        const multiplier = (typeof PowerUpOrchestrator !== 'undefined' && PowerUpOrchestrator.getSpeedMultiplier)
+            ? PowerUpOrchestrator.getSpeedMultiplier()
+            : 1.0;
+
         const velocity = this.getVelocity();
         return {
-            x: this.position.x + velocity.x * dt,
-            z: this.position.z + velocity.z * dt
+            x: this.position.x + velocity.x * multiplier * dt,
+            z: this.position.z + velocity.z * multiplier * dt
         };
     },
 

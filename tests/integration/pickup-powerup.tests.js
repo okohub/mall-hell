@@ -110,4 +110,45 @@
         }
     );
 
+    // Test 4: Player moves 2x faster with speed boost active
+    runner.addTest('player-speed-2x-with-boost', 'Pickup+PowerUp', 'Player moves 2x faster with speed boost active',
+        'Verifies speed multiplier is applied to player movement',
+        async () => {
+            // Access game internals
+            const PlayerOrchestrator = runner.gameWindow.PlayerOrchestrator;
+            const PowerUpOrchestrator = runner.gameWindow.PowerUpOrchestrator;
+
+            // Initialize systems
+            PlayerOrchestrator.init();
+            PowerUpOrchestrator.init();
+
+            // Set player position and speed
+            PlayerOrchestrator.setPosition(50, 75);
+            PlayerOrchestrator.speed = 8;
+            PlayerOrchestrator.rotation = 0; // Facing -Z
+
+            // Calculate position without boost
+            const normalPos = PlayerOrchestrator.calculateNewPosition(1.0);
+            const normalDistance = Math.sqrt(
+                Math.pow(normalPos.x - 50, 2) + Math.pow(normalPos.z - 75, 2)
+            );
+
+            // Activate speed boost
+            PowerUpOrchestrator.activate('speed_boost', Date.now());
+
+            // Calculate position with boost
+            PlayerOrchestrator.setPosition(50, 75);
+            const boostedPos = PlayerOrchestrator.calculateNewPosition(1.0);
+            const boostedDistance = Math.sqrt(
+                Math.pow(boostedPos.x - 50, 2) + Math.pow(boostedPos.z - 75, 2)
+            );
+
+            // Verify 2x multiplier
+            const ratio = boostedDistance / normalDistance;
+            if (Math.abs(ratio - 2.0) > 0.01) {
+                throw new Error(`Expected 2x speed, got ${ratio.toFixed(2)}x`);
+            }
+        }
+    );
+
 })(window.runner || runner);
