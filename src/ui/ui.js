@@ -27,12 +27,14 @@ const UI = {
     // ==========================================
     // Score thresholds for rating text (checked in descending order)
     scoreRatings: [
-        { threshold: 10000, rating: 'LEGENDARY CHAOS!' },
-        { threshold: 7000, rating: 'Total Mayhem!' },
-        { threshold: 4000, rating: 'Chaos Master' },
-        { threshold: 2000, rating: 'Troublemaker' },
-        { threshold: 800, rating: 'Rowdy Kid' },
-        { threshold: 0, rating: 'Mild Mischief' }
+        { threshold: 28000, rating: 'MALL REDEEMER' },
+        { threshold: 21000, rating: "Hell's Nightmare" },
+        { threshold: 15000, rating: 'Abyss Hunter' },
+        { threshold: 10000, rating: 'Demon Buster' },
+        { threshold: 6000, rating: 'Cart Warrior' },
+        { threshold: 3000, rating: 'Mall Diver' },
+        { threshold: 1500, rating: 'Lost in IKEA' },
+        { threshold: 0, rating: 'Window Shopper' }
     ],
 
     // ==========================================
@@ -54,7 +56,7 @@ const UI = {
      */
     getScoreRating(score) {
         for (const entry of this.scoreRatings) {
-            if (score > entry.threshold) {
+            if (score >= entry.threshold) {
                 return entry.rating;
             }
         }
