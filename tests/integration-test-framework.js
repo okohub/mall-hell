@@ -170,12 +170,25 @@
             const MaterialsTheme = runner.gameWindow.MaterialsTheme;
             const camera = runner.gameWindow.camera;
 
+            // Clear any auto-collected pickups that spawned at player location
+            // (This prevents flaky tests where pickup collection changes weapon state)
+            const PickupOrchestrator = runner.gameWindow.PickupOrchestrator;
+            if (PickupOrchestrator?.reset) {
+                PickupOrchestrator.reset();
+            }
+
             // Equip the requested weapon
             WeaponOrchestrator.equip(weapon, THREE, MaterialsTheme, camera);
 
             // Show weapon (game loop normally does this, but we stopped it)
             if (WeaponOrchestrator.showFPSWeapon) {
                 WeaponOrchestrator.showFPSWeapon();
+            }
+
+            // Force a render update so the new weapon mesh appears
+            // (we stopped the game loop, so Three.js won't auto-render)
+            if (runner.gameWindow.manualUpdate) {
+                runner.gameWindow.manualUpdate(0.016);
             }
 
 

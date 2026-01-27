@@ -525,6 +525,8 @@
             createObstacle: (x, z, type) => createObstacle(x, z, type),
             onRoomMaterialized: (room, roomKey) => {
                 visitedRooms.add(roomKey);
+                // Don't spawn pickups in starting/entrance room
+                if (room.theme === 'ENTRANCE') return;
                 // Spawn weapon pickup in materialized room
                 PickupOrchestrator.trySpawnForRoom(
                     { x: room.worldX, z: room.worldZ },
