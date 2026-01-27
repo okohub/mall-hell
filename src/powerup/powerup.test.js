@@ -43,4 +43,82 @@
         });
     });
 
+    // ==========================================
+    // POWERUP ORCHESTRATOR TESTS
+    // ==========================================
+
+    test.describe('PowerUpOrchestrator', () => {
+        test.it('should initialize with empty activeEffects', () => {
+            PowerUpOrchestrator.init();
+            test.assertTrue(Array.isArray(PowerUpOrchestrator.activeEffects), 'activeEffects is array');
+            test.assertEqual(PowerUpOrchestrator.activeEffects.length, 0, 'Starts empty');
+        });
+
+        test.it('should activate speed boost effect', () => {
+            PowerUpOrchestrator.init();
+            const startTime = Date.now();
+
+            PowerUpOrchestrator.activate('speed_boost', startTime);
+
+            test.assertTrue(PowerUpOrchestrator.isActive('speed_boost'), 'Boost is active');
+            test.assertEqual(PowerUpOrchestrator.getSpeedMultiplier(), 2.0, 'Speed multiplier is 2.0');
+
+            const remaining = PowerUpOrchestrator.getTimeRemaining('speed_boost', startTime);
+            test.assertTrue(remaining > 9000 && remaining <= 10000, 'Time remaining is ~10s');
+        });
+
+        test.it('should refresh timer when activating while already active', () => {
+            PowerUpOrchestrator.init();
+            const startTime = Date.now();
+
+            // Activate first boost
+            PowerUpOrchestrator.activate('speed_boost', startTime);
+
+            // Wait 2 seconds and activate again
+            const laterTime = startTime + 2000;
+            PowerUpOrchestrator.activate('speed_boost', laterTime);
+
+            // Should have reset to 10s, not stacked to 18s
+            const remaining = PowerUpOrchestrator.getTimeRemaining('speed_boost', laterTime);
+            test.assertTrue(remaining > 9000 && remaining <= 10000, 'Timer refreshed to 10s');
+            test.assertEqual(PowerUpOrchestrator.activeEffects.length, 1, 'Only one effect active');
+        });
+
+        test.it('should return 1.0 multiplier when inactive', () => {
+            PowerUpOrchestrator.init();
+            test.assertEqual(PowerUpOrchestrator.getSpeedMultiplier(), 1.0, 'Returns 1.0 when no boost');
+        });
+
+        test.it('should expire boost after duration', () => {
+            PowerUpOrchestrator.init();
+            const startTime = Date.now();
+
+            PowerUpOrchestrator.activate('speed_boost', startTime);
+            test.assertTrue(PowerUpOrchestrator.isActive('speed_boost'), 'Boost starts active');
+
+            // Simulate 11 seconds passing
+            const afterExpiry = startTime + 11000;
+            PowerUpOrchestrator.update(0.016, afterExpiry);
+
+            test.assertTrue(!PowerUpOrchestrator.isActive('speed_boost'), 'Boost expired');
+            test.assertEqual(PowerUpOrchestrator.getSpeedMultiplier(), 1.0, 'Speed back to normal');
+        });
+
+        test.it('should handle activation of unknown power-up type gracefully', () => {
+            PowerUpOrchestrator.init();
+            PowerUpOrchestrator.activate('unknown_type', Date.now());
+            test.assertEqual(PowerUpOrchestrator.activeEffects.length, 0, 'No effect added');
+        });
+
+        test.it('should manually deactivate an active boost', () => {
+            PowerUpOrchestrator.init();
+            PowerUpOrchestrator.activate('speed_boost', Date.now());
+            test.assertTrue(PowerUpOrchestrator.isActive('speed_boost'), 'Boost is active');
+
+            PowerUpOrchestrator.deactivate('speed_boost');
+            test.assertTrue(!PowerUpOrchestrator.isActive('speed_boost'), 'Boost deactivated');
+            test.assertEqual(PowerUpOrchestrator.getSpeedMultiplier(), 1.0, 'Speed normal');
+        });
+    });
+
 })(window.TestFramework || { describe: () => {}, it: () => {}, assertTrue: () => {}, assertEqual: () => {} });
