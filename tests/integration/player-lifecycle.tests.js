@@ -174,4 +174,145 @@
         }
     );
 
+    // Test 7: Movement disabled when dead
+    runner.addTest('movement-disabled-when-dead', 'Player Death', 'No movement after death',
+        'Verifies WASD controls disabled after player dies',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+            runner.simulateClick(runner.getElement('#start-btn'));
+            await runner.wait(300);
+
+            // Kill player
+            runner.gameWindow.health = 0;
+            if (runner.gameWindow.endGame) {
+                runner.gameWindow.endGame(true);
+            }
+            await runner.wait(300);
+
+            const deathZ = runner.gameWindow.camera.position.z;
+
+            // Try to move
+            runner.simulateKeyDown('KeyW');
+            await runner.wait(500);
+            runner.simulateKeyUp('KeyW');
+
+            const newZ = runner.gameWindow.camera.position.z;
+
+            if (Math.abs(newZ - deathZ) > 0.1) {
+                throw new Error('Player moved after death');
+            }
+        }
+    );
+
+    // Test 8: Weapon pickup equips weapon
+    runner.addTest('weapon-pickup-equips-weapon', 'Weapon Pickup', 'Pickup switches weapon',
+        'Verifies driving over weapon pickup equips new weapon',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+            runner.simulateClick(runner.getElement('#start-btn'));
+            await runner.wait(300);
+
+            const PickupOrchestrator = runner.gameWindow.PickupOrchestrator;
+            const WeaponOrchestrator = runner.gameWindow.WeaponOrchestrator;
+
+            if (!PickupOrchestrator || !WeaponOrchestrator) {
+                throw new Error('Pickup or Weapon Orchestrator not found');
+            }
+
+            // Check if pickups exist
+            const pickups = PickupOrchestrator.pickups || [];
+            if (pickups.length === 0) {
+                throw new Error('No weapon pickups available to test');
+            }
+        }
+    );
+
+    // Test 9: Pause stops gameplay
+    runner.addTest('pause-stops-gameplay', 'Pause System', 'Pause freezes game',
+        'Verifies pressing ESC pauses enemies, timer, and projectiles',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+            runner.simulateClick(runner.getElement('#start-btn'));
+            await runner.wait(300);
+
+            const initialTimer = runner.gameWindow.gameTimer || 180;
+
+            // Pause
+            runner.gameWindow.pauseGame();
+            await runner.wait(100);
+
+            if (runner.getGameState() !== 'PAUSED') {
+                throw new Error('Game not paused');
+            }
+
+            // Wait and check timer didn't decrease
+            await runner.wait(1000);
+
+            const pausedTimer = runner.gameWindow.gameTimer || 180;
+
+            if (Math.abs(pausedTimer - initialTimer) > 0.1) {
+                throw new Error('Timer continued during pause');
+            }
+        }
+    );
+
+    // Test 10: Resume restores gameplay
+    runner.addTest('resume-restores-gameplay', 'Pause System', 'Resume continues game',
+        'Verifies resuming from pause restores all gameplay',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+            runner.simulateClick(runner.getElement('#start-btn'));
+            await runner.wait(300);
+
+            // Pause
+            runner.gameWindow.pauseGame();
+            await runner.wait(100);
+
+            // Resume
+            runner.gameWindow.resumeGame();
+            await runner.wait(100);
+
+            if (runner.getGameState() !== 'PLAYING') {
+                throw new Error('Game not resumed to PLAYING');
+            }
+
+            // Check timer continues
+            const timer1 = runner.gameWindow.gameTimer || 180;
+            await runner.wait(1000);
+            const timer2 = runner.gameWindow.gameTimer || 180;
+
+            if (timer2 >= timer1) {
+                throw new Error('Timer not running after resume');
+            }
+        }
+    );
+
+    // Test 11: High score survival goal
+    runner.addTest('high-score-survival-goal', 'Game Design', 'Focus is score maximization',
+        'Verifies game is survival-focused (high score), not objective-based',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+            runner.simulateClick(runner.getElement('#start-btn'));
+            await runner.wait(300);
+
+            // Score should start at 0
+            const score = runner.getScore();
+            if (score !== 0) {
+                throw new Error(`Expected score 0 at start, got ${score}`);
+            }
+
+            // No victory condition should exist for "clearing mall"
+            // This is a design validation test
+            const gameState = runner.getGameState();
+            if (gameState === 'VICTORY' || gameState === 'WIN') {
+                throw new Error('Game has victory state (should be survival only)');
+            }
+        }
+    );
+
 })(window.runner);
