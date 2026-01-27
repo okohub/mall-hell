@@ -123,12 +123,8 @@ const PickupOrchestrator = {
             }
         }
 
-        // All attempts failed, spawn anyway at room center
-        const spawnX = roomPosition.x;
-        const spawnZ = roomPosition.z;
-        const spawnY = WeaponPickup.spawn.heightOffset;
-        this.spawn(pickupType.id, { x: spawnX, y: spawnY, z: spawnZ });
-        return true;
+        // All attempts failed, don't spawn (room too cluttered)
+        return false;
     },
 
     /**
