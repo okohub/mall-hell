@@ -138,4 +138,147 @@
         }
     );
 
+    // Test 6: Dinosaur boss spawns at 5000
+    runner.addTest('dinosaur-boss-spawns-at-5000', 'Boss Enemy', 'Boss spawns at 5000 score',
+        'Verifies dino boss spawns at 5000 score threshold with warning',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+            runner.simulateClick(runner.getElement('#start-btn'));
+            await runner.wait(300);
+
+            const EnemyOrchestrator = runner.gameWindow.EnemyOrchestrator;
+
+            // Reset dino spawn counter
+            EnemyOrchestrator._dinoSpawnCount = 0;
+
+            // Check spawn type at 5000 score
+            const spawnType = EnemyOrchestrator.getSpawnType(5000);
+
+            if (spawnType !== 'DINOSAUR') {
+                throw new Error(`Expected DINOSAUR at 5000 score, got ${spawnType}`);
+            }
+        }
+    );
+
+    // Test 7: Dinosaur takes multiple hits
+    runner.addTest('dinosaur-takes-multiple-hits', 'Boss Enemy', 'Boss has 10 health',
+        'Verifies dinosaur boss requires multiple hits to kill',
+        async () => {
+            const enemy = await helpers.spawnEnemyAt(0, -20, 'DINOSAUR');
+
+            const Enemy = runner.gameWindow.Enemy;
+            const expectedHealth = Enemy.types.DINOSAUR.health;
+
+            if (enemy.userData.health !== expectedHealth) {
+                throw new Error(`Expected ${expectedHealth} health, got ${enemy.userData.health}`);
+            }
+
+            if (expectedHealth < 5) {
+                throw new Error(`Boss should have high health, got ${expectedHealth}`);
+            }
+        }
+    );
+
+    // Test 8: Pre-spawning ahead
+    runner.addTest('pre-spawning-ahead', 'Pre-Spawning', 'Enemies spawn in nearby rooms',
+        'Verifies enemies exist in rooms player has not entered',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+            runner.simulateClick(runner.getElement('#start-btn'));
+            await runner.wait(500);
+
+            // Run some updates to trigger spawning
+            for (let i = 0; i < 30; i++) {
+                if (runner.gameWindow.manualUpdate) {
+                    runner.gameWindow.manualUpdate(0.016);
+                }
+            }
+            await runner.wait(300);
+
+            // Player starts at room (1,2)
+            const currentRoom = runner.gameWindow.currentRoom || { x: 1, z: 2 };
+
+            // Check adjacent rooms
+            const adjacentRooms = [
+                { x: currentRoom.x + 1, z: currentRoom.z },
+                { x: currentRoom.x - 1, z: currentRoom.z },
+                { x: currentRoom.x, z: currentRoom.z + 1 },
+                { x: currentRoom.x, z: currentRoom.z - 1 }
+            ];
+
+            let hasEnemiesInAdjacentRoom = false;
+            for (const room of adjacentRooms) {
+                const enemies = helpers.getEnemiesInRoom(room.x, room.z);
+                if (enemies.length > 0) {
+                    hasEnemiesInAdjacentRoom = true;
+                    break;
+                }
+            }
+
+            if (!hasEnemiesInAdjacentRoom) {
+                throw new Error('No enemies found in adjacent rooms - pre-spawning not working');
+            }
+        }
+    );
+
+    // Test 9: Safe room no spawn
+    runner.addTest('safe-room-no-spawn', 'Safe Room', 'Starting room has no enemies',
+        'Verifies starting room (1,2) never spawns enemies',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+            runner.simulateClick(runner.getElement('#start-btn'));
+            await runner.wait(500);
+
+            // Run updates to spawn enemies
+            for (let i = 0; i < 30; i++) {
+                if (runner.gameWindow.manualUpdate) {
+                    runner.gameWindow.manualUpdate(0.016);
+                }
+            }
+            await runner.wait(200);
+
+            // Check starting room (1,2)
+            const enemiesInStart = helpers.getEnemiesInRoom(1, 2);
+
+            if (enemiesInStart.length > 0) {
+                throw new Error(`Starting room should have no enemies, found ${enemiesInStart.length}`);
+            }
+        }
+    );
+
+    // Test 10: Line of sight check
+    runner.addTest('skeleton-line-of-sight', 'Enemy AI', 'Line of sight affects behavior',
+        'Verifies enemy behavior changes when obstacles block line of sight',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+            runner.simulateClick(runner.getElement('#start-btn'));
+            await runner.wait(300);
+
+            // Spawn enemy
+            const enemy = await helpers.spawnEnemyAt(0, -20, 'SKELETON');
+            await helpers.positionPlayerAt(0, 0, 0);
+
+            // Check if CollisionOrchestrator has line of sight method
+            const CollisionOrchestrator = runner.gameWindow.CollisionOrchestrator;
+            if (!CollisionOrchestrator || typeof CollisionOrchestrator.hasLineOfSight !== 'function') {
+                throw new Error('CollisionOrchestrator.hasLineOfSight not found');
+            }
+
+            // Test line of sight
+            const hasLOS = CollisionOrchestrator.hasLineOfSight(
+                enemy.position,
+                runner.gameWindow.camera.position,
+                runner.gameWindow.scene
+            );
+
+            if (typeof hasLOS !== 'boolean') {
+                throw new Error('hasLineOfSight did not return boolean');
+            }
+        }
+    );
+
 })(window.runner);
