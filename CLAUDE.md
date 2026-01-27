@@ -31,6 +31,8 @@
 4. **Single source of truth** - Use constants from `<domain>.js` files, never hardcode
 5. **Orchestrators over instances** - Use `WeaponOrchestrator`, `EnemyOrchestrator`, not specific implementations
 6. **Stateless helpers** - Mesh/animation modules receive all data as parameters (no internal state)
+7. **Integration tests simulate game loop** - Use `runner.gameWindow.manualUpdate(dt)` in loops to advance game state frame-by-frame
+8. **Test isolation** - Reset weapon state between tests (set `lastFireTime = 0`, clear `isCharging`)
 
 ## Domain Quick Reference
 
