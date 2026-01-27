@@ -45,12 +45,14 @@ The slingshot uses a **tension system** - hold SPACE to charge up power:
 
 | Score | Rating |
 |-------|--------|
-| 0-800 | Mild Mischief |
-| 801-2000 | Rowdy Kid |
-| 2001-4000 | Troublemaker |
-| 4001-7000 | Chaos Master |
-| 7001-10000 | Total Mayhem! |
-| 10001+ | LEGENDARY CHAOS! |
+| 0-1499 | Window Shopper |
+| 1500-2999 | Lost in IKEA |
+| 3000-5999 | Mall Diver |
+| 6000-9999 | Cart Warrior |
+| 10000-14999 | Demon Buster |
+| 15000-20999 | Abyss Hunter |
+| 21000-27999 | Hell's Nightmare |
+| 28000+ | MALL REDEEMER |
 
 ## Features
 
