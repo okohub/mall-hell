@@ -271,4 +271,69 @@
         }
     );
 
+    // Test 10: Real movement spawns enemies naturally
+    runner.addTest('real-movement-spawn-flow', 'Pre-Spawning', 'Moving forward spawns enemies naturally',
+        'Simulates actual gameplay: move forward, enemies spawn in new rooms, entrance stays safe',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+            runner.simulateClick(runner.getElement('#start-btn'));
+            await runner.wait(300);
+
+            const ROOM_UNIT = 30;
+            const camera = runner.gameWindow.camera;
+
+            // Initial position: entrance room (1, 2) at approximately (45, 75)
+            const startX = camera.position.x;
+            const startZ = camera.position.z;
+
+            // Run initial frames to materialize nearby rooms
+            for (let i = 0; i < 30; i++) {
+                runner.gameWindow.manualUpdate(0.016);
+            }
+
+            // Verify entrance room (1, 2) has NO enemies
+            const entranceEnemies = helpers.getEnemiesInRoom(1, 2);
+            if (entranceEnemies.length > 0) {
+                throw new Error(`Entrance room should have no enemies, found ${entranceEnemies.length}`);
+            }
+
+            // Verify entrance room has NO pickups
+            const pickups = runner.gameWindow.PickupOrchestrator?.getAll() || [];
+            const entrancePickups = pickups.filter(p => {
+                const roomX = Math.floor(p.position.x / ROOM_UNIT);
+                const roomZ = Math.floor(p.position.z / ROOM_UNIT);
+                return roomX === 1 && roomZ === 2;
+            });
+            if (entrancePickups.length > 0) {
+                throw new Error(`Entrance room should have no pickups, found ${entrancePickups.length}`);
+            }
+
+            // Move forward by directly setting camera position
+            // Player starts at z=75 (room 2), move to z=35 (room 1)
+            camera.position.z = 35;
+
+            // Run game loop to trigger room materialization
+            for (let i = 0; i < 50; i++) {
+                runner.gameWindow.manualUpdate(0.016);
+            }
+            await runner.wait(200);
+
+            // Check that enemies exist in the new room area (room 1, z=30-60)
+            const enemiesInNewArea = (runner.gameWindow.enemies || []).filter(e => {
+                return e.userData.active && e.position.z >= 30 && e.position.z < 60;
+            });
+
+            if (enemiesInNewArea.length === 0) {
+                throw new Error('No enemies spawned in room 1 after player moved there');
+            }
+
+            // Re-verify entrance room STILL has no enemies after movement
+            const entranceEnemiesAfter = helpers.getEnemiesInRoom(1, 2);
+            if (entranceEnemiesAfter.length > 0) {
+                throw new Error(`Entrance room should remain enemy-free, found ${entranceEnemiesAfter.length}`);
+            }
+        }
+    );
+
 })(window.runner);
