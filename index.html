@@ -500,6 +500,7 @@
 
         function endGame(died = false) {
             StateOrchestrator.forceTransition('GAME_OVER');
+            PowerUpOrchestrator.reset();  // Clear active boosts
             const s = GameSession.getScore();
             const playTime = GameSession.DURATION - GameSession.getTimer();
             UIOrchestrator.showGameOver(s, UI.getScoreRating(s), died); updateCursor();

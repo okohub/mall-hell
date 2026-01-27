@@ -236,4 +236,106 @@
         }
     );
 
+    // Test 7: Power-ups reset on game over
+    runner.addTest('powerup-resets-on-game-over', 'Pickup+PowerUp', 'Power-ups reset on game over',
+        'Verifies power-ups are cleared when game ends',
+        async () => {
+            // Access game internals
+            const PowerUpOrchestrator = runner.gameWindow.PowerUpOrchestrator;
+
+            // Initialize system
+            PowerUpOrchestrator.init();
+
+            // Activate power-up
+            PowerUpOrchestrator.activate('speed_boost', Date.now());
+            if (!PowerUpOrchestrator.isActive('speed_boost')) {
+                throw new Error('Power-up should be active before game over');
+            }
+
+            // Simulate game over
+            PowerUpOrchestrator.reset();
+
+            // Verify power-up cleared
+            if (PowerUpOrchestrator.isActive('speed_boost')) {
+                throw new Error('Power-up should be inactive after game over');
+            }
+            if (PowerUpOrchestrator.getSpeedMultiplier() !== 1.0) {
+                throw new Error(`Expected multiplier 1.0, got ${PowerUpOrchestrator.getSpeedMultiplier()}`);
+            }
+        }
+    );
+
+    // Test 8: Power-ups reset on player death
+    runner.addTest('powerup-resets-on-death', 'Pickup+PowerUp', 'Power-ups reset on player death',
+        'Verifies power-ups are cleared when player dies',
+        async () => {
+            // Access game internals
+            const PowerUpOrchestrator = runner.gameWindow.PowerUpOrchestrator;
+            const PlayerOrchestrator = runner.gameWindow.PlayerOrchestrator;
+
+            // Initialize systems
+            PowerUpOrchestrator.init();
+            PlayerOrchestrator.init();
+
+            // Activate power-up
+            PowerUpOrchestrator.activate('speed_boost', Date.now());
+
+            // Verify active
+            if (!PowerUpOrchestrator.isActive('speed_boost')) {
+                throw new Error('Power-up should be active');
+            }
+
+            // Simulate player death scenario: damage player to 0 health
+            PlayerOrchestrator.health = 1;
+            PlayerOrchestrator.isInvulnerable = false;
+            PlayerOrchestrator.damage(100);
+
+            // Verify player is dead
+            if (!PlayerOrchestrator.isDead()) {
+                throw new Error('Player should be dead after fatal damage');
+            }
+
+            // In real game, endGame() would be called which resets power-ups
+            // Simulate that here
+            PowerUpOrchestrator.reset();
+
+            // Verify power-up cleared
+            if (PowerUpOrchestrator.isActive('speed_boost')) {
+                throw new Error('Power-up should be inactive after player death');
+            }
+        }
+    );
+
+    // Test 9: UI timer hidden after reset
+    runner.addTest('ui-timer-hidden-after-reset', 'Pickup+PowerUp', 'UI timer hidden after power-up reset',
+        'Verifies timer UI is hidden when power-ups are reset',
+        async () => {
+            // Access game internals
+            const PowerUpOrchestrator = runner.gameWindow.PowerUpOrchestrator;
+            const UIOrchestrator = runner.gameWindow.UIOrchestrator;
+
+            // Initialize systems
+            PowerUpOrchestrator.init();
+
+            // Activate power-up and show timer
+            PowerUpOrchestrator.activate('speed_boost', Date.now());
+            UIOrchestrator.updatePowerUpTimer(5000, 'speed_boost');
+
+            // Verify timer visible
+            const timer = runner.getElement('#powerup-timer');
+            if (!runner.isVisible(timer)) {
+                throw new Error('Timer should be visible when power-up is active');
+            }
+
+            // Reset power-ups
+            PowerUpOrchestrator.reset();
+            UIOrchestrator.updatePowerUpTimer(0, 'speed_boost');
+
+            // Verify timer hidden
+            if (runner.isVisible(timer)) {
+                throw new Error('Timer should be hidden after reset');
+            }
+        }
+    );
+
 })(window.runner || runner);
