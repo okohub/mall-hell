@@ -268,15 +268,26 @@
 
             // Check if CollisionOrchestrator has line of sight method
             const CollisionOrchestrator = runner.gameWindow.CollisionOrchestrator;
+            const RoomOrchestrator = runner.gameWindow.RoomOrchestrator;
+            const Room = runner.gameWindow.Room;
+
             if (!CollisionOrchestrator || typeof CollisionOrchestrator.hasLineOfSight !== 'function') {
                 throw new Error('CollisionOrchestrator.hasLineOfSight not found');
             }
 
-            // Test line of sight
+            if (!RoomOrchestrator || !Room || !Room.structure) {
+                throw new Error('RoomOrchestrator or Room structure not found for LOS test');
+            }
+
+            // Test line of sight - signature: hasLineOfSight(fromX, fromZ, toX, toZ, gridOrchestrator, roomConfig)
+            // mallGrid is just RoomOrchestrator
             const hasLOS = CollisionOrchestrator.hasLineOfSight(
-                enemy.position,
-                runner.gameWindow.camera.position,
-                runner.gameWindow.scene
+                enemy.position.x,
+                enemy.position.z,
+                runner.gameWindow.camera.position.x,
+                runner.gameWindow.camera.position.z,
+                RoomOrchestrator,
+                Room.structure
             );
 
             if (typeof hasLOS !== 'boolean') {
