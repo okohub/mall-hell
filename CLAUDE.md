@@ -49,6 +49,7 @@
 | ui | `ui.js` | `ui-orchestrator.js` | HUD, menus, minimap |
 | player | `player.js` | `player-orchestrator.js` | Movement, health |
 | projectile | `projectile.js` | `projectile-orchestrator.js` | Projectile physics |
+| powerup | `powerup.js` | `powerup-orchestrator.js` | Power-ups, effects, timers |
 | engine | - | `state-orchestrator.js`, etc. | Core game systems |
 
 ## File Ownership

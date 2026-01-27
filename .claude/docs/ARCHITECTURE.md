@@ -72,6 +72,7 @@ src/
 ├── projectile/      # Projectile physics, visuals
 ├── enemy/           # Enemy types, AI, spawning
 ├── particle/        # Particle effects
+├── powerup/         # Power-ups (speed boost, future effects)
 └── environment/     # Obstacles, shelves, spawn system
 ```
 

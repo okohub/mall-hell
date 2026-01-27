@@ -74,6 +74,23 @@ EXPLORE → HUNT → KILL → SCORE → REPEAT
 
 ---
 
+## Power-Ups
+
+### Speed Boost
+
+| Stat | Value |
+|------|-------|
+| Effect | 2x movement speed |
+| Duration | 10 seconds |
+| Spawn Chance | 25% per room |
+| Visual | Red/yellow energy drink can |
+
+- Temporary speed increase for aggressive room clearing
+- Refreshes timer if collected while already boosted (doesn't stack)
+- HUD timer shows remaining duration with color warnings
+
+---
+
 ## Player
 
 | Stat | Value |
