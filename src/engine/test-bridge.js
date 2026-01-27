@@ -169,10 +169,6 @@ const TestBridge = {
             configurable: true
         });
 
-        Object.defineProperty(window, 'playerChild', {
-            get: () => gi.playerChild,
-            configurable: true
-        });
 
         Object.defineProperty(window, 'playerCart', {
             get: () => gi.playerCart,

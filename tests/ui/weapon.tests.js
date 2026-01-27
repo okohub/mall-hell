@@ -30,7 +30,7 @@
     );
 
     runner.addTest('fps-only-mode', 'FPS Mode', 'Game runs in first-person mode',
-        'Verifies the game runs in FPS mode only (no third-person)',
+        'Verifies the game runs in FPS mode with visible weapon',
         async () => {
             runner.resetGame();
             await runner.wait(100);
@@ -42,28 +42,6 @@
             const fpsWeaponVisible = runner.gameWindow.fpsWeapon?.visible;
             if (!fpsWeaponVisible) {
                 throw new Error('FPS weapon should be visible');
-            }
-
-            const childVisible = runner.gameWindow.playerChild?.visible;
-            if (childVisible === true) {
-                throw new Error('Child model should be hidden in FPS mode');
-            }
-        }
-    );
-
-    runner.addTest('child-hidden-in-fps', 'FPS Mode', 'Child model hidden in FPS mode',
-        'Verifies the child character is hidden when in FPS mode (camera is the child)',
-        async () => {
-            runner.resetGame();
-            await runner.wait(100);
-
-            const startBtn = runner.getElement('#start-btn');
-            runner.simulateClick(startBtn);
-            await runner.wait(500);
-
-            const childVisible = runner.gameWindow.playerChild?.visible;
-            if (childVisible === true) {
-                throw new Error('Child model should be hidden in FPS mode');
             }
         }
     );

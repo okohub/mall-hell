@@ -313,7 +313,7 @@
         let isFrozen = false;
 
         // Player mesh references
-        let playerCart, playerChild, slingshotArm;
+        let playerCart;
 
         // Room tracking
         let currentRoom = null;
@@ -369,7 +369,7 @@
             // Player and weapons
             createEnvironment();
             const p = PlayerMesh.createPlayerCart(THREE);
-            playerCart = p.cart; playerChild = p.child; slingshotArm = p.slingshot;
+            playerCart = p.cart;
             playerCart.position.set(0, 0, -5); scene.add(playerCart);
             WeaponOrchestrator.init(scene);
             [Slingshot, WaterGun, LaserGun, NerfGun].forEach(w => WeaponOrchestrator.register(w));
@@ -618,8 +618,6 @@
 
             // FPS mode
             playerCart.visible = true;
-            if (playerChild) playerChild.visible = false;
-            if (slingshotArm) slingshotArm.visible = false;
             if (WeaponOrchestrator.fpsMesh) { WeaponOrchestrator.showFPSWeapon(); WeaponOrchestrator.updateTransform(PlayerOrchestrator.currentTurnRate); }
             updateCharging(dt); WeaponOrchestrator.animateFPS(dt); updateAmmoDisplay(); updateCurrentRoom();
 
@@ -818,7 +816,6 @@
             getCameraMode: () => cameraMode,
             setCameraMode: () => {},  // Read-only in v3
             getFpsWeapon: () => WeaponOrchestrator.fpsMesh,
-            slingshotArm,  // Legacy third-person slingshot mesh
             getProjectiles: () => projectiles,
             getEnemies: () => enemies,
             getObstacles: () => obstacles,
@@ -837,7 +834,7 @@
                 PlayerOrchestrator.wallBumpDirection = { x: dirX, z: dirZ };
             },
             // Object references
-            scene, camera, renderer, playerCart, playerChild, mallGrid, Room
+            scene, camera, renderer, playerCart, mallGrid, Room
         };
 
         updateCursor();

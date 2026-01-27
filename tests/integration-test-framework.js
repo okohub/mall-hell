@@ -178,11 +178,6 @@
                 WeaponOrchestrator.showFPSWeapon();
             }
 
-            // Hide legacy slingshotArm (third-person mesh, normally hidden in game loop)
-            const gi = runner.gameWindow.__gameInternals;
-            if (gi?.slingshotArm) {
-                gi.slingshotArm.visible = false;
-            }
 
             // Ensure projectile refs are set
             this.ensureProjectileRefs();
