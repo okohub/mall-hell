@@ -329,7 +329,7 @@ const PickupOrchestrator = {
             pickup.add(stripe);
         } else {
             // Fallback: generic power-up mesh
-            mesh = this._createGenericMesh(instance, THREE);
+            const mesh = this._createGenericMesh(instance, THREE);
             return mesh;
         }
 
