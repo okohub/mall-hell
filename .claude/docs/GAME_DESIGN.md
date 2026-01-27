@@ -5,7 +5,7 @@
 | Attribute | Value |
 |-----------|-------|
 | **Title** | Mall Hell |
-| **Version** | 5.1 |
+| **Version** | 5.5 |
 | **Genre** | Arcade Score-Chaser / Hell Crawler |
 | **Session** | 3 minutes |
 | **Objective** | Clear Mall Hell of all enemies before time expires |
@@ -65,12 +65,12 @@ EXPLORE → HUNT → KILL → SCORE → REPEAT
 
 ## Weapons
 
-| Weapon | Ammo | Damage | Special |
-|--------|------|--------|---------|
-| Slingshot | 25 | 1 | Charge for power |
-| Water Blaster | 50 | 1 | Rapid fire, splash |
-| Nerf Blaster | 40 | 1 | Single shot |
-| Laser Blaster | 30 | 2 | High damage beam |
+| Weapon | Ammo | Damage | Charge Time | Special |
+|--------|------|--------|-------------|---------|
+| Slingshot | 25 | 1 base, +3 per charge<br>Quick: 1, Half: 2, Full: 4 | 2.0s to full charge<br>minTension: 0.05 | Skill-based workhorse, rewards patience |
+| Nerf Gun | 12 | 3 flat | N/A | Reliable sidearm, 20% faster projectiles (120 speed) |
+| Water Gun | 30 | 2 direct, 3 splash | N/A | Crowd control, 50% stronger AOE |
+| Laser Gun | 75 | 1 per shot | N/A | Power weapon, melts 18 skeletons per magazine |
 
 ---
 
