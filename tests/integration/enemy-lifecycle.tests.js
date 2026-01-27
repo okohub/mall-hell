@@ -24,8 +24,12 @@
                 throw new Error(`Expected health ${config.health}, got ${enemy.userData.health}`);
             }
 
-            if (Math.abs(enemy.userData.driftSpeed - config.driftSpeed) > 0.01) {
-                throw new Error(`Expected driftSpeed ${config.driftSpeed}, got ${enemy.userData.driftSpeed}`);
+            // driftSpeed is randomized: (Math.random() - 0.5) * config.driftSpeed
+            // For config.driftSpeed = 4, range is -2 to +2
+            const expectedMin = -0.5 * config.driftSpeed;
+            const expectedMax = 0.5 * config.driftSpeed;
+            if (enemy.userData.driftSpeed < expectedMin || enemy.userData.driftSpeed > expectedMax) {
+                throw new Error(`Expected driftSpeed in range [${expectedMin}, ${expectedMax}], got ${enemy.userData.driftSpeed}`);
             }
         }
     );
