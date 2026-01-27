@@ -30,6 +30,7 @@ const args = process.argv.slice(2);
 const VALID_FLAGS = [
     '--unit', '-u',
     '--ui', '-i',
+    '--suite',
     '--quiet', '-q',
     '--failed', '-f',
     '--list', '-l',
@@ -52,6 +53,7 @@ for (let i = 0; i < args.length; i++) {
             console.error('\nValid flags:');
             console.error('  --unit, -u        Run only unit tests');
             console.error('  --ui, -i          Run only UI tests');
+            console.error('  --suite=<name>    Run specific test suite (integration)');
             console.error('  --quiet, -q       Minimal output');
             console.error('  --failed, -f      Re-run failed tests from last run');
             console.error('  --fail-fast, -x   Exit immediately on first failure');
@@ -72,6 +74,7 @@ if (args.includes('--help') || args.includes('-h')) {
     console.log('\nOptions:');
     console.log('  --unit, -u        Run only unit tests');
     console.log('  --ui, -i          Run only UI tests');
+    console.log('  --suite=<name>    Run specific test suite (integration)');
     console.log('  --quiet, -q       Minimal output');
     console.log('  --failed, -f      Re-run failed tests from last run');
     console.log('  --fail-fast, -x   Exit immediately on first failure');
@@ -82,6 +85,7 @@ if (args.includes('--help') || args.includes('-h')) {
     console.log('  --help, -h        Show this help');
     console.log('\nExamples:');
     console.log('  bun run-tests.js --domain=enemy');
+    console.log('  bun run-tests.js --suite=integration');
     console.log('  bun run-tests.js --failed');
     console.log('  bun run-tests.js --fail-fast');
     console.log('  bun run-tests.js --test="should spawn skeleton"');
@@ -96,6 +100,13 @@ const VERBOSE = !QUIET;
 const RUN_FAILED = args.includes('--failed') || args.includes('-f');
 const FAIL_FAST = args.includes('--fail-fast') || args.includes('-x');
 const LIST_RUNS = args.includes('--list') || args.includes('-l');
+
+// Parse --suite flag
+let SUITE = null;
+const suiteArg = args.find(arg => arg.startsWith('--suite='));
+if (suiteArg) {
+    SUITE = suiteArg.split('=')[1];
+}
 
 // Specific test/group/domain filters
 let ONLY_TESTS = [];
@@ -746,6 +757,179 @@ async function runUITestsOnly() {
     process.exit(uiResults.failed > 0 ? 1 : 0);
 }
 
+async function runIntegrationTestsOnly() {
+    outputLines = [];
+
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security']
+    });
+
+    console.log('\n🧪 MALL HELL - INTEGRATION TESTS\n');
+    console.log('='.repeat(60));
+
+    if (ONLY_TESTS.length > 0) console.log(`\n🎯 Running only: ${ONLY_TESTS.join(', ')}`);
+    if (TEST_GROUPS.length > 0) console.log(`\n📂 Running groups: ${TEST_GROUPS.join(', ')}`);
+
+    console.log('\n⚡ Running Integration Tests...\n');
+
+    const progressInterval = setInterval(updateProgressDisplay, VERBOSE ? 500 : 200);
+
+    // Reuse runUITests logic but with integration-tests.html
+    const page = await browser.newPage();
+    const filePath = path.resolve(__dirname, 'tests/integration-tests.html');
+    let passed = 0, failed = 0, pending = 0;
+    let failedTests = [];
+
+    page.on('console', msg => {
+        if (msg.type() === 'error') {
+            logProgress(`  [Integration Browser Error] ${msg.text()}`);
+        }
+    });
+
+    page.on('pageerror', error => {
+        logProgress(`  [Integration Page Error] ${error.message}`);
+    });
+
+    try {
+        await page.setViewport({ width: 1400, height: 900 });
+        await page.goto(`file://${filePath}`, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        if (ONLY_TESTS.length > 0) {
+            await page.evaluate((testNames) => {
+                if (window.runner && window.runner.tests) {
+                    window.runner.tests = window.runner.tests.filter(t =>
+                        testNames.some(name =>
+                            t.name.toLowerCase().includes(name.toLowerCase()) ||
+                            t.id?.toLowerCase().includes(name.toLowerCase())
+                        )
+                    );
+                }
+            }, ONLY_TESTS);
+        }
+
+        if (TEST_GROUPS.length > 0) {
+            await page.evaluate((groups) => {
+                if (window.runner && window.runner.tests) {
+                    window.runner.tests = window.runner.tests.filter(t => {
+                        const testGroup = (t.group || '').toLowerCase();
+                        return groups.some(g =>
+                            testGroup.includes(g) ||
+                            t.id?.toLowerCase().startsWith(g) ||
+                            t.name?.toLowerCase().includes(g)
+                        );
+                    });
+                }
+            }, TEST_GROUPS);
+        }
+
+        const totalTests = await page.evaluate(() => window.runner?.tests?.length || 0);
+        progress.ui.total = totalTests;
+
+        if (VERBOSE) {
+            logProgress(`  [Integration] Found ${totalTests} tests registered`);
+        }
+
+        await page.evaluate(() => window.runner?.runAllTests?.());
+
+        const maxWaitTime = 600000;
+        const startTime = Date.now();
+
+        while (Date.now() - startTime < maxWaitTime) {
+            const results = await page.evaluate(() => {
+                if (!window.runner) return null;
+                const allDone = window.runner.tests.every(t => t.status === 'pass' || t.status === 'fail');
+                return {
+                    passed: window.runner.results.pass,
+                    failed: window.runner.results.fail,
+                    pending: window.runner.results.pending,
+                    done: allDone,
+                    currentTest: window.runner.currentTest?.name || '',
+                    tests: window.runner.tests.map(t => ({
+                        id: t.id,
+                        name: t.name,
+                        group: t.group,
+                        status: t.status,
+                        error: t.error
+                    }))
+                };
+            });
+
+            if (!results) break;
+
+            passed = results.passed;
+            failed = results.failed;
+            pending = results.pending;
+            progress.ui.passed = passed;
+            progress.ui.failed = failed;
+            progress.ui.current = results.currentTest;
+
+            if (results.done) {
+                progress.ui.done = true;
+                break;
+            }
+
+            if (FAIL_FAST && failed > 0) {
+                console.log('\n\n❌ FAIL-FAST: Stopping after first failure\n');
+                break;
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        const allTests = await page.evaluate(() => {
+            if (!window.runner || !window.runner.tests) return [];
+            return window.runner.tests.map(t => ({
+                id: t.id,
+                name: t.name,
+                group: t.group,
+                status: t.status,
+                error: t.error,
+                time: t.time
+            }));
+        });
+
+        failedTests = allTests.filter(t => t.status === 'fail');
+
+    } catch (e) {
+        logProgress(`\n❌ Integration test runner error: ${e.message}`);
+        failed++;
+    }
+
+    await page.close();
+    clearInterval(progressInterval);
+
+    if (!VERBOSE) process.stdout.write('\r' + ' '.repeat(100) + '\r');
+
+    console.log('\n' + '='.repeat(60));
+    console.log('\nIntegration Test Results:');
+    console.log('-'.repeat(60));
+
+    if (failedTests.length > 0) {
+        console.log('\n❌ Failed Tests:\n');
+        for (const test of failedTests) {
+            console.log(`  [${test.group}] ${test.name}`);
+            if (test.error) {
+                console.log(`    Error: ${test.error.substring(0, 100)}...`);
+            }
+        }
+    }
+
+    await browser.close();
+
+    console.log('\n' + '='.repeat(60));
+    console.log(`\n🎯 RESULTS: ${passed} passed, ${failed} failed\n`);
+
+    saveResults({
+        integrationResults: { passed, failed, failedTests },
+        totalPassed: passed,
+        totalFailed: failed
+    });
+
+    process.exit(failed > 0 ? 1 : 0);
+}
+
 function saveResults(data) {
     const jsonResults = {
         timestamp: new Date().toISOString(),
@@ -795,7 +979,9 @@ function saveResults(data) {
 // Group filter implies UI-only (groups are fine-grained UI test filtering)
 const implicitUIOnly = TEST_GROUPS.length > 0;
 
-if (UNIT_ONLY) {
+if (SUITE === 'integration') {
+    runIntegrationTestsOnly().catch(console.error);
+} else if (UNIT_ONLY) {
     runUnitTestsOnly().catch(console.error);
 } else if (UI_ONLY || implicitUIOnly) {
     runUITestsOnly().catch(console.error);
