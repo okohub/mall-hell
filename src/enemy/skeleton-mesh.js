@@ -169,37 +169,8 @@ const SkeletonMesh = {
             cart.add(post);
         });
 
-        // === CART HANDLE (at back, positive Z) ===
-        const handleHeight = basketHeight + 0.8;
-        const handleMat = new THREE.MeshStandardMaterial({
-            color: 0x1a1a1a,
-            roughness: 0.5,
-            metalness: 0.6
-        });
-
-        // Handle uprights
-        [-basketWidth/2 + 0.15, basketWidth/2 - 0.15].forEach(x => {
-            const upright = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.04, 0.04, 1.2, 8),
-                handleMat
-            );
-            upright.position.set(x, handleHeight, basketDepth/2 + 0.1);
-            cart.add(upright);
-        });
-
-        // Handle bar (grip)
-        const handleBar = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.05, 0.05, basketWidth - 0.3, 12),
-            new THREE.MeshStandardMaterial({
-                color: 0x333333,
-                roughness: 0.8,
-                metalness: 0.3
-            })
-        );
-        handleBar.rotation.z = Math.PI / 2;
-        handleBar.position.set(0, handleHeight + 0.5, basketDepth/2 + 0.1);
-        cart.add(handleBar);
-        cart.userData.handle = handleBar;
+        // === CART HANDLE (removed for cleaner look) ===
+        // Handle removed - skeleton grips cart directly
 
         // === WHEELS (with realistic design) ===
         const wheelRadius = 0.22;
@@ -322,6 +293,7 @@ const SkeletonMesh = {
 
     /**
      * Create complete skeleton figure - properly scaled and connected
+     * All parts added to skeleton group with absolute positions
      * @private
      */
     _createFullSkeleton(THREE, v) {
@@ -334,44 +306,44 @@ const SkeletonMesh = {
         });
 
         // Scale factor for overall skeleton size
-        const scale = 1.15;
+        const scale = 1.6;
 
-        // === PELVIS (hip center) ===
+        // === PELVIS (hip center, root position) ===
         const pelvis = this._createPelvis(THREE, boneMat);
-        pelvis.position.y = 1.0 * scale;
+        pelvis.position.y = 1.6;
         pelvis.scale.setScalar(scale);
         skeleton.add(pelvis);
         skeleton.userData.pelvis = pelvis;
 
-        // === LEGS (connected to pelvis, feet at ground level) ===
+        // === LEGS (feet at ground, connected to pelvis) ===
         const legs = this._createLegs(THREE, boneMat);
-        legs.position.y = 0.95 * scale;
+        legs.position.y = 1.6;
         legs.scale.setScalar(scale);
         skeleton.add(legs);
         skeleton.userData.leftLeg = legs.userData.leftLeg;
         skeleton.userData.rightLeg = legs.userData.rightLeg;
 
-        // === SPINE & RIBCAGE (connected to pelvis) ===
+        // === SPINE & RIBCAGE (bottom connects to pelvis top, extends upward) ===
         const torso = this._createTorso(THREE, boneMat);
-        torso.position.y = 1.1 * scale;
+        torso.position.y = 2.3;
         torso.scale.setScalar(scale);
         skeleton.add(torso);
         skeleton.userData.torso = torso;
 
         // === ARMS (at shoulder height, reaching forward) ===
         const arms = this._createArms(THREE, boneMat, v);
-        arms.position.y = 1.85 * scale;
+        arms.position.y = 2.45;
         arms.scale.setScalar(scale);
         skeleton.add(arms);
         skeleton.userData.leftArm = arms.userData.leftArm;
         skeleton.userData.rightArm = arms.userData.rightArm;
 
-        // === SKULL (on top of spine) ===
+        // === SKULL (on top of spine, above shoulders) ===
         // Skull is rotated 180° to face backwards - creepy effect where skeleton
         // pushes cart but head is turned around to stare at the player
         const skull = this._createSkull(THREE, boneMat, v);
-        skull.position.y = 2.35 * scale;
-        skull.scale.setScalar(scale * 1.1); // Slightly bigger head for creepy effect
+        skull.position.y = 3.1;
+        skull.scale.setScalar(scale * 1.15); // Slightly bigger head for creepy effect
         skull.rotation.y = Math.PI; // Turn head around to face player
         skeleton.add(skull);
         skeleton.userData.skull = skull;
