@@ -133,11 +133,20 @@
 
             // Hold fire for rapid shots
             runner.gameWindow.startFiring();
-            await runner.wait(1000);  // Real timing for rapid fire
+
+            // Run updates to trigger rapid fire (watergun fires every ~200ms)
+            // Run 60 frames over 1 second to allow multiple shots
+            for (let i = 0; i < 60; i++) {
+                if (runner.gameWindow.manualUpdate) {
+                    runner.gameWindow.manualUpdate(0.016);
+                }
+                await runner.wait(16);
+            }
+
             runner.gameWindow.stopFiring();
 
             // Check multiple projectiles spawned
-            const projectiles = runner.gameWindow.projectiles || [];
+            const projectiles = runner.gameWindow.getProjectiles ? runner.gameWindow.getProjectiles() : [];
             if (projectiles.length < 3) {
                 throw new Error(`Expected multiple projectiles, got ${projectiles.length}`);
             }

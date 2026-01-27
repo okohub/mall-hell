@@ -420,6 +420,10 @@
         const cancelCharging = () => WeaponOrchestrator.cancelAction();
         const releaseAndFire = () => { const r = WeaponOrchestrator.onFireRelease(Date.now()); if (r) shoot(r.speed, r); };
 
+        // Test helpers for firing
+        const startFiring = () => startCharging();
+        const stopFiring = () => cancelCharging();
+
         function shoot(speed, fireResult = null) {
             lastShootTime = Date.now();
             if (cameraMode === 'hybrid-fps') WeaponOrchestrator.triggerFireAnim();
@@ -816,6 +820,7 @@
             // Functions
             startGame, pauseGame, resumeGame, endGame, resetGame, damagePlayer,
             startCharging, releaseAndFire, cancelCharging, updateAmmoDisplay,
+            startFiring, stopFiring,
             manualUpdate: (dt = 0.016) => update(dt),
             triggerWallBump: (intensity, dirX, dirZ) => {
                 PlayerOrchestrator.wallBumpIntensity = intensity;

@@ -38,12 +38,25 @@
 
             // Equip weapon
             const WeaponOrchestrator = runner.gameWindow.WeaponOrchestrator;
+            const THREE = runner.gameWindow.THREE;
+            const MaterialsTheme = runner.gameWindow.MaterialsTheme;
+            const camera = runner.gameWindow.camera;
+
+            // Switch to requested weapon if not already equipped
+            if (WeaponOrchestrator.currentWeapon?.config?.id !== weapon) {
+                WeaponOrchestrator.equip(weapon, THREE, MaterialsTheme, camera);
+            }
+
+            // Reset weapon state for clean test
             const weaponInstance = WeaponOrchestrator.currentWeapon;
+            if (weaponInstance && weaponInstance.reset) {
+                weaponInstance.reset();
+            }
 
             return {
                 enemy,
                 weapon: weaponInstance,
-                player: runner.gameWindow.camera
+                player: camera
             };
         },
 
