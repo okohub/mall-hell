@@ -22,6 +22,7 @@ The test runner captures all output internally and saves to `.test-output/`. She
 | `bun run-tests.js --group=<name>` | Test specific feature group |
 | `bun run-tests.js --test=<id>` | Test single test by ID |
 | `bun run-tests.js --fail-fast` | Stop on first failure |
+| `bun run-tests.js --suite=integration` | Run integration tests |
 | `bun run test` | Full suite (only when user asks) |
 
 ## Workflow Rules
@@ -58,6 +59,19 @@ Results saved to `.test-output/`:
 ### UI Tests
 - Location: `tests/ui/<domain>.tests.js`
 - Register in: `tests/ui-tests.html`
+
+### Integration Tests
+- Location: `tests/integration/<feature>.tests.js`
+- Register in: `tests/integration-tests.html`
+- Purpose: Test complete game mechanics end-to-end
+- Run: `bun run-tests.js --suite=integration`
+- Runtime: ~3-5 minutes for full suite
+
+**Integration test groups:**
+- Combat Flow: Weapon firing → projectile → hit → damage → kill
+- Enemy Lifecycle: Spawn → AI → attack → death
+- Room Progression: Pre-spawning, materialization, movement
+- Player Lifecycle: Movement → damage → death, survival mechanics
 
 ### Critical Patterns
 

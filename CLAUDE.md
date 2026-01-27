@@ -11,6 +11,7 @@
 | Test group | `bun run-tests.js --group=weapon` |
 | Test single | `bun run-tests.js --test=<id>` |
 | Stop on fail | `bun run-tests.js --fail-fast` |
+| Integration tests | `bun run-tests.js --suite=integration` |
 | Full suite | `bun run test` (only when asked) |
 
 ## Documentation
