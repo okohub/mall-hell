@@ -49,8 +49,15 @@
 
             // Reset weapon state for clean test
             const weaponInstance = WeaponOrchestrator.currentWeapon;
-            if (weaponInstance && weaponInstance.reset) {
-                weaponInstance.reset();
+            if (weaponInstance) {
+                if (weaponInstance.reset) {
+                    weaponInstance.reset();
+                }
+                // Clear cooldown to ensure weapon can fire immediately
+                // Set lastFireTime far in the past so cooldown is definitely passed
+                if (weaponInstance.state) {
+                    weaponInstance.state.lastFireTime = Date.now() - 10000; // 10 seconds ago
+                }
             }
 
             return {
@@ -134,19 +141,35 @@
         async fireWeapon(chargeTime = 0) {
             const runner = this.runner;
 
-            // Start firing
-            runner.gameWindow.startFiring();
-
-            // Wait for charge if needed
-            if (chargeTime > 0) {
-                await runner.wait(chargeTime);
+            // Clear weapon cooldown to ensure it can fire
+            const WeaponOrchestrator = runner.gameWindow.WeaponOrchestrator;
+            const weapon = WeaponOrchestrator.currentWeapon;
+            if (weapon && weapon.state) {
+                weapon.state.lastFireTime = Date.now() - 10000; // 10 seconds ago
             }
 
-            // Release fire
-            runner.gameWindow.stopFiring();
+            // Start charging
+            runner.gameWindow.startCharging();
+
+            // Wait and run updates for charge time
+            if (chargeTime > 0) {
+                const frames = Math.ceil(chargeTime / 16);
+                for (let i = 0; i < frames; i++) {
+                    if (runner.gameWindow.manualUpdate) {
+                        runner.gameWindow.manualUpdate(0.016);
+                    }
+                    await runner.wait(16);
+                }
+            }
+
+            // Release and fire
+            runner.gameWindow.releaseAndFire();
+
+            // Wait one frame for projectile to spawn
+            await runner.wait(16);
 
             // Get most recent projectile
-            const projectiles = runner.gameWindow.projectiles || [];
+            const projectiles = runner.gameWindow.getProjectiles ? runner.gameWindow.getProjectiles() : [];
             return projectiles[projectiles.length - 1] || null;
         },
 
