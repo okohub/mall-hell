@@ -9,6 +9,7 @@ const PowerUpOrchestrator = {
     // ==========================================
 
     activeEffects: [],  // Array of { type, config, activatedAt, expiresAt }
+    pausedEffects: [],  // Stored remaining times during pause
 
     // ==========================================
     // INITIALIZATION
@@ -26,6 +27,7 @@ const PowerUpOrchestrator = {
      */
     reset() {
         this.activeEffects = [];
+        this.pausedEffects = [];
     },
 
     // ==========================================
@@ -67,6 +69,34 @@ const PowerUpOrchestrator = {
      */
     deactivate(powerupType) {
         this.activeEffects = this.activeEffects.filter(e => e.type !== powerupType);
+    },
+
+    /**
+     * Pause all active power-ups (save remaining time)
+     * @param {number} currentTime - Current timestamp when pausing
+     */
+    pause(currentTime) {
+        // Store remaining time for each active effect
+        this.pausedEffects = this.activeEffects.map(effect => ({
+            type: effect.type,
+            config: effect.config,
+            remainingTime: Math.max(0, effect.expiresAt - currentTime)
+        }));
+    },
+
+    /**
+     * Resume all paused power-ups (restore timers)
+     * @param {number} currentTime - Current timestamp when resuming
+     */
+    resume(currentTime) {
+        // Restore active effects with new expiry times
+        this.activeEffects = this.pausedEffects.map(paused => ({
+            type: paused.type,
+            config: paused.config,
+            activatedAt: currentTime,
+            expiresAt: currentTime + paused.remainingTime
+        }));
+        this.pausedEffects = [];
     },
 
     // ==========================================

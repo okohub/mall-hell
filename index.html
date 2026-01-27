@@ -100,7 +100,7 @@
                     <div class="title-wrapper">
                         <div class="title">MALL HELL</div>
                     </div>
-                    <div class="version">VERSION 5.5</div>
+                    <div class="version">VERSION 5.7</div>
                     <div class="subtitle">SUPERMARKET MAYHEM</div>
                     <div class="instructions" id="instructions">
                         <div class="control-item">
@@ -518,12 +518,14 @@
 
         function pauseGame() {
             if (!StateOrchestrator.is('PLAYING')) return;
+            PowerUpOrchestrator.pause(Date.now());
             StateOrchestrator.forceTransition('PAUSED'); cancelCharging();
             UIOrchestrator.showPause(GameSession.getScore()); updateCursor();
         }
 
         function resumeGame() {
             if (!StateOrchestrator.is('PAUSED')) return;
+            PowerUpOrchestrator.resume(Date.now());
             StateOrchestrator.forceTransition('PLAYING'); UIOrchestrator.hidePause();
             LoopOrchestrator.resetDelta(); updateCursor();
         }
@@ -533,7 +535,17 @@
         }
 
         const togglePause = () => StateOrchestrator.is('PLAYING') ? pauseGame() : StateOrchestrator.is('PAUSED') ? resumeGame() : null;
-        const toggleFreeze = () => { if (StateOrchestrator.is('PLAYING')) { isFrozen = !isFrozen; if (!isFrozen) LoopOrchestrator.resetDelta(); } };
+        const toggleFreeze = () => {
+            if (StateOrchestrator.is('PLAYING')) {
+                if (!isFrozen) {
+                    PowerUpOrchestrator.pause(Date.now());
+                } else {
+                    PowerUpOrchestrator.resume(Date.now());
+                    LoopOrchestrator.resetDelta();
+                }
+                isFrozen = !isFrozen;
+            }
+        };
         const updateTimerDisplay = () => UIOrchestrator.updateTimerDisplay(GameSession.getTimer(), GameSession.DURATION);
 
         // Spawn callbacks - passed to SpawnOrchestrator for mesh creation
