@@ -91,16 +91,18 @@
          * @param {number} z - Z position
          * @param {number} rotation - Rotation in radians
          */
-        async positionPlayerAt(x, z, rotation) {
+        async positionPlayerAt(x, z, rotation = 0) {
             const runner = this.runner;
             const camera = runner.gameWindow.camera;
-            const cart = runner.gameWindow.cart;
+            const playerCart = runner.gameWindow.playerCart;
 
             // Set positions
             camera.position.set(x, 2, z);
-            if (cart) {
-                cart.position.set(x, 0, z);
-                cart.rotation.y = rotation;
+            if (playerCart) {
+                playerCart.position.set(x, 0, z);
+                if (rotation !== undefined) {
+                    playerCart.rotation.y = rotation;
+                }
             }
 
             // Fast-forward to apply

@@ -61,16 +61,23 @@
             runner.simulateClick(runner.getElement('#start-btn'));
             await runner.wait(300);
 
-            const initialHealth = runner.gameWindow.health || 100;
+            const PlayerOrchestrator = runner.gameWindow.PlayerOrchestrator;
+            const initialHealth = PlayerOrchestrator.health;
 
-            // Spawn enemy very close
+            // Spawn enemy very close to player
             await helpers.spawnEnemyAt(0, -2, 'SKELETON');
             await helpers.positionPlayerAt(0, 0, 0);
 
-            // Wait for collision
-            await runner.wait(1000);
+            // Run game updates to process collision detection
+            // EnemyOrchestrator.updateAll() checks enemy-player collision
+            for (let i = 0; i < 60; i++) {  // ~1 second at 60fps
+                if (runner.gameWindow.manualUpdate) {
+                    runner.gameWindow.manualUpdate(0.016);
+                }
+                await runner.wait(16);
+            }
 
-            const newHealth = runner.gameWindow.health || 100;
+            const newHealth = PlayerOrchestrator.health;
 
             if (newHealth >= initialHealth) {
                 throw new Error(`Player took no damage: ${initialHealth} -> ${newHealth}`);
@@ -80,7 +87,7 @@
 
     // Test 4: Multiple hits reduce health
     runner.addTest('multiple-hits-reduce-health', 'Player Damage', 'Multiple hits deplete health',
-        'Verifies taking 5 hits reduces health to 50%',
+        'Verifies taking 3 hits (respecting invulnerability frames) reduces health by 75',
         async () => {
             runner.resetGame();
             await runner.wait(100);
@@ -88,18 +95,27 @@
             await runner.wait(300);
 
             const maxHealth = runner.gameWindow.maxHealth || 100;
-            runner.gameWindow.health = maxHealth;
+            const PlayerOrchestrator = runner.gameWindow.PlayerOrchestrator;
+            PlayerOrchestrator.health = maxHealth;
 
-            // Take 5 hits (10 damage each = 50 damage)
-            for (let i = 0; i < 5; i++) {
+            // Take 3 hits (25 damage each = 75 damage)
+            // Wait 1100ms between hits for invulnerability to expire (1000ms duration)
+            for (let i = 0; i < 3; i++) {
                 if (runner.gameWindow.damagePlayer) {
-                    runner.gameWindow.damagePlayer(10);
+                    runner.gameWindow.damagePlayer(25);
                 }
-                await runner.wait(100);
+                // Must wait for invulnerability to expire (1000ms) before next hit
+                if (i < 2) {  // Don't wait after last hit
+                    await runner.wait(1100);
+                    // Process invulnerability timer
+                    if (PlayerOrchestrator.updateInvulnerability) {
+                        PlayerOrchestrator.updateInvulnerability();
+                    }
+                }
             }
 
-            const finalHealth = runner.gameWindow.health || 100;
-            const expectedHealth = maxHealth - 50;
+            const finalHealth = PlayerOrchestrator.health;
+            const expectedHealth = maxHealth - 75;
 
             if (Math.abs(finalHealth - expectedHealth) > 5) {
                 throw new Error(`Expected ~${expectedHealth} health, got ${finalHealth}`);

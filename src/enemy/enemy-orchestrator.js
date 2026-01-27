@@ -35,6 +35,20 @@ const EnemyOrchestrator = {
     enemyData: null,
     scene: null,
 
+    // Type registry - maps enemy type ID to mesh/animation modules
+    get ENEMY_MODULES() {
+        return {
+            SKELETON: {
+                mesh: typeof SkeletonMesh !== 'undefined' ? SkeletonMesh : null,
+                animation: typeof SkeletonAnimation !== 'undefined' ? SkeletonAnimation : null
+            },
+            DINOSAUR: {
+                mesh: typeof DinosaurMesh !== 'undefined' ? DinosaurMesh : null,
+                animation: typeof DinosaurAnimation !== 'undefined' ? DinosaurAnimation : null
+            }
+        };
+    },
+
     /**
      * Initialize the enemy system
      * @param {Object} enemyData - Reference to Enemy data object
@@ -56,12 +70,16 @@ const EnemyOrchestrator = {
             }
         });
         this.enemies = [];
-        this._dinoSpawnCount = 0;
+        // Delegate to spawner
+        if (typeof EnemySpawner !== 'undefined') {
+            EnemySpawner.reset();
+        }
     },
 
-    // Dinosaur spawn config
-    dinoSpawnInterval: 5000,  // Spawn dino every 5000 points
-    _dinoSpawnCount: 0,       // Track how many dinos spawned
+    // Expose spawner config for backward compatibility
+    get dinoSpawnInterval() { return (typeof EnemySpawner !== 'undefined') ? EnemySpawner.dinoSpawnInterval : 5000; },
+    get _dinoSpawnCount() { return (typeof EnemySpawner !== 'undefined') ? EnemySpawner._dinoSpawnCount : 0; },
+    set _dinoSpawnCount(value) { if (typeof EnemySpawner !== 'undefined') EnemySpawner._dinoSpawnCount = value; },
 
     /**
      * Get enemy type to spawn based on score
@@ -70,12 +88,11 @@ const EnemyOrchestrator = {
      * @returns {string} Enemy type ID
      */
     getSpawnType(currentScore) {
-        const expectedDinos = Math.floor(currentScore / this.dinoSpawnInterval);
-
-        if (expectedDinos > 0 && this._dinoSpawnCount < expectedDinos) {
-            this._dinoSpawnCount++;
-            return 'DINOSAUR';
+        // Delegate to spawner module
+        if (typeof EnemySpawner !== 'undefined') {
+            return EnemySpawner.getSpawnType(currentScore);
         }
+        // Fallback
         return 'SKELETON';
     },
 
@@ -86,11 +103,11 @@ const EnemyOrchestrator = {
      * @returns {boolean} True if dino should spawn
      */
     checkDinoSpawn(currentScore) {
-        const expectedDinos = Math.floor(currentScore / this.dinoSpawnInterval);
-        if (expectedDinos > 0 && this._dinoSpawnCount < expectedDinos) {
-            this._dinoSpawnCount++;
-            return true;
+        // Delegate to spawner module
+        if (typeof EnemySpawner !== 'undefined') {
+            return EnemySpawner.checkDinoSpawn(currentScore);
         }
+        // Fallback
         return false;
     },
 
@@ -112,13 +129,12 @@ const EnemyOrchestrator = {
         const instance = this.enemyData.createInstance(typeId, { x, y: 0, z });
         if (!instance) return null;
 
-        // Create visual - dispatch to specific mesh module
+        // Create visual - use registry dispatch
         let mesh = null;
         if (THREE) {
-            if (typeId === 'DINOSAUR' && typeof DinosaurMesh !== 'undefined') {
-                mesh = DinosaurMesh.createEnemy(THREE, config);
-            } else if (typeof SkeletonMesh !== 'undefined') {
-                mesh = SkeletonMesh.createEnemy(THREE, config);
+            const module = this.ENEMY_MODULES[typeId];
+            if (module && module.mesh) {
+                mesh = module.mesh.createEnemy(THREE, config);
             }
 
             if (mesh) {
@@ -200,172 +216,37 @@ const EnemyOrchestrator = {
      * @param {Object} [aiOptions] - AI options {collisionCheck, hasLineOfSight}
      */
     updateBehavior(enemy, playerPos, dt, baseSpeed, aiOptions = {}) {
-        if (!enemy) return;
-
-        const { collisionCheck = null, hasLineOfSight = null } = aiOptions;
-
-        // Support both instance data and THREE.Group meshes
-        const data = enemy.userData || enemy;
-        if (!data.active) return;
-
-        const config = data.config;
-        if (!config) return;
-
-        const behavior = config.behavior;
-        const position = enemy.position;
-        const oldX = position.x;
-        const oldZ = position.z;
-
-        // Check line of sight to player
-        const canSeePlayer = hasLineOfSight
-            ? hasLineOfSight(position.x, position.z, playerPos.x, playerPos.z)
-            : true; // Default to true if no LOS check provided
-
-        // Track LOS state for smooth behavior transitions
-        if (canSeePlayer) {
-            data.lastSeenPlayerPos = { x: playerPos.x, z: playerPos.z };
-            data.lostSightTimer = 0;
-        } else {
-            data.lostSightTimer = (data.lostSightTimer || 0) + dt;
-        }
-
-        // Execute behavior based on LOS
-        switch (behavior) {
-            case 'chase':
-                if (canSeePlayer) {
-                    // Can see player - chase directly
-                    this._behaviorChase({ position, config }, playerPos, dt, baseSpeed);
-                } else if (data.lastSeenPlayerPos && data.lostSightTimer < this.lostSightTimeout) {
-                    // Lost sight recently - move to last known position
-                    this._behaviorChase({ position, config }, data.lastSeenPlayerPos, dt, baseSpeed * this.lostSightSpeed);
-                } else {
-                    // No LOS for a while - wander in room
-                    this._behaviorWander(enemy, data, dt, baseSpeed);
-                }
-                break;
-            case 'patrol':
-                this._behaviorPatrol({ position, config, patrolTimer: data.patrolTimer || 0 }, playerPos, dt, baseSpeed);
-                data.patrolTimer = (data.patrolTimer || 0) + dt;
-                break;
-            case 'stationary':
-                // Does nothing
-                break;
-            default:
-                if (canSeePlayer) {
-                    this._behaviorChase({ position, config }, playerPos, dt, baseSpeed);
-                } else {
-                    this._behaviorWander(enemy, data, dt, baseSpeed);
-                }
-        }
-
-        // Random drift only when can see player (adds unpredictability to chase)
-        if (canSeePlayer) {
-            data.driftTimer = (data.driftTimer || 0) + dt;
-            if (data.driftTimer > config.driftInterval) {
-                data.driftTimer = 0;
-                data.driftSpeed = (Math.random() - 0.5) * config.driftSpeed;
-            }
-            position.x += (data.driftSpeed || 0) * dt;
-        }
-
-        // Wall collision check - revert movement if blocked
-        if (collisionCheck) {
-            const collision = collisionCheck(position.x, position.z, oldX, oldZ);
-            if (collision.blockedX) {
-                position.x = oldX;
-                data.driftSpeed = -(data.driftSpeed || 0);
-                data.wanderDirX = -(data.wanderDirX || 0); // Reverse wander direction
-            }
-            if (collision.blockedZ) {
-                position.z = oldZ;
-                data.wanderDirZ = -(data.wanderDirZ || 0);
-            }
-        }
-
-        // Update mesh position if this is instance data with a mesh reference
-        if (enemy.mesh) {
-            enemy.mesh.position.set(position.x, 0, position.z);
+        // Delegate to AI module
+        if (typeof EnemyAI !== 'undefined') {
+            EnemyAI.updateBehavior(enemy, playerPos, dt, baseSpeed, aiOptions);
         }
     },
 
     /**
-     * Chase behavior - move towards target
+     * Chase behavior - passthrough to AI module (for testing)
      */
     _behaviorChase(enemy, targetPos, dt, baseSpeed) {
-        const position = enemy.position;
-        const toTarget = {
-            x: targetPos.x - position.x,
-            z: targetPos.z - position.z
-        };
-        const dist = Math.sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
-
-        if (dist > this.chaseMinDistance) {
-            const nx = toTarget.x / dist;
-            const nz = toTarget.z / dist;
-            const speed = baseSpeed * enemy.config.speed;
-            position.x += nx * speed * dt;
-            position.z += nz * speed * dt;
+        if (typeof EnemyAI !== 'undefined') {
+            EnemyAI._behaviorChase(enemy, targetPos, dt, baseSpeed);
         }
     },
 
     /**
-     * Wander behavior - smart movement when can't see player
-     * Priorities: 1) Return home if too far, 2) Search last seen position, 3) Random wander
+     * Wander behavior - passthrough to AI module (for testing)
      */
     _behaviorWander(enemy, data, dt, baseSpeed) {
-        const position = enemy.position;
-
-        // Get spawn position (home) - from userData or data
-        const home = data.spawnPosition || enemy.userData?.spawnPosition || position;
-
-        // Calculate distance from home
-        const dxHome = position.x - home.x;
-        const dzHome = position.z - home.z;
-        const distFromHome = Math.sqrt(dxHome * dxHome + dzHome * dzHome);
-
-        // Priority 1: Return home if too far
-        if (distFromHome > this.homeRadius) {
-            const nx = -dxHome / distFromHome;
-            const nz = -dzHome / distFromHome;
-            const speed = baseSpeed * this.homeReturnSpeed;
-            position.x += nx * speed * dt;
-            position.z += nz * speed * dt;
-            return;
+        if (typeof EnemyAI !== 'undefined') {
+            EnemyAI._behaviorWander(enemy, data, dt, baseSpeed);
         }
-
-        // Priority 2: Occasionally move towards last seen player position
-        if (data.lastSeenPlayerPos && Math.random() < this.searchLastSeenChance * dt) {
-            const dx = data.lastSeenPlayerPos.x - position.x;
-            const dz = data.lastSeenPlayerPos.z - position.z;
-            const dist = Math.sqrt(dx * dx + dz * dz);
-            if (dist > 2) {
-                data.wanderDirX = dx / dist;
-                data.wanderDirZ = dz / dist;
-                data.wanderTimer = 0;
-            }
-        }
-
-        // Priority 3: Random wander (change direction periodically)
-        data.wanderTimer = (data.wanderTimer || 0) + dt;
-        if (!data.wanderDirX || !data.wanderDirZ || data.wanderTimer > this.wanderInterval) {
-            data.wanderTimer = 0;
-            const angle = Math.random() * Math.PI * 2;
-            data.wanderDirX = Math.cos(angle);
-            data.wanderDirZ = Math.sin(angle);
-        }
-
-        // Move slowly in wander direction
-        const wanderSpeed = baseSpeed * this.wanderSpeed;
-        position.x += data.wanderDirX * wanderSpeed * dt;
-        position.z += data.wanderDirZ * wanderSpeed * dt;
     },
 
     /**
-     * Patrol behavior - move back and forth
+     * Patrol behavior - passthrough to AI module (for testing)
      */
     _behaviorPatrol(enemy, playerPos, dt, baseSpeed) {
-        const dir = Math.sin(enemy.patrolTimer) > 0 ? 1 : -1;
-        enemy.position.x += dir * baseSpeed * this.patrolSpeed * dt;
+        if (typeof EnemyAI !== 'undefined') {
+            EnemyAI._behaviorPatrol(enemy, playerPos, dt, baseSpeed);
+        }
     },
 
     /**
@@ -388,23 +269,18 @@ const EnemyOrchestrator = {
                 if (enemy.hitFlash < 0) enemy.hitFlash = 0;
 
                 if (enemy.mesh) {
-                    if (enemy.type === 'DINOSAUR' && typeof DinosaurMesh !== 'undefined') {
-                        DinosaurMesh.applyHitFlash(enemy.mesh.userData.cart, enemy.hitFlash);
-                    } else if (typeof SkeletonMesh !== 'undefined') {
-                        SkeletonMesh.applyHitFlash(enemy.mesh.userData.cart, enemy.hitFlash);
+                    const module = this.ENEMY_MODULES[enemy.type];
+                    if (module && module.mesh) {
+                        module.mesh.applyHitFlash(enemy.mesh.userData.cart, enemy.hitFlash);
                     }
                 }
             }
 
             // Update health bar
             if (enemy.mesh && enemy.mesh.userData.healthBar) {
-                if (enemy.type === 'DINOSAUR' && typeof DinosaurMesh !== 'undefined') {
-                    DinosaurMesh.updateHealthBar(
-                        enemy.mesh.userData.healthBar,
-                        enemy.health / enemy.maxHealth
-                    );
-                } else if (typeof SkeletonMesh !== 'undefined') {
-                    SkeletonMesh.updateHealthBar(
+                const module = this.ENEMY_MODULES[enemy.type];
+                if (module && module.mesh) {
+                    module.mesh.updateHealthBar(
                         enemy.mesh.userData.healthBar,
                         enemy.health / enemy.maxHealth
                     );
@@ -430,16 +306,17 @@ const EnemyOrchestrator = {
      * @param {Object} cameraPos - Camera position
      * @param {number} aisleWidth - Aisle width for spawn bounds
      * @param {THREE} THREE - Three.js library
+     * @param {string} [typeId='SKELETON'] - Enemy type ID (defaults to SKELETON)
      * @returns {Object|null} Spawned enemy or null
      */
-    trySpawn(cameraPos, aisleWidth, THREE) {
+    trySpawn(cameraPos, aisleWidth, THREE, typeId = 'SKELETON') {
         if (!this.canSpawn()) return null;
         if (Math.random() > this.spawnChance) return null;
 
         const x = (Math.random() - 0.5) * (aisleWidth - 4);
         const z = cameraPos.z - this.spawnDistance;
 
-        return this.spawn('SKELETON', x, z, THREE);
+        return this.spawn(typeId, x, z, THREE);
     },
 
     /**
@@ -494,12 +371,11 @@ const EnemyOrchestrator = {
 
         if (!config) return null;
 
-        // Create mesh - dispatch to specific mesh module
+        // Create mesh - use registry dispatch
         let group = null;
-        if (typeId === 'DINOSAUR' && typeof DinosaurMesh !== 'undefined') {
-            group = DinosaurMesh.createEnemy(THREE, config);
-        } else if (typeof SkeletonMesh !== 'undefined') {
-            group = SkeletonMesh.createEnemy(THREE, config);
+        const module = this.ENEMY_MODULES[typeId];
+        if (module && module.mesh) {
+            group = module.mesh.createEnemy(THREE, config);
         } else {
             group = new THREE.Group();
         }
@@ -537,89 +413,80 @@ const EnemyOrchestrator = {
      * @param {Array} shelves - Shelf meshes
      */
     _resolveEnvironmentCollisions(enemy, allEnemies, obstacles, shelves) {
-        const pos = enemy.position;
-        // Use actual collision radius from enemy config, fallback to size-based calculation
-        const enemyConfig = enemy.userData.config;
-        const enemyRadius = enemyConfig?.collisionRadius ||
-            (enemyConfig?.visual?.size ? Math.max(enemyConfig.visual.size.w, enemyConfig.visual.size.d) / 2 : 1.5);
+        // Delegate to collision module
+        if (typeof EnemyCollision !== 'undefined') {
+            EnemyCollision.resolveEnvironment(enemy, allEnemies, obstacles, shelves);
+        }
+    },
 
-        // Enemy-Enemy collision (separation)
-        allEnemies.forEach(other => {
-            if (other === enemy || !other.userData.active) return;
+    /**
+     * Update visual aspects (facing, animations, hit flash)
+     * @param {Object} enemy - Enemy mesh
+     * @param {Object} options - Update options with playerPosition, dt
+     */
+    _updateVisuals(enemy, options) {
+        const { playerPosition, dt } = options;
 
-            const otherConfig = other.userData.config;
-            const otherRadius = otherConfig?.collisionRadius ||
-                (otherConfig?.visual?.size ? Math.max(otherConfig.visual.size.w, otherConfig.visual.size.d) / 2 : 1.5);
+        // Calculate distance to player and face them
+        const dx = playerPosition.x - enemy.position.x;
+        const dz = playerPosition.z - enemy.position.z;
+        const lookDir = Math.atan2(dx, dz);
+        enemy.rotation.y = lookDir;
 
-            const dx = pos.x - other.position.x;
-            const dz = pos.z - other.position.z;
-            const dist = Math.sqrt(dx * dx + dz * dz);
-            const minDist = enemyRadius + otherRadius;
+        // Get type module for animations
+        const typeId = enemy.userData.type;
+        const module = this.ENEMY_MODULES[typeId];
 
-            if (dist < minDist && dist > 0.01) {
-                // Push apart
-                const overlap = minDist - dist;
-                const nx = dx / dist;
-                const nz = dz / dist;
-                pos.x += nx * overlap * 0.5;
-                pos.z += nz * overlap * 0.5;
-            }
-        });
-
-        // Enemy-Obstacle collision
-        if (obstacles) {
-            obstacles.forEach(obs => {
-                if (!obs.userData.active || obs.userData.hit) return;
-
-                // Use obstacle's collision radius - check multiple sources
-                const obsConfig = obs.userData.config;
-                const obsRadius = obs.userData.collisionRadius ||
-                    obsConfig?.collisionRadius ||
-                    (obs.userData.width ? obs.userData.width / 2 : 1.5);
-
-                const dx = pos.x - obs.position.x;
-                const dz = pos.z - obs.position.z;
-                const dist = Math.sqrt(dx * dx + dz * dz);
-                const minDist = enemyRadius + obsRadius;
-
-                if (dist < minDist && dist > 0.01) {
-                    // Push away from obstacle
-                    const overlap = minDist - dist;
-                    const nx = dx / dist;
-                    const nz = dz / dist;
-                    pos.x += nx * overlap;
-                    pos.z += nz * overlap;
-                }
-            });
+        // Animate eyes (track player - skeleton only)
+        if (enemy.userData.skeleton && module && module.animation) {
+            module.animation.animateEyes(enemy.userData.cart, playerPosition);
         }
 
-        // Enemy-Shelf collision
-        if (shelves) {
-            shelves.forEach(shelf => {
-                if (!shelf.position) return;
+        // Animate walking
+        const walkSpeed = enemy.userData.config?.walkSpeed || 3.5;
+        enemy.userData.walkTimer = (enemy.userData.walkTimer || 0) + dt * walkSpeed;
 
-                // Get shelf dimensions from userData or use defaults
-                const shelfWidth = shelf.userData?.width || 4;
-                const shelfDepth = shelf.userData?.depth || 2;
-                const halfW = shelfWidth / 2 + enemyRadius;
-                const halfD = shelfDepth / 2 + enemyRadius;
+        if (module && module.animation) {
+            module.animation.animateWalk(enemy.userData.cart, enemy.userData.walkTimer, walkSpeed);
+        }
 
-                const dx = pos.x - shelf.position.x;
-                const dz = pos.z - shelf.position.z;
+        // Hit flash
+        if (enemy.userData.hitFlash > 0) {
+            enemy.userData.hitFlash -= dt * this.hitFlashDecay;
+            if (enemy.userData.hitFlash < 0) enemy.userData.hitFlash = 0;
 
-                // Check if within shelf bounds
-                if (Math.abs(dx) < halfW && Math.abs(dz) < halfD) {
-                    // Push out along shortest axis
-                    const overlapX = halfW - Math.abs(dx);
-                    const overlapZ = halfD - Math.abs(dz);
-
-                    if (overlapX < overlapZ) {
-                        pos.x += Math.sign(dx) * overlapX;
-                    } else {
-                        pos.z += Math.sign(dz) * overlapZ;
-                    }
+            if (enemy.userData.cart) {
+                if (module && module.mesh) {
+                    module.mesh.applyHitFlash(enemy.userData.cart, enemy.userData.hitFlash);
                 }
-            });
+            } else {
+                // Fallback for legacy enemies
+                enemy.children.forEach(child => {
+                    if (child.material && child.material.emissive) {
+                        child.material.emissiveIntensity = enemy.userData.hitFlash;
+                    }
+                });
+            }
+        }
+    },
+
+    /**
+     * Check player collision and trigger damage callback
+     * @param {Object} enemy - Enemy mesh
+     * @param {Object} playerCart - Player cart mesh
+     * @param {boolean} isInvulnerable - Whether player is invulnerable
+     * @param {number} collisionDistance - Collision distance threshold
+     * @param {Function} onPlayerCollision - Callback when collision detected
+     */
+    _checkPlayerCollision(enemy, playerCart, isInvulnerable, collisionDistance, onPlayerCollision) {
+        if (enemy.userData.active && !isInvulnerable && playerCart && onPlayerCollision) {
+            const cartDist = Math.sqrt(
+                Math.pow(enemy.position.x - playerCart.position.x, 2) +
+                Math.pow(enemy.position.z - playerCart.position.z, 2)
+            );
+            if (cartDist < collisionDistance) {
+                onPlayerCollision(enemy);
+            }
         }
     },
 
@@ -653,14 +520,14 @@ const EnemyOrchestrator = {
             clampToRoomBounds = null,
             obstacles = null,
             shelves = null,
-            despawnDistance = this.despawnDistance,
-            collisionDistance = this.collisionDistance
+            collisionDistance = this.collisionDistance,
+            despawnDistance = this.despawnDistance
         } = options;
 
         enemies.forEach(enemy => {
             if (!enemy.userData.active) return;
 
-            // Behavior updates with wall collision and LOS awareness
+            // AI behavior with wall collision and LOS awareness
             this.updateBehavior(enemy, playerPosition, dt, baseSpeed, { collisionCheck, hasLineOfSight });
 
             // Environment collision (obstacles, other enemies, shelves)
@@ -674,63 +541,11 @@ const EnemyOrchestrator = {
                 clampToRoomBounds(enemy.position);
             }
 
-            // Calculate distance to player
-            const dx = playerPosition.x - enemy.position.x;
-            const dz = playerPosition.z - enemy.position.z;
-            const distToPlayer = Math.sqrt(dx * dx + dz * dz);
+            // Visual updates (facing, animations, hit flash)
+            this._updateVisuals(enemy, options);
 
-            // Face player
-            const lookDir = Math.atan2(dx, dz);
-            enemy.rotation.y = lookDir;
-
-            // Animate eyes (track player - skeleton only)
-            if (enemy.userData.skeleton && typeof SkeletonAnimation !== 'undefined') {
-                SkeletonAnimation.animateEyes(enemy.userData.cart, playerPosition);
-            }
-
-            // Animate walking
-            const walkSpeed = enemy.userData.config?.walkSpeed || 3.5;
-            enemy.userData.walkTimer = (enemy.userData.walkTimer || 0) + dt * walkSpeed;
-
-            if (enemy.userData.dinosaur && typeof DinosaurAnimation !== 'undefined') {
-                // Dinosaur boss animation
-                DinosaurAnimation.animateWalk(enemy.userData.cart, enemy.userData.walkTimer, walkSpeed);
-            } else if (enemy.userData.skeleton && typeof SkeletonAnimation !== 'undefined') {
-                // Skeleton animation
-                SkeletonAnimation.animateWalk(enemy.userData.cart, enemy.userData.walkTimer, walkSpeed);
-            }
-
-            // Hit flash
-            if (enemy.userData.hitFlash > 0) {
-                enemy.userData.hitFlash -= dt * this.hitFlashDecay;
-                if (enemy.userData.hitFlash < 0) enemy.userData.hitFlash = 0;
-
-                if (enemy.userData.cart) {
-                    if (enemy.userData.dinosaur && typeof DinosaurMesh !== 'undefined') {
-                        DinosaurMesh.applyHitFlash(enemy.userData.cart, enemy.userData.hitFlash);
-                    } else if (typeof SkeletonMesh !== 'undefined') {
-                        SkeletonMesh.applyHitFlash(enemy.userData.cart, enemy.userData.hitFlash);
-                    }
-                } else {
-                    // Fallback for legacy enemies
-                    enemy.children.forEach(child => {
-                        if (child.material && child.material.emissive) {
-                            child.material.emissiveIntensity = enemy.userData.hitFlash;
-                        }
-                    });
-                }
-            }
-
-            // Player collision
-            if (enemy.userData.active && !isInvulnerable && playerCart) {
-                const cartDist = Math.sqrt(
-                    Math.pow(enemy.position.x - playerCart.position.x, 2) +
-                    Math.pow(enemy.position.z - playerCart.position.z, 2)
-                );
-                if (cartDist < collisionDistance && onPlayerCollision) {
-                    onPlayerCollision(enemy);
-                }
-            }
+            // Player collision detection
+            this._checkPlayerCollision(enemy, playerCart, isInvulnerable, collisionDistance, onPlayerCollision);
         });
     }
 };
