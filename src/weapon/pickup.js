@@ -173,7 +173,14 @@ const WeaponPickup = {
      * @returns {Object} Pickup instance data
      */
     createInstance(typeId, position) {
-        const config = this.get(typeId);
+        // Try to get weapon/ammo pickup config
+        let config = this.get(typeId);
+
+        // If not found, try power-up config
+        if (!config && typeof PowerUp !== 'undefined') {
+            config = PowerUp.get(typeId);
+        }
+
         if (!config) return null;
 
         return {

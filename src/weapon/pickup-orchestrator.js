@@ -174,8 +174,12 @@ const PickupOrchestrator = {
         const weaponId = config.weaponId;
         let mesh;
 
+        // Power-up pickups use power-up-specific mesh
+        if (config.isPowerup) {
+            mesh = this._createPowerUpMesh(instance, THREE);
+        }
         // Ammo pickups use generic ammo mesh
-        if (config.isAmmo || weaponId === null) {
+        else if (config.isAmmo || weaponId === null) {
             mesh = this._createAmmoMesh(instance, THREE);
         } else {
             // Weapon pickups use weapon-specific mesh
@@ -270,6 +274,64 @@ const PickupOrchestrator = {
             corner.position.set(pos[0], pos[1], pos[2]);
             pickup.add(corner);
         });
+
+        return pickup;
+    },
+
+    /**
+     * Create power-up pickup mesh - energy drink can
+     * @private
+     */
+    _createPowerUpMesh(instance, THREE) {
+        const pickup = new THREE.Group();
+        const config = instance.config;
+
+        // Energy drink can design
+        if (config.id === 'speed_boost') {
+            // Main can body (cylinder)
+            const canColor = config.visual.color || 0xff3333;
+            const canMat = new THREE.MeshStandardMaterial({
+                color: canColor,
+                roughness: 0.3,
+                metalness: 0.6,
+                emissive: canColor,
+                emissiveIntensity: 0.3
+            });
+
+            const canGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.8, 16);
+            const can = new THREE.Mesh(canGeo, canMat);
+            pickup.add(can);
+
+            // Top lid (metallic silver)
+            const lidMat = new THREE.MeshStandardMaterial({
+                color: 0xcccccc,
+                roughness: 0.2,
+                metalness: 0.9
+            });
+            const lidGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.05, 16);
+            const lid = new THREE.Mesh(lidGeo, lidMat);
+            lid.position.y = 0.425;
+            pickup.add(lid);
+
+            // Pull tab (small detail)
+            const tabGeo = new THREE.BoxGeometry(0.15, 0.02, 0.08);
+            const tab = new THREE.Mesh(tabGeo, lidMat);
+            tab.position.set(0, 0.46, 0.1);
+            pickup.add(tab);
+
+            // Yellow warning stripe around middle
+            const stripeMat = new THREE.MeshBasicMaterial({
+                color: 0xffaa00
+            });
+            const stripeGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.15, 16);
+            const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+            stripe.position.y = 0;
+            pickup.add(stripe);
+        } else {
+            // Fallback: generic power-up mesh
+            mesh = this._createGenericMesh(instance, THREE);
+            return mesh;
+        }
 
         return pickup;
     },
