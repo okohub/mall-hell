@@ -291,6 +291,7 @@
         // Core constants used in index.html. Domain-specific values accessed via domain modules.
 
         const CROSSHAIR_BOUNDS_MARGIN = 50;
+        const BASE_FOV = 75;  // Store base FOV for power-up effects
 
         // Domain constant aliases
         const PLAYER_MAX_HEALTH = Player.health.MAX;
@@ -625,6 +626,14 @@
                 cart: playerCart,
                 camera
             });
+
+            // Apply power-up FOV effects
+            if (PowerUpOrchestrator.isActive('speed_boost')) {
+                camera.fov = BASE_FOV + 10;
+            } else {
+                camera.fov = BASE_FOV;
+            }
+            camera.updateProjectionMatrix();
 
             // Push player out of any overlapping objects (run multiple times for nested overlaps)
             for (let i = 0; i < 5; i++) {
