@@ -57,6 +57,8 @@ const UIOrchestrator = {
         this.elements.statusPanel = document.getElementById('status-panel');
         this.elements.skeletonCount = document.getElementById('skeleton-count');
         this.elements.dinoCount = document.getElementById('dino-count');
+        this.elements.powerupTimer = document.getElementById('powerup-timer');
+        this.elements.powerupTime = document.querySelector('#powerup-timer .powerup-time');
     },
 
     // ==========================================
@@ -278,6 +280,35 @@ const UIOrchestrator = {
         const progress = gameTimer / gameDuration;
         if (this.elements.timerFill) {
             this.elements.timerFill.style.width = `${progress * 100}%`;
+        }
+    },
+
+    /**
+     * Update power-up timer display
+     * @param {number} timeRemaining - Time remaining in milliseconds
+     * @param {string} powerupType - Type of power-up (for customization)
+     */
+    updatePowerUpTimer(timeRemaining, powerupType) {
+        if (!this.elements.powerupTimer || !this.elements.powerupTime) return;
+
+        const timer = this.elements.powerupTimer;
+        const timeDisplay = this.elements.powerupTime;
+
+        if (timeRemaining <= 0) {
+            timer.style.display = 'none';
+            timer.classList.remove('warning', 'critical');
+            return;
+        }
+
+        timer.style.display = 'flex';
+        const seconds = (timeRemaining / 1000).toFixed(1);
+        timeDisplay.textContent = seconds + 's';
+
+        timer.classList.remove('warning', 'critical');
+        if (timeRemaining <= 1000) {
+            timer.classList.add('critical');
+        } else if (timeRemaining <= 3000) {
+            timer.classList.add('warning');
         }
     },
 
