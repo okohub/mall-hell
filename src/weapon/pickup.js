@@ -84,6 +84,22 @@ const WeaponPickup = {
                 glowColor: 0xf39c12,
                 scale: 1.8
             }
+        },
+
+        // Power-ups - temporary effects
+        SPEED_BOOST: {
+            id: 'speed_boost',
+            weaponId: null,          // Not a weapon
+            name: 'Speed Boost',
+            isPowerup: true,
+            spawnChance: 0.25,       // 25% of rooms
+            spawnWeight: 2,          // Similar rarity to Laser Gun
+            ammoGrant: 0,            // No ammo
+            visual: {
+                color: 0xff3333,     // Red
+                glowColor: 0xffaa00, // Yellow-orange
+                scale: 2.0
+            }
         }
     },
 

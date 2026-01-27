@@ -283,6 +283,10 @@ const TestBridge = {
         // UI domain
         if (typeof UIOrchestrator !== 'undefined') window.UIOrchestrator = UIOrchestrator;
 
+        // PowerUp domain
+        if (typeof PowerUp !== 'undefined') window.PowerUp = PowerUp;
+        if (typeof PowerUpOrchestrator !== 'undefined') window.PowerUpOrchestrator = PowerUpOrchestrator;
+
         // Shared modules
         if (typeof MaterialsTheme !== 'undefined') window.MaterialsTheme = MaterialsTheme;
 

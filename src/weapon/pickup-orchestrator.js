@@ -477,6 +477,20 @@ const PickupOrchestrator = {
         const weaponId = config.weaponId;
         const currentWeaponId = weaponOrchestrator.getCurrentId();
 
+        // Power-up pickup - activate effect
+        if (config.isPowerup) {
+            if (typeof PowerUpOrchestrator !== 'undefined') {
+                PowerUpOrchestrator.activate(config.id, Date.now());
+            }
+            return {
+                switched: false,
+                ammoAdded: 0,
+                weaponId: currentWeaponId,
+                isPowerup: true,
+                powerupType: config.id
+            };
+        }
+
         // Ammo pickup - always adds ammo to current weapon
         if (config.isAmmo || weaponId === null) {
             weaponOrchestrator.addAmmo(config.ammoGrant);
