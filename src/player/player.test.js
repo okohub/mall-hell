@@ -379,25 +379,8 @@
             test.assertTrue(result.cart.children.length > 0, 'cart should have children');
         });
 
-        test.it('should create child character with THREE', () => {
-            if (typeof THREE === 'undefined') {
-                test.skip('THREE.js not available');
-                return;
-            }
-            const result = PlayerMesh.createPlayerCart(THREE, PlayerTheme.getAllColors());
-            test.assertTrue(result.child instanceof THREE.Group, 'child should be a THREE.Group');
-            test.assertTrue(result.child.children.length > 0, 'child should have body parts');
-        });
-
-        test.it('should create slingshot with THREE', () => {
-            if (typeof THREE === 'undefined') {
-                test.skip('THREE.js not available');
-                return;
-            }
-            const result = PlayerMesh.createPlayerCart(THREE, PlayerTheme.getAllColors());
-            test.assertTrue(result.slingshot instanceof THREE.Group, 'slingshot should be a THREE.Group');
-            test.assertTrue(result.slingshot.children.length > 0, 'slingshot should have components');
-        });
+        // Note: child and slingshot tests removed - FPS-only mode (commit f3930c7)
+        // The game no longer creates third-person child character or slingshot meshes
 
         test.it('should update cart lean with THREE', () => {
             if (typeof THREE === 'undefined') {
