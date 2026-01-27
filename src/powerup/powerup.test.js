@@ -1,5 +1,5 @@
 // ============================================
-// POWERUP SYSTEM - Unit Tests
+// POWERUP DOMAIN - Unit Tests
 // ============================================
 
 (function(test) {
@@ -9,13 +9,13 @@
     // POWERUP DATA TESTS
     // ==========================================
 
-    test.describe('PowerUp Config', () => {
-        test.it('should have SPEED_BOOST with required fields', () => {
+    test.describe('PowerUp Data', () => {
+        test.it('should have SPEED_BOOST type with required fields', () => {
             const config = PowerUp.types.SPEED_BOOST;
             test.assertTrue(config !== undefined, 'SPEED_BOOST config exists');
             test.assertEqual(config.id, 'speed_boost', 'Has id field');
             test.assertEqual(config.name, 'Speed Boost', 'Has name field');
-            test.assertEqual(config.isPowerup, true, 'Has isPowerup field');
+            test.assertTrue(config.isPowerup === true, 'Has isPowerup field');
             test.assertEqual(config.duration, 10000, 'Duration is 10000ms');
             test.assertEqual(config.speedMultiplier, 2.0, 'Speed multiplier is 2.0');
             test.assertEqual(config.spawnChance, 0.25, 'Spawn chance is 25%');
@@ -25,21 +25,17 @@
             test.assertTrue(config.visual.glowColor !== undefined, 'Has glow color');
             test.assertTrue(config.visual.scale !== undefined, 'Has scale');
         });
-    });
 
-    test.describe('PowerUp Helpers', () => {
-        test.it('should get config by id', () => {
+        test.it('should get power-up by id', () => {
             const config = PowerUp.get('speed_boost');
             test.assertTrue(config !== null, 'Returns config for valid ID');
             test.assertEqual(config.id, 'speed_boost', 'Returns correct config');
-        });
 
-        test.it('should return null for invalid id', () => {
             const invalid = PowerUp.get('invalid_id');
             test.assertEqual(invalid, null, 'Returns null for invalid ID');
         });
 
-        test.it('should return all configs as array', () => {
+        test.it('should get all power-ups as array', () => {
             const all = PowerUp.getAll();
             test.assertTrue(Array.isArray(all), 'Returns array');
             test.assertTrue(all.length > 0, 'Array has items');
@@ -47,4 +43,4 @@
         });
     });
 
-})(window.TestFramework || { describe: () => {}, it: () => {}, beforeEach: () => {}, skip: () => {} });
+})(window.TestFramework || { describe: () => {}, it: () => {}, assertTrue: () => {}, assertEqual: () => {} });
