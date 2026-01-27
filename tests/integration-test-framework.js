@@ -151,33 +151,96 @@
         },
 
         /**
+         * Run game loop until condition is met or timeout
+         * @param {Function} condition - Function that returns true when condition met
+         * @param {number} maxTime - Maximum time to wait in ms
+         * @param {number} frameTime - Time per frame in ms (default 16ms = 60fps)
+         * @returns {Promise<boolean>} True if condition met, false if timeout
+         */
+        async waitForCondition(condition, maxTime = 2000, frameTime = 16) {
+            const runner = this.runner;
+            const startTime = Date.now();
+            const maxFrames = Math.ceil(maxTime / frameTime);
+
+            for (let frame = 0; frame < maxFrames; frame++) {
+                // Run game update
+                if (runner.gameWindow.manualUpdate) {
+                    runner.gameWindow.manualUpdate(frameTime / 1000);
+                }
+
+                // Check condition
+                if (condition()) {
+                    return true;
+                }
+
+                // Wait for next frame
+                await runner.wait(frameTime);
+
+                // Check timeout
+                if (Date.now() - startTime >= maxTime) {
+                    break;
+                }
+            }
+
+            return false;
+        },
+
+        /**
          * Wait for projectile to hit target or despawn
          * @param {number} maxTime - Max wait time in milliseconds
          * @returns {Promise<Object>} { hit: boolean, target: enemy|null }
          */
         async waitForProjectileImpact(maxTime = 2000) {
             const runner = this.runner;
-            const startTime = Date.now();
+            const projectiles = runner.gameWindow.getProjectiles ? runner.gameWindow.getProjectiles() : [];
+            const enemies = runner.gameWindow.getEnemies ? runner.gameWindow.getEnemies() : [];
 
-            while (Date.now() - startTime < maxTime) {
-                const projectiles = runner.gameWindow.projectiles || [];
+            // Record initial enemy health values
+            const initialHealthMap = new Map();
+            enemies.forEach(e => {
+                if (e.userData && e.userData.active) {
+                    initialHealthMap.set(e, e.userData.health);
+                }
+            });
 
-                // Check if any projectile hit
-                for (const proj of projectiles) {
-                    if (proj.userData && proj.userData.hit) {
-                        return { hit: true, target: proj.userData.hitTarget || null };
+            const initialProjectileCount = projectiles.filter(p => p.active !== false).length;
+            let hitResult = { hit: false, target: null };
+
+            const conditionMet = await this.waitForCondition(() => {
+                const currentProjectiles = runner.gameWindow.getProjectiles ? runner.gameWindow.getProjectiles() : [];
+                const currentEnemies = runner.gameWindow.getEnemies ? runner.gameWindow.getEnemies() : [];
+
+                // Check if any enemy took damage (indicates hit)
+                for (const enemy of currentEnemies) {
+                    if (enemy.userData && enemy.userData.active) {
+                        const initialHealth = initialHealthMap.get(enemy);
+                        if (initialHealth !== undefined && enemy.userData.health < initialHealth) {
+                            hitResult = { hit: true, target: enemy };
+                            return true;
+                        }
+                    }
+                }
+
+                // Check if any enemy died (indicates hit)
+                for (const enemy of currentEnemies) {
+                    const initialHealth = initialHealthMap.get(enemy);
+                    if (initialHealth !== undefined && !enemy.userData.active) {
+                        hitResult = { hit: true, target: enemy };
+                        return true;
                     }
                 }
 
                 // Check if all projectiles despawned (missed)
-                if (projectiles.length === 0) {
-                    return { hit: false, target: null };
+                const activeProjectiles = currentProjectiles.filter(p => p.active !== false);
+                if (initialProjectileCount > 0 && activeProjectiles.length === 0) {
+                    hitResult = { hit: false, target: null };
+                    return true;
                 }
 
-                await runner.wait(50);
-            }
+                return false;
+            }, maxTime);
 
-            return { hit: false, target: null };
+            return hitResult;
         },
 
         /**
@@ -187,17 +250,13 @@
          * @throws {Error} If timeout
          */
         async waitForEnemyDeath(enemy, maxTime = 3000) {
-            const runner = this.runner;
-            const startTime = Date.now();
+            const conditionMet = await this.waitForCondition(() => {
+                return !enemy.userData.active;
+            }, maxTime);
 
-            while (Date.now() - startTime < maxTime) {
-                if (!enemy.userData.active) {
-                    return;
-                }
-                await runner.wait(50);
+            if (!conditionMet) {
+                throw new Error(`Enemy did not die within ${maxTime}ms`);
             }
-
-            throw new Error(`Enemy did not die within ${maxTime}ms`);
         },
 
         /**
