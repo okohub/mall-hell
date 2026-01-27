@@ -6,9 +6,9 @@
 |-----------|-------|
 | **Title** | Mall Hell |
 | **Version** | 5.1 |
-| **Genre** | Arcade Score-Chaser / Mall Crawler |
+| **Genre** | Arcade Score-Chaser / Hell Crawler |
 | **Session** | 3 minutes |
-| **Objective** | Clear all enemies before time expires |
+| **Objective** | Clear Mall Hell of all enemies before time expires |
 
 ## Core Loop
 
@@ -89,12 +89,16 @@ EXPLORE → HUNT → KILL → SCORE → REPEAT
 
 | Score Range | Rating |
 |-------------|--------|
-| 0 - 800 | Mild Mischief |
-| 801 - 2,000 | Rowdy Kid |
-| 2,001 - 4,000 | Troublemaker |
-| 4,001 - 7,000 | Chaos Master |
-| 7,001 - 10,000 | Total Mayhem! |
-| 10,001+ | LEGENDARY CHAOS! |
+| 0 - 1,500 | Window Shopper |
+| 1,501 - 3,000 | Lost in IKEA |
+| 3,001 - 6,000 | Mall Diver |
+| 6,001 - 10,000 | Cart Warrior |
+| 10,001 - 15,000 | Demon Buster |
+| 15,001 - 21,000 | Abyss Hunter |
+| 21,001 - 28,000 | Hell's Nightmare |
+| 28,001+ | MALL REDEEMER |
+
+**Theme:** You're descending into Mall Hell as a demon-slaying hero. Ratings blend your descent depth with growing fearsome reputation.
 
 ---
 
