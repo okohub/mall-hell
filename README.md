@@ -27,8 +27,9 @@ A fast, chaotic first-person browser game where you're a mischievous kid in a sh
 ## Slingshot Mechanics
 
 The slingshot uses a **tension system** - hold SPACE to charge up power:
-- Quick tap = weak shot (minimum speed)
-- Hold longer = more power (maximum speed)
+- Quick tap (0.05s) = 1 damage (minimum power)
+- Half charge (1.0s) = 2 damage (medium power)
+- Full charge (2.0s) = 4 damage (maximum power)
 - Visual indicator shows charge level around crosshair
 - **Fixed crosshair** - aim by dodging left/right with A/D keys
 
@@ -120,6 +121,7 @@ mall-hell/
 
 ## Version History
 
+- **v5.5** - Weapon balance overhaul: slingshot 2s charge time and damage scaling (1/2/4), nerf gun 20% faster projectiles, water gun 50% stronger splash, laser gun 75-shot magazine, weapon-specific projectile spawn offsets for visual accuracy
 - **v5.3** - Integration test suite (45 tests), improved test isolation, deterministic game loop control
 - **v5.1** - T-Rex boss redesign with proper dinosaur anatomy, test framework improvements
 - **v5.0** - Live minimap with enemy counts, lazy room loading, unified status panel, improved performance

@@ -382,6 +382,9 @@ const ProjectileOrchestrator = {
         // Get gravity from projectile config (default 0 for arcade feel)
         const gravity = projConfig.gravity || 0;
 
+        // Get damage from options (passed from weapon) or fallback to config
+        const damage = options.damage || projConfig.damage || 1;
+
         group.userData = {
             velocity: direction.clone().multiplyScalar(speed),
             active: true,
@@ -389,7 +392,8 @@ const ProjectileOrchestrator = {
             power: Math.max(0, Math.min(1, power)),
             projectileType: projectileType,
             projectileConfig: projConfig,  // Store config for splash damage detection
-            gravity: gravity  // Store per-projectile gravity
+            gravity: gravity,  // Store per-projectile gravity
+            damage: damage  // Store calculated damage from weapon
         };
 
         return group;
@@ -402,14 +406,22 @@ const ProjectileOrchestrator = {
      * @param {Object} options - Options
      * @param {number} options.forwardOffset - How far in front of camera (default: 0.5)
      * @param {number} options.downOffset - How far below camera (default: 0.3)
+     * @param {number} options.rightOffset - How far to the right of camera (default: 0)
      * @returns {THREE.Vector3} Spawn position
      */
     calculateSpawnPosition(THREE, camera, options = {}) {
-        const { forwardOffset = this.spawnForwardOffset, downOffset = this.spawnDownOffset } = options;
+        const {
+            forwardOffset = this.spawnForwardOffset,
+            downOffset = this.spawnDownOffset,
+            rightOffset = 0
+        } = options;
 
         const spawnPos = camera.position.clone();
         const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+
         spawnPos.add(forward.multiplyScalar(forwardOffset));
+        spawnPos.add(right.multiplyScalar(rightOffset));
         spawnPos.y -= downOffset;
 
         return spawnPos;
@@ -451,10 +463,19 @@ const ProjectileOrchestrator = {
      * @param {Object} camera - Camera object
      * @param {number} crosshairX - Crosshair X screen position
      * @param {number} crosshairY - Crosshair Y screen position
+     * @param {Object} weaponConfig - Optional weapon config with spawnOffset
      * @returns {Object} { spawnPos, direction }
      */
-    calculateFire(THREE, camera, crosshairX, crosshairY) {
-        const spawnPos = this.calculateSpawnPosition(THREE, camera);
+    calculateFire(THREE, camera, crosshairX, crosshairY, weaponConfig = null) {
+        // Use weapon-specific spawn offset if available
+        const spawnOptions = {};
+        if (weaponConfig?.spawnOffset) {
+            spawnOptions.forwardOffset = weaponConfig.spawnOffset.forward;
+            spawnOptions.downOffset = weaponConfig.spawnOffset.down;
+            spawnOptions.rightOffset = weaponConfig.spawnOffset.right;
+        }
+
+        const spawnPos = this.calculateSpawnPosition(THREE, camera, spawnOptions);
         const direction = this.calculateFireDirection(THREE, camera, crosshairX, crosshairY, spawnPos);
         return { spawnPos, direction };
     },

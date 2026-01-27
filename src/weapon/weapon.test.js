@@ -20,8 +20,8 @@
             test.assertEqual(slingshot.id, 'slingshot');
             test.assertEqual(slingshot.fireMode, 'charge');
             test.assertEqual(slingshot.cooldown, 300);
-            test.assertEqual(slingshot.charge.rate, 1.2);
-            test.assertEqual(slingshot.charge.minTension, 0.2);
+            test.assertEqual(slingshot.charge.rate, 0.5);
+            test.assertEqual(slingshot.charge.minTension, 0.05);
             test.assertEqual(slingshot.charge.maxTension, 1.0);
             test.assertEqual(slingshot.range, 120, 'Slingshot should have 120 unit range');
         });
@@ -305,13 +305,13 @@
         test.it('should start charging on fire start', () => {
             Slingshot.onFireStart(1000);
             test.assertTrue(Slingshot.state.isCharging);
-            test.assertEqual(Slingshot.state.chargeAmount, 0.2);
+            test.assertEqual(Slingshot.state.chargeAmount, 0.05);
         });
 
         test.it('should update charge over time', () => {
             Slingshot.onFireStart(1000);
             Slingshot.update(0.5, 1500);
-            test.assertTrue(Slingshot.state.chargeAmount > 0.2);
+            test.assertTrue(Slingshot.state.chargeAmount > 0.05);
         });
 
         test.it('should cap charge at maxTension', () => {
@@ -472,7 +472,7 @@
         });
 
         test.it('should have limited ammo', () => {
-            test.assertEqual(LaserGun.config.ammo.max, 60);
+            test.assertEqual(LaserGun.config.ammo.max, 75);
         });
 
         test.it('should have range in config', () => {
@@ -500,7 +500,7 @@
         test.it('should consume ammo when firing', () => {
             LaserGun.onFireStart(1000);
             LaserGun.fire(1000);
-            test.assertTrue(LaserGun.state.ammo < 60);
+            test.assertTrue(LaserGun.state.ammo < 75);
         });
 
         test.it('should add ammo', () => {
@@ -510,9 +510,9 @@
         });
 
         test.it('should cap ammo at max', () => {
-            LaserGun.state.ammo = 50;
+            LaserGun.state.ammo = 60;
             LaserGun.addAmmo(30);
-            test.assertEqual(LaserGun.state.ammo, 60);
+            test.assertEqual(LaserGun.state.ammo, 75);
         });
 
         test.it('should have createFPSMesh method', () => {

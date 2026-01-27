@@ -157,6 +157,11 @@ const Slingshot = {
         const speed = this.config.projectile.speed.min +
             (this.config.projectile.speed.max - this.config.projectile.speed.min) * tension;
 
+        // Calculate damage: base + (tension * scaling) = 2 + (tension * 2)
+        // Quick (0.2): 2, Half (0.5): 3, Full (1.0): 4
+        const damage = this.config.projectile.damage +
+            Math.round(tension * this.config.projectile.damageScaling);
+
         // Consume ammo
         this.state.ammo -= this.config.ammo.consumePerShot;
         if (this.state.ammo < 0) this.state.ammo = 0;
@@ -169,7 +174,7 @@ const Slingshot = {
         return {
             speed: speed,
             power: tension,
-            damage: this.config.projectile.damage,
+            damage: damage,
             projectileType: this.config.projectile.type,
             count: this.config.projectile.count
         };

@@ -16,7 +16,7 @@ const WeaponPickup = {
             name: 'Water Gun',
             isWeapon: true,         // This is a weapon pickup (not just ammo)
             spawnChance: 0.4,       // 40% of rooms
-            spawnWeight: 5,         // Higher weight for weapons
+            spawnWeight: 4,         // Grenade launcher (was 5)
             ammoGrant: 50,          // Ammo given on same-weapon pickup
             visual: {
                 color: 0x3498db,
@@ -31,8 +31,8 @@ const WeaponPickup = {
             name: 'Laser Blaster',
             isWeapon: true,
             spawnChance: 0.35,
-            spawnWeight: 4,
-            ammoGrant: 30,          // Energy ammo on same-weapon pickup
+            spawnWeight: 2,         // Rare OP weapon (was 4)
+            ammoGrant: 100,         // More ammo (was 30)
             visual: {
                 color: 0xe74c3c,    // Red
                 glowColor: 0xff6b6b,
@@ -46,7 +46,7 @@ const WeaponPickup = {
             name: 'Nerf Blaster',
             isWeapon: true,
             spawnChance: 0.3,
-            spawnWeight: 3,
+            spawnWeight: 5,         // Most common pistol (was 3)
             ammoGrant: 6,           // Ammo given on same-weapon pickup
             visual: {
                 color: 0xf39c12,    // Orange (different from laser)
@@ -62,7 +62,7 @@ const WeaponPickup = {
             name: 'Small Ammo',
             isAmmo: true,
             spawnChance: 0.3,        // 30% of rooms (reduced)
-            spawnWeight: 2,          // Lower weight than weapons
+            spawnWeight: 3,          // More common ammo (was 2)
             ammoGrant: 15,           // Small ammo refill
             visual: {
                 color: 0xf1c40f,     // Yellow
@@ -77,7 +77,7 @@ const WeaponPickup = {
             name: 'Large Ammo',
             isAmmo: true,
             spawnChance: 0.2,        // 20% of rooms (reduced)
-            spawnWeight: 1,          // Rare
+            spawnWeight: 1,          // Still rare
             ammoGrant: 40,           // Large ammo refill
             visual: {
                 color: 0xe67e22,     // Orange
@@ -92,8 +92,8 @@ const WeaponPickup = {
     // ==========================================
 
     spawn: {
-        chancePerRoom: 0.6,         // 60% base chance per room (more frequent)
-        maxPerRoom: 2,              // Allow up to 2 pickups per room
+        chancePerRoom: 0.85,        // 85% base chance per room (was 60%)
+        maxPerRoom: 1,              // Max 1 pickup per room (was 2)
         minDistanceFromPlayer: 10,  // Don't spawn too close
         maxDistanceFromPlayer: 60,  // Don't spawn too far ahead
         heightOffset: 1.8,          // Float above ground (higher for visibility)

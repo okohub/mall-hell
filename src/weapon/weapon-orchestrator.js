@@ -724,14 +724,16 @@ const WeaponOrchestrator = {
         }
 
         // Get weapon config for projectile speed
-        const speedMin = this.currentWeapon?.config?.projectile?.speedMin || 60;
-        const speedMax = this.currentWeapon?.config?.projectile?.speedMax || 180;
+        const speedMin = this.currentWeapon?.config?.projectile?.speed?.min || 60;
+        const speedMax = this.currentWeapon?.config?.projectile?.speed?.max || 180;
 
         // Create projectile
         const projectile = ProjectileOrchestrator.createMesh(THREE, direction, spawnPos, fireResult.speed, {
             speedMin,
             speedMax,
-            fallbackCamera: camera
+            fallbackCamera: camera,
+            damage: fireResult.damage,  // Pass damage from weapon
+            projectileType: fireResult.projectileType
         });
 
         if (projectile) {
@@ -784,13 +786,15 @@ const WeaponOrchestrator = {
                 direction.normalize();
             }
 
-            const speedMin = this.currentWeapon?.config?.projectile?.speedMin || 60;
-            const speedMax = this.currentWeapon?.config?.projectile?.speedMax || 180;
+            const speedMin = this.currentWeapon?.config?.projectile?.speed?.min || 60;
+            const speedMax = this.currentWeapon?.config?.projectile?.speed?.max || 180;
 
             const projectile = ProjectileOrchestrator.createMesh(THREE, direction, spawnPos, fireResult.speed, {
                 speedMin,
                 speedMax,
-                fallbackCamera: camera
+                fallbackCamera: camera,
+                damage: fireResult.damage,  // Pass damage from weapon
+                projectileType: fireResult.projectileType
             });
 
             if (projectile) {

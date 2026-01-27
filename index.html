@@ -91,7 +91,7 @@
                     <div class="title-wrapper">
                         <div class="title">MALL HELL</div>
                     </div>
-                    <div class="version">VERSION 5.3</div>
+                    <div class="version">VERSION 5.5</div>
                     <div class="subtitle">SUPERMARKET MAYHEM</div>
                     <div class="instructions" id="instructions">
                         <div class="control-item">
@@ -402,11 +402,13 @@
         function createProjectile(direction, spawnPos, speed, fireResult = null) {
             const ps = WeaponOrchestrator.getProjectileSpeed();
             const projectileType = fireResult?.projectileType || 'stone';
+            const damage = fireResult?.damage || 1;
             const g = ProjectileOrchestrator.createMesh(THREE, direction, spawnPos, speed ?? ps.max, {
                 speedMin: ps.min,
                 speedMax: ps.max,
                 fallbackCamera: camera,
-                projectileType: projectileType
+                projectileType: projectileType,
+                damage: damage
             });
             scene.add(g); projectiles.push(g);
             return g;
@@ -422,13 +424,15 @@
 
         // Test helpers for firing
         const startFiring = () => startCharging();
-        const stopFiring = () => cancelCharging();
+        const stopFiring = () => releaseAndFire();
 
         function shoot(speed, fireResult = null) {
             lastShootTime = Date.now();
             if (cameraMode === 'hybrid-fps') WeaponOrchestrator.triggerFireAnim();
 
-            const { spawnPos, direction } = ProjectileOrchestrator.calculateFire(THREE, camera, crosshairX, crosshairY);
+            // Get current weapon config for spawn offset
+            const weaponConfig = WeaponOrchestrator.currentWeapon?.config;
+            const { spawnPos, direction } = ProjectileOrchestrator.calculateFire(THREE, camera, crosshairX, crosshairY, weaponConfig);
             if (fireResult?.spread) { direction.x += fireResult.spread.x; direction.y += fireResult.spread.y; direction.normalize(); }
             createProjectile(direction, spawnPos, speed, fireResult);
             updateAmmoDisplay();

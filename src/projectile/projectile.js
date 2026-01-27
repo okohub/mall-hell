@@ -65,7 +65,12 @@ const Projectile = {
             piercing: false,
             splash: true,         // Has splash damage
             splashRadius: 5,
-            splashDamage: 0.5
+            splashDamage: 0.5,
+            slow: {               // Slow effect on hit
+                enabled: true,
+                duration: 2.0,    // 2 seconds
+                speedMultiplier: 0.5  // 50% speed
+            }
         },
 
         laser: {

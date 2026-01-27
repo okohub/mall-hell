@@ -933,7 +933,7 @@ const CollisionOrchestrator = {
 
                     if (dist < hitRadius) {
                         proj.userData.active = false;
-                        const damage = 1 + Math.round((proj.userData.power || 0) * 2);
+                        const damage = proj.userData.damage || 1;
 
                         // Use EnemyOrchestrator for damage handling
                         const result = typeof EnemyOrchestrator !== 'undefined'
@@ -944,10 +944,18 @@ const CollisionOrchestrator = {
                             onEnemyHit(enemy, damage, closestPoint, result);
                         }
 
-                        // Process splash damage if projectile has splash properties
+                        // Get projectile config for status effects
                         const projConfig = proj.userData.projectileConfig ||
                             (typeof Projectile !== 'undefined' && proj.userData.projectileType
                                 ? Projectile.get(proj.userData.projectileType) : null);
+
+                        // Apply slow effect if projectile has slow and enemy not destroyed
+                        if (projConfig?.slow?.enabled && result && !result.destroyed) {
+                            enemy.userData.slowedUntil = Date.now() + (projConfig.slow.duration * 1000);
+                            enemy.userData.slowMultiplier = projConfig.slow.speedMultiplier;
+                        }
+
+                        // Process splash damage if projectile has splash properties
                         if (projConfig?.splash && projConfig.splashRadius > 0) {
                             this.processSplashDamage(
                                 closestPoint,

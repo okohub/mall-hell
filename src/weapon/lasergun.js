@@ -21,8 +21,8 @@ const LaserGun = {
         return {
             ...baseConfig,
             ammo: {
-                max: 60,
-                current: 60,
+                max: 75,
+                current: 75,
                 consumePerShot: 1
             }
         };
@@ -50,7 +50,7 @@ const LaserGun = {
         isCharging: false,  // Used as "isFiring" for auto weapons
         chargeAmount: 0,
         lastFireTime: 0,
-        ammo: 60,
+        ammo: 75,
         fireAnimProgress: 0,
         isFiring: false,
         glowPulse: 0

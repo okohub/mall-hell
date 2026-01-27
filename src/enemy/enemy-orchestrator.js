@@ -216,9 +216,19 @@ const EnemyOrchestrator = {
      * @param {Object} [aiOptions] - AI options {collisionCheck, hasLineOfSight}
      */
     updateBehavior(enemy, playerPos, dt, baseSpeed, aiOptions = {}) {
-        // Delegate to AI module
+        // Apply slow effect if active
+        let effectiveSpeed = baseSpeed;
+        if (enemy.userData?.slowedUntil && Date.now() < enemy.userData.slowedUntil) {
+            effectiveSpeed *= enemy.userData.slowMultiplier || 1.0;
+        } else if (enemy.userData?.slowedUntil) {
+            // Clean up expired slow
+            delete enemy.userData.slowedUntil;
+            delete enemy.userData.slowMultiplier;
+        }
+
+        // Delegate to AI module with modified speed
         if (typeof EnemyAI !== 'undefined') {
-            EnemyAI.updateBehavior(enemy, playerPos, dt, baseSpeed, aiOptions);
+            EnemyAI.updateBehavior(enemy, playerPos, dt, effectiveSpeed, aiOptions);
         }
     },
 
@@ -274,6 +284,25 @@ const EnemyOrchestrator = {
                         module.mesh.applyHitFlash(enemy.mesh.userData.cart, enemy.hitFlash);
                     }
                 }
+            }
+
+            // Update slow visual effect (blue tint)
+            if (enemy.mesh && enemy.mesh.userData.cart) {
+                const isSlowed = enemy.slowedUntil && Date.now() < enemy.slowedUntil;
+                const cart = enemy.mesh.userData.cart;
+
+                cart.traverse(child => {
+                    if (child.material && child.material.emissive) {
+                        if (isSlowed) {
+                            // Apply blue tint for slow effect
+                            child.material.emissive.setHex(0x3498db);
+                            child.material.emissiveIntensity = 0.3;
+                        } else if (enemy.hitFlash === 0) {
+                            // Clear slow visual only if hit flash is also done
+                            child.material.emissiveIntensity = 0;
+                        }
+                    }
+                });
             }
 
             // Update health bar
