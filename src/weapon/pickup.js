@@ -65,8 +65,8 @@ const WeaponPickup = {
             spawnWeight: 3,          // More common ammo (was 2)
             ammoGrant: 15,           // Small ammo refill
             visual: {
-                color: 0xf1c40f,     // Yellow
-                glowColor: 0xf39c12,
+                color: 0x6c5ce7,     // Purple ammo
+                glowColor: 0xa29bfe, // Soft lavender glow
                 scale: 1.5
             }
         },
@@ -80,8 +80,8 @@ const WeaponPickup = {
             spawnWeight: 1,          // Still rare
             ammoGrant: 40,           // Large ammo refill
             visual: {
-                color: 0xe67e22,     // Orange
-                glowColor: 0xf39c12,
+                color: 0x5e60ce,     // Deep purple
+                glowColor: 0x9a8cff, // Violet glow
                 scale: 1.8
             }
         },
@@ -96,8 +96,8 @@ const WeaponPickup = {
             spawnWeight: 2,          // Similar rarity to Laser Gun
             ammoGrant: 0,            // No ammo
             visual: {
-                color: 0xff3333,     // Red
-                glowColor: 0xffaa00, // Yellow-orange
+                color: 0x2ecc71,     // Emerald green
+                glowColor: 0x7dffb2, // Mint glow
                 scale: 2.0
             }
         }

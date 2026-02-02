@@ -700,6 +700,46 @@
             test.assertTrue(mesh.children.length >= 3, 'Ammo crate should have multiple parts (body, stripes, corners)');
         });
 
+        test.it('should create stylized speed boost mesh with halo and panels', () => {
+            if (typeof THREE === 'undefined') {
+                test.skip('THREE.js not available');
+                return;
+            }
+
+            const instance = WeaponPickup.createInstance('speed_boost', { x: 0, y: 1, z: 0 });
+            test.assertTrue(instance.config.isPowerup, 'Should be powerup type');
+
+            PickupOrchestrator.THREE = THREE;
+            const mesh = PickupOrchestrator._createPowerUpMesh(instance, THREE);
+
+            test.assertTrue(mesh instanceof THREE.Group, 'Powerup mesh should be a Group');
+            test.assertGreaterThan(mesh.children.length, 10, 'Stylized can should have multiple detailed parts');
+
+            const hasHalo = mesh.children.some((child) => child.geometry && child.geometry.type === 'TorusGeometry');
+            test.assertTrue(hasHalo, 'Should include a halo ring (torus geometry)');
+
+            const hasBasicGlow = mesh.children.some((child) => child.material && child.material.type === 'MeshBasicMaterial');
+            test.assertTrue(hasBasicGlow, 'Should include at least one basic glow element');
+        });
+
+        test.it('should animate speed boost with gentle rotation', () => {
+            if (typeof THREE === 'undefined') {
+                test.skip('THREE.js not available');
+                return;
+            }
+
+            const instance = WeaponPickup.createInstance('speed_boost', { x: 0, y: 1, z: 0 });
+            const mesh = new THREE.Group();
+
+            PickupOrchestrator.pickups = [instance];
+            PickupOrchestrator.meshes = [mesh];
+
+            const rotationBefore = instance.rotation;
+            PickupOrchestrator.update(1, { x: 50, y: 0, z: 50 }, 0);
+
+            test.assertCloseTo(instance.rotation, rotationBefore + 0.5, 0.0001, 'Speed boost rotation should be gentle');
+        });
+
         test.it('should have ammo types with distinct visual', () => {
             const ammoSmall = WeaponPickup.types.AMMO_SMALL;
             const ammoLarge = WeaponPickup.types.AMMO_LARGE;
