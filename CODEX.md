@@ -8,3 +8,4 @@ This repo uses `CLAUDE.md` as the primary project guide. Read it first:
 - The shared helper `IntegrationHelpers.bootGameForIntegration()` mirrors this flow.
 - Unit/UI/integration tests are browser-driven via Puppeteer; in restricted environments, browser launch may fail.
 - `progress.md` is a local scratchpad and is ignored in `.gitignore`.
+- Use `CODEX.md` for Codex-specific workflow notes; keep authoritative rules in `CLAUDE.md`.
