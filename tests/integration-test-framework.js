@@ -15,6 +15,30 @@
         },
 
         /**
+         * Boot the game UI and stop the loop for deterministic integration testing.
+         * This mirrors the typical integration test setup pattern.
+         */
+        async bootGameForIntegration() {
+            const runner = this.runner;
+            if (!runner) return;
+
+            runner.resetGame();
+            await runner.wait(100);
+            runner.simulateClick(runner.getElement('#start-btn'));
+            await runner.wait(300);
+
+            if (runner.gameWindow.LoopOrchestrator) {
+                runner.gameWindow.LoopOrchestrator.stop();
+            }
+
+            if (runner.gameWindow.manualUpdate) {
+                for (let i = 0; i < 5; i++) {
+                    runner.gameWindow.manualUpdate(0.016);
+                }
+            }
+        },
+
+        /**
          * Ensure WeaponOrchestrator has projectile refs set up
          * Must be called before firing weapons
          */

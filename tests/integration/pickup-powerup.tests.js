@@ -6,28 +6,13 @@
 (function(runner) {
     'use strict';
 
-    async function bootGameForIntegration() {
-        runner.resetGame();
-        await runner.wait(100);
-        runner.simulateClick(runner.getElement('#start-btn'));
-        await runner.wait(300);
-
-        if (runner.gameWindow.LoopOrchestrator) {
-            runner.gameWindow.LoopOrchestrator.stop();
-        }
-
-        if (runner.gameWindow.manualUpdate) {
-            for (let i = 0; i < 5; i++) {
-                runner.gameWindow.manualUpdate(0.016);
-            }
-        }
-    }
+    const helpers = window.IntegrationHelpers;
 
     // Test 1: Spawn speed boost pickup
     runner.addTest('spawn-speed-boost-pickup', 'Pickup+PowerUp', 'Speed boost spawns as pickup',
         'Verifies speed boost power-up spawns with correct mesh and position',
         async () => {
-            await bootGameForIntegration();
+            await helpers.bootGameForIntegration();
 
             // Access game internals
             const THREE = runner.gameWindow.THREE;
@@ -67,7 +52,7 @@
     runner.addTest('powerup-in-weighted-selection', 'Pickup+PowerUp', 'Power-ups compete with weapons in weighted spawn',
         'Test that selectRandom can return power-ups',
         async () => {
-            await bootGameForIntegration();
+            await helpers.bootGameForIntegration();
 
             const WeaponPickup = runner.gameWindow.WeaponPickup;
 
@@ -94,7 +79,7 @@
     runner.addTest('collect-speed-boost-activates-effect', 'Pickup+PowerUp', 'Collecting speed boost activates PowerUpOrchestrator effect',
         'Collecting speed boost activates PowerUpOrchestrator effect',
         async () => {
-            await bootGameForIntegration();
+            await helpers.bootGameForIntegration();
 
             // Access game internals
             const THREE = runner.gameWindow.THREE;
@@ -137,7 +122,7 @@
     runner.addTest('player-speed-2x-with-boost', 'Pickup+PowerUp', 'Player moves 2x faster with speed boost active',
         'Verifies speed multiplier is applied to player movement',
         async () => {
-            await bootGameForIntegration();
+            await helpers.bootGameForIntegration();
 
             // Access game internals
             const PlayerOrchestrator = runner.gameWindow.PlayerOrchestrator;
@@ -201,7 +186,7 @@
     runner.addTest('fov-increases-with-boost', 'Pickup+PowerUp', 'FOV increases by 10 when speed boost is active',
         'Verifies camera FOV changes from 75 to 85 with speed boost',
         async () => {
-            await bootGameForIntegration();
+            await helpers.bootGameForIntegration();
 
             // Access game internals
             const camera = runner.gameWindow.camera;
@@ -250,7 +235,7 @@
     runner.addTest('powerup-expires-after-duration', 'Pickup+PowerUp', 'Power-up expires after duration',
         'Verifies power-up deactivates after 10 seconds',
         async () => {
-            await bootGameForIntegration();
+            await helpers.bootGameForIntegration();
 
             // Access game internals
             const PowerUpOrchestrator = runner.gameWindow.PowerUpOrchestrator;
@@ -290,7 +275,7 @@
     runner.addTest('powerup-resets-on-game-over', 'Pickup+PowerUp', 'Power-ups reset on game over',
         'Verifies power-ups are cleared when game ends',
         async () => {
-            await bootGameForIntegration();
+            await helpers.bootGameForIntegration();
 
             // Access game internals
             const PowerUpOrchestrator = runner.gameWindow.PowerUpOrchestrator;
@@ -321,7 +306,7 @@
     runner.addTest('powerup-resets-on-death', 'Pickup+PowerUp', 'Power-ups reset on player death',
         'Verifies power-ups are cleared when player dies',
         async () => {
-            await bootGameForIntegration();
+            await helpers.bootGameForIntegration();
 
             // Access game internals
             const PowerUpOrchestrator = runner.gameWindow.PowerUpOrchestrator;
@@ -364,7 +349,7 @@
     runner.addTest('ui-timer-hidden-after-reset', 'Pickup+PowerUp', 'UI timer hidden after power-up reset',
         'Verifies timer UI is hidden when power-ups are reset',
         async () => {
-            await bootGameForIntegration();
+            await helpers.bootGameForIntegration();
 
             // Access game internals
             const PowerUpOrchestrator = runner.gameWindow.PowerUpOrchestrator;
