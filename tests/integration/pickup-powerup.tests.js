@@ -6,10 +6,29 @@
 (function(runner) {
     'use strict';
 
+    async function bootGameForIntegration() {
+        runner.resetGame();
+        await runner.wait(100);
+        runner.simulateClick(runner.getElement('#start-btn'));
+        await runner.wait(300);
+
+        if (runner.gameWindow.LoopOrchestrator) {
+            runner.gameWindow.LoopOrchestrator.stop();
+        }
+
+        if (runner.gameWindow.manualUpdate) {
+            for (let i = 0; i < 5; i++) {
+                runner.gameWindow.manualUpdate(0.016);
+            }
+        }
+    }
+
     // Test 1: Spawn speed boost pickup
     runner.addTest('spawn-speed-boost-pickup', 'Pickup+PowerUp', 'Speed boost spawns as pickup',
         'Verifies speed boost power-up spawns with correct mesh and position',
         async () => {
+            await bootGameForIntegration();
+
             // Access game internals
             const THREE = runner.gameWindow.THREE;
             const scene = runner.gameWindow.scene;
@@ -48,6 +67,8 @@
     runner.addTest('powerup-in-weighted-selection', 'Pickup+PowerUp', 'Power-ups compete with weapons in weighted spawn',
         'Test that selectRandom can return power-ups',
         async () => {
+            await bootGameForIntegration();
+
             const WeaponPickup = runner.gameWindow.WeaponPickup;
 
             // Test that selectRandom can return power-ups
@@ -73,6 +94,8 @@
     runner.addTest('collect-speed-boost-activates-effect', 'Pickup+PowerUp', 'Collecting speed boost activates PowerUpOrchestrator effect',
         'Collecting speed boost activates PowerUpOrchestrator effect',
         async () => {
+            await bootGameForIntegration();
+
             // Access game internals
             const THREE = runner.gameWindow.THREE;
             const scene = runner.gameWindow.scene;
@@ -114,36 +137,59 @@
     runner.addTest('player-speed-2x-with-boost', 'Pickup+PowerUp', 'Player moves 2x faster with speed boost active',
         'Verifies speed multiplier is applied to player movement',
         async () => {
+            await bootGameForIntegration();
+
             // Access game internals
             const PlayerOrchestrator = runner.gameWindow.PlayerOrchestrator;
             const PowerUpOrchestrator = runner.gameWindow.PowerUpOrchestrator;
+            const InputOrchestrator = runner.gameWindow.InputOrchestrator;
+            const manualUpdate = runner.gameWindow.manualUpdate;
 
             // Initialize systems
             PlayerOrchestrator.init();
             PowerUpOrchestrator.init();
 
-            // Set player position and speed
-            PlayerOrchestrator.setPosition(50, 75);
-            PlayerOrchestrator.speed = 8;
-            PlayerOrchestrator.rotation = 0; // Facing -Z
+            if (!InputOrchestrator || !manualUpdate) {
+                throw new Error('InputOrchestrator or manualUpdate not available');
+            }
 
-            // Calculate position without boost
-            const normalPos = PlayerOrchestrator.calculateNewPosition(1.0);
-            const normalDistance = Math.sqrt(
-                Math.pow(normalPos.x - 50, 2) + Math.pow(normalPos.z - 75, 2)
-            );
+            const movementConfig = PlayerOrchestrator.getMovementConfig();
+            const startX = 45;
+            const startZ = 75;
+            const frames = 60;
+            const dt = 1 / 60;
+
+            // Ensure forward input is active
+            InputOrchestrator.keys.forward = true;
+            InputOrchestrator.keys.backward = false;
+            InputOrchestrator.keys.turnLeft = false;
+            InputOrchestrator.keys.turnRight = false;
+
+            // Baseline movement without boost
+            PlayerOrchestrator.setPosition(startX, startZ);
+            PlayerOrchestrator.setRotation(0); // Facing -Z
+            PlayerOrchestrator.speed = movementConfig.MAX_SPEED;
+            for (let i = 0; i < frames; i++) {
+                manualUpdate(dt);
+            }
+            const normalDistance = Math.abs(PlayerOrchestrator.position.z - startZ);
 
             // Activate speed boost
             PowerUpOrchestrator.activate('speed_boost', Date.now());
 
-            // Calculate position with boost
-            PlayerOrchestrator.setPosition(50, 75);
-            const boostedPos = PlayerOrchestrator.calculateNewPosition(1.0);
-            const boostedDistance = Math.sqrt(
-                Math.pow(boostedPos.x - 50, 2) + Math.pow(boostedPos.z - 75, 2)
-            );
+            // Movement with boost
+            PlayerOrchestrator.setPosition(startX, startZ);
+            PlayerOrchestrator.setRotation(0);
+            PlayerOrchestrator.speed = movementConfig.MAX_SPEED;
+            for (let i = 0; i < frames; i++) {
+                manualUpdate(dt);
+            }
+            const boostedDistance = Math.abs(PlayerOrchestrator.position.z - startZ);
 
-            // Verify 2x multiplier
+            // Cleanup input state
+            InputOrchestrator.keys.forward = false;
+
+            // Verify 2x multiplier on actual movement
             const ratio = boostedDistance / normalDistance;
             if (Math.abs(ratio - 2.0) > 0.01) {
                 throw new Error(`Expected 2x speed, got ${ratio.toFixed(2)}x`);
@@ -155,6 +201,8 @@
     runner.addTest('fov-increases-with-boost', 'Pickup+PowerUp', 'FOV increases by 10 when speed boost is active',
         'Verifies camera FOV changes from 75 to 85 with speed boost',
         async () => {
+            await bootGameForIntegration();
+
             // Access game internals
             const camera = runner.gameWindow.camera;
             const PowerUpOrchestrator = runner.gameWindow.PowerUpOrchestrator;
@@ -202,6 +250,8 @@
     runner.addTest('powerup-expires-after-duration', 'Pickup+PowerUp', 'Power-up expires after duration',
         'Verifies power-up deactivates after 10 seconds',
         async () => {
+            await bootGameForIntegration();
+
             // Access game internals
             const PowerUpOrchestrator = runner.gameWindow.PowerUpOrchestrator;
 
@@ -240,6 +290,8 @@
     runner.addTest('powerup-resets-on-game-over', 'Pickup+PowerUp', 'Power-ups reset on game over',
         'Verifies power-ups are cleared when game ends',
         async () => {
+            await bootGameForIntegration();
+
             // Access game internals
             const PowerUpOrchestrator = runner.gameWindow.PowerUpOrchestrator;
 
@@ -269,6 +321,8 @@
     runner.addTest('powerup-resets-on-death', 'Pickup+PowerUp', 'Power-ups reset on player death',
         'Verifies power-ups are cleared when player dies',
         async () => {
+            await bootGameForIntegration();
+
             // Access game internals
             const PowerUpOrchestrator = runner.gameWindow.PowerUpOrchestrator;
             const PlayerOrchestrator = runner.gameWindow.PlayerOrchestrator;
@@ -310,6 +364,8 @@
     runner.addTest('ui-timer-hidden-after-reset', 'Pickup+PowerUp', 'UI timer hidden after power-up reset',
         'Verifies timer UI is hidden when power-ups are reset',
         async () => {
+            await bootGameForIntegration();
+
             // Access game internals
             const PowerUpOrchestrator = runner.gameWindow.PowerUpOrchestrator;
             const UIOrchestrator = runner.gameWindow.UIOrchestrator;
