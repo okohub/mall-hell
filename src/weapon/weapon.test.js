@@ -20,7 +20,7 @@
             test.assertEqual(slingshot.id, 'slingshot');
             test.assertEqual(slingshot.fireMode, 'charge');
             test.assertEqual(slingshot.cooldown, 300);
-            test.assertEqual(slingshot.charge.rate, 0.5);
+            test.assertEqual(slingshot.charge.rate, 0.67);
             test.assertEqual(slingshot.charge.minTension, 0.05);
             test.assertEqual(slingshot.charge.maxTension, 1.0);
             test.assertEqual(slingshot.range, 120, 'Slingshot should have 120 unit range');

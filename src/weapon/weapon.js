@@ -30,7 +30,7 @@ const Weapon = {
             },
 
             charge: {
-                rate: 0.5,           // Tension per second (2s to full charge)
+                rate: 0.67,          // Tension per second (~1.5s to full charge)
                 minTension: 0.05,    // Quick tap minimum (1 dmg)
                 maxTension: 1.0      // Full charge
             }
