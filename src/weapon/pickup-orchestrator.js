@@ -440,7 +440,8 @@ const PickupOrchestrator = {
             roughness: 0.35,
             metalness: 0.2,
             emissive: baseColor,
-            emissiveIntensity: 0.3
+            emissiveIntensity: 0.3,
+            side: THREE.DoubleSide
         });
 
         // Heart silhouette using a shape (more recognizable than spheres)
@@ -452,15 +453,13 @@ const PickupOrchestrator = {
         shape.bezierCurveTo(0.5, 0.55, 0, 0.5, 0, 0.2);
 
         const extrudeGeo = new THREE.ExtrudeGeometry(shape, {
-            depth: 0.18,
-            bevelEnabled: true,
-            bevelThickness: 0.04,
-            bevelSize: 0.04,
-            bevelSegments: 2
+            depth: 0.08,
+            bevelEnabled: false
         });
         extrudeGeo.center();
 
         const heart = new THREE.Mesh(extrudeGeo, heartMat);
+        heart.scale.set(1.0, 1.12, 1.0);
         pickup.add(heart);
 
         // Subtle glow shell
@@ -469,22 +468,10 @@ const PickupOrchestrator = {
             transparent: true,
             opacity: 0.6
         });
-        const glowGeo = new THREE.SphereGeometry(0.55, 16, 16);
+        const glowGeo = new THREE.SphereGeometry(0.5, 16, 16);
         const glow = new THREE.Mesh(glowGeo, glowMat);
         glow.position.set(0, 0.05, 0);
         pickup.add(glow);
-
-        // Halo ring for collectible feel
-        const haloMat = new THREE.MeshBasicMaterial({
-            color: glowColor,
-            transparent: true,
-            opacity: 0.25
-        });
-        const haloGeo = new THREE.TorusGeometry(0.55, 0.03, 12, 24);
-        const halo = new THREE.Mesh(haloGeo, haloMat);
-        halo.rotation.x = Math.PI / 2;
-        halo.position.set(0, -0.05, 0);
-        pickup.add(halo);
 
         return pickup;
     },

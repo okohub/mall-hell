@@ -445,8 +445,9 @@ const EnemyOrchestrator = {
                     PickupOrchestrator._addGlowEffect(heartMesh, healthInstance, THREE);
                 }
                 // Make it clearly visible above the cart contents
-                heartMesh.scale.set(0.8, 0.8, 0.8);
-                heartMesh.position.set(0, 1.6, 0.45);
+                heartMesh.scale.set(0.7, 0.7, 0.7);
+                heartMesh.position.set(0, 1.55, 0.5);
+                heartMesh.rotation.x = -0.15;
                 heartMesh.userData.baseY = heartMesh.position.y;
                 heartMesh.userData.bobPhase = Math.random() * Math.PI * 2;
                 group.userData.cart.add(heartMesh);
