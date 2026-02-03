@@ -1,6 +1,6 @@
 # Mall Hell
 
-**Version 5.7** | First-person arcade shooter | Clear the mall of enemies
+**Version 5.8** | First-person arcade shooter | Clear the mall of enemies
 
 ## Quick Commands
 
@@ -67,7 +67,7 @@
 **Test helpers in index.html:** `startFiring()` → `startCharging()`, `stopFiring()` → `releaseAndFire()`
 **Weapon spawn offsets:** Each weapon has `spawnOffset: { forward, down, right }` for projectile origin
 
-## Weapon Balance (v5.7)
+## Weapon Balance (v5.8)
 
 | Weapon | Damage | Ammo | Charge Time | Notes |
 |--------|--------|------|-------------|-------|
