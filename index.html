@@ -685,7 +685,15 @@
 
             // UI updates
             UIOrchestrator.updateCrosshairUI(crosshairX, crosshairY, aim.hasTarget);
-            UIOrchestrator.updateTensionUI(crosshairX, crosshairY, WeaponOrchestrator.isCharging(), WeaponOrchestrator.getTension(), WeaponOrchestrator.getMaxTension());
+            UIOrchestrator.updateTensionUI(
+                crosshairX,
+                crosshairY,
+                WeaponOrchestrator.isCharging(),
+                WeaponOrchestrator.getTension(),
+                WeaponOrchestrator.getMaxTension(),
+                WeaponOrchestrator.getMinTension(),
+                WeaponOrchestrator.getChargeRate()
+            );
             // Count enemies by type
             const activeEnemies = enemies.filter(e => e.userData.active);
             const enemyCounts = {

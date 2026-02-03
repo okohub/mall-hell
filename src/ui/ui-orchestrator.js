@@ -552,7 +552,7 @@ const UIOrchestrator = {
      * @param {number} tension - Current tension value (0-1)
      * @param {number} maxTension - Maximum tension value
      */
-    updateTensionUI(x, y, isCharging, tension, maxTension = 1.0) {
+    updateTensionUI(x, y, isCharging, tension, maxTension = 1.0, minTension = 0, chargeRate = 0) {
         const tensionEl = document.getElementById('tension-indicator');
         if (!tensionEl) return;
 
@@ -562,28 +562,38 @@ const UIOrchestrator = {
         if (isCharging) {
             tensionEl.classList.add('charging');
 
+            const range = Math.max(0.0001, maxTension - minTension);
+            const normalizedTension = Math.max(0, Math.min(1, (tension - minTension) / range));
+
             // Update tension class for color
             tensionEl.classList.remove('medium', 'high', 'max');
             if (tension >= maxTension) {
                 tensionEl.classList.add('max');
-            } else if (tension >= 0.7) {
+            } else if (normalizedTension >= 0.7) {
                 tensionEl.classList.add('high');
-            } else if (tension >= 0.4) {
+            } else if (normalizedTension >= 0.4) {
                 tensionEl.classList.add('medium');
             }
 
             // Update arc fill (283 = circumference of r=45 circle)
             const fillEl = tensionEl.querySelector('.tension-fill');
             if (fillEl) {
-                const dashOffset = 283 * (1 - tension);
+                const dashOffset = 283 * (1 - normalizedTension);
                 fillEl.style.strokeDashoffset = dashOffset;
             }
 
             // Update text
             const textEl = document.getElementById('tension-text');
             if (textEl) {
-                const power = Math.round(tension * 100);
-                textEl.textContent = power >= 100 ? 'MAX POWER!' : power + '%';
+                const power = Math.round(normalizedTension * 100);
+                const baseText = power >= 100 ? 'MAX POWER!' : power + '%';
+                if (chargeRate > 0) {
+                    const elapsed = Math.max(0, tension - minTension);
+                    const secondsElapsed = (elapsed / chargeRate).toFixed(1);
+                    textEl.textContent = `${baseText} (${secondsElapsed}s)`;
+                } else {
+                    textEl.textContent = baseText;
+                }
             }
         } else {
             tensionEl.classList.remove('charging', 'medium', 'high', 'max');

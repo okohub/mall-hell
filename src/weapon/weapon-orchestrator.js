@@ -295,6 +295,30 @@ const WeaponOrchestrator = {
     },
 
     /**
+     * Get min tension for current weapon
+     * @returns {number}
+     */
+    getMinTension() {
+        if (!this.currentWeapon) return 0;
+        if (this.currentWeapon.config && this.currentWeapon.config.charge) {
+            return this.currentWeapon.config.charge.minTension ?? 0;
+        }
+        return 0;
+    },
+
+    /**
+     * Get charge rate for current weapon
+     * @returns {number}
+     */
+    getChargeRate() {
+        if (!this.currentWeapon) return 0;
+        if (this.currentWeapon.config && this.currentWeapon.config.charge) {
+            return this.currentWeapon.config.charge.rate ?? 0;
+        }
+        return 0;
+    },
+
+    /**
      * Get cooldown for current weapon
      * @returns {number} Cooldown in ms
      */
