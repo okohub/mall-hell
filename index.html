@@ -776,6 +776,20 @@
                     }
                     const color = (enemy.userData.config || ENEMY_TYPES.CART).visual?.bodyColor || 0xe94560;
                     if (result.destroyed) {
+                        if (enemy.userData.carriesHealth && typeof PickupOrchestrator !== 'undefined') {
+                            const dropY = (typeof WeaponPickup !== 'undefined' && WeaponPickup.spawn?.heightOffset)
+                                ? WeaponPickup.spawn.heightOffset
+                                : 1.8;
+                            PickupOrchestrator.spawn('health_heart', {
+                                x: enemy.position.x,
+                                y: dropY,
+                                z: enemy.position.z
+                            });
+                            if (enemy.userData.healthCarryMesh && enemy.userData.healthCarryMesh.parent) {
+                                enemy.userData.healthCarryMesh.parent.remove(enemy.userData.healthCarryMesh);
+                                enemy.userData.healthCarryMesh = null;
+                            }
+                        }
                         addScore(result.scoreDestroy, enemy.position); spawnParticles(enemy.position, color, 15);
                         UIOrchestrator.addKilledEnemy(); // Track progress
                         AnalyticsOrchestrator.enemyKill(enemyType, result.scoreDestroy);

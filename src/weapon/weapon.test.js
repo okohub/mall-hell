@@ -601,6 +601,12 @@
             test.assertEqual(WeaponPickup.types.LASERGUN.weaponId, 'lasergun');
         });
 
+        test.it('should have HEALTH_HEART pickup defined', () => {
+            test.assertTrue(WeaponPickup.types.HEALTH_HEART !== undefined);
+            test.assertTrue(WeaponPickup.types.HEALTH_HEART.isHealth, 'Health heart should be isHealth');
+            test.assertEqual(WeaponPickup.types.HEALTH_HEART.healAmount, 20);
+        });
+
         test.it('should get pickup by id', () => {
             const pickup = WeaponPickup.get('WATERGUN');
             test.assertTrue(pickup !== null);
@@ -720,6 +726,28 @@
 
             const hasBasicGlow = mesh.children.some((child) => child.material && child.material.type === 'MeshBasicMaterial');
             test.assertTrue(hasBasicGlow, 'Should include at least one basic glow element');
+        });
+
+        test.it('should create health heart mesh with multiple parts', () => {
+            if (typeof THREE === 'undefined') {
+                test.skip('THREE.js not available');
+                return;
+            }
+
+            const instance = WeaponPickup.createInstance('HEALTH_HEART', { x: 0, y: 1, z: 0 });
+            test.assertTrue(instance.config.isHealth, 'Should be health type');
+
+            PickupOrchestrator.THREE = THREE;
+            const mesh = PickupOrchestrator._createHealthMesh(instance, THREE);
+
+            test.assertTrue(mesh instanceof THREE.Group, 'Health mesh should be a Group');
+            test.assertTrue(mesh.children.length >= 3, 'Heart should have multiple parts');
+
+            const hasExtrude = mesh.children.some((child) => child.geometry && child.geometry.type === 'ExtrudeGeometry');
+            test.assertTrue(hasExtrude, 'Heart should use ExtrudeGeometry for silhouette');
+
+            const hasHalo = mesh.children.some((child) => child.geometry && child.geometry.type === 'TorusGeometry');
+            test.assertTrue(hasHalo, 'Heart should include a halo ring');
         });
 
         test.it('should animate speed boost with gentle rotation', () => {

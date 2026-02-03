@@ -178,6 +178,10 @@ const PickupOrchestrator = {
         if (config.isPowerup) {
             mesh = this._createPowerUpMesh(instance, THREE);
         }
+        // Health pickups use heart mesh
+        else if (config.isHealth) {
+            mesh = this._createHealthMesh(instance, THREE);
+        }
         // Ammo pickups use generic ammo mesh
         else if (config.isAmmo || weaponId === null) {
             mesh = this._createAmmoMesh(instance, THREE);
@@ -421,6 +425,71 @@ const PickupOrchestrator = {
     },
 
     /**
+     * Create health pickup mesh - stylized heart
+     * @private
+     */
+    _createHealthMesh(instance, THREE) {
+        const pickup = new THREE.Group();
+        const config = instance.config || {};
+        const baseColor = new THREE.Color(config.visual?.color || 0xe74c3c);
+        const glowColor = config.visual?.glowColor || 0xff6b6b;
+
+        // Heart body material
+        const heartMat = new THREE.MeshStandardMaterial({
+            color: baseColor,
+            roughness: 0.35,
+            metalness: 0.2,
+            emissive: baseColor,
+            emissiveIntensity: 0.3
+        });
+
+        // Heart silhouette using a shape (more recognizable than spheres)
+        const shape = new THREE.Shape();
+        shape.moveTo(0, 0.2);
+        shape.bezierCurveTo(0, 0.5, -0.5, 0.55, -0.5, 0.15);
+        shape.bezierCurveTo(-0.5, -0.25, -0.1, -0.45, 0, -0.6);
+        shape.bezierCurveTo(0.1, -0.45, 0.5, -0.25, 0.5, 0.15);
+        shape.bezierCurveTo(0.5, 0.55, 0, 0.5, 0, 0.2);
+
+        const extrudeGeo = new THREE.ExtrudeGeometry(shape, {
+            depth: 0.18,
+            bevelEnabled: true,
+            bevelThickness: 0.04,
+            bevelSize: 0.04,
+            bevelSegments: 2
+        });
+        extrudeGeo.center();
+
+        const heart = new THREE.Mesh(extrudeGeo, heartMat);
+        pickup.add(heart);
+
+        // Subtle glow shell
+        const glowMat = new THREE.MeshBasicMaterial({
+            color: glowColor,
+            transparent: true,
+            opacity: 0.6
+        });
+        const glowGeo = new THREE.SphereGeometry(0.55, 16, 16);
+        const glow = new THREE.Mesh(glowGeo, glowMat);
+        glow.position.set(0, 0.05, 0);
+        pickup.add(glow);
+
+        // Halo ring for collectible feel
+        const haloMat = new THREE.MeshBasicMaterial({
+            color: glowColor,
+            transparent: true,
+            opacity: 0.25
+        });
+        const haloGeo = new THREE.TorusGeometry(0.55, 0.03, 12, 24);
+        const halo = new THREE.Mesh(haloGeo, haloMat);
+        halo.rotation.x = Math.PI / 2;
+        halo.position.set(0, -0.05, 0);
+        pickup.add(halo);
+
+        return pickup;
+    },
+
+    /**
      * Add glow effect to pickup (no PointLight for performance)
      * @private
      */
@@ -591,12 +660,32 @@ const PickupOrchestrator = {
             };
         }
 
-        // Ammo pickup - always adds ammo to current weapon
-        if (config.isAmmo || weaponId === null) {
-            weaponOrchestrator.addAmmo(config.ammoGrant);
+        // Health pickup - heal player
+        if (config.isHealth) {
+            if (typeof PlayerOrchestrator !== 'undefined') {
+                PlayerOrchestrator.heal(config.healAmount || 0);
+                if (typeof UIOrchestrator !== 'undefined') {
+                    UIOrchestrator.updateHealthBar(
+                        PlayerOrchestrator.getHealth(),
+                        PlayerOrchestrator.getMaxHealth()
+                    );
+                }
+            }
             return {
                 switched: false,
-                ammoAdded: config.ammoGrant,
+                ammoAdded: 0,
+                weaponId: currentWeaponId,
+                isHealth: true,
+                healAmount: config.healAmount || 0
+            };
+        }
+
+        // Ammo pickup - always adds ammo to current weapon
+        if (config.isAmmo || weaponId === null) {
+            const ammoAdded = getActualAmmoAdded(config.ammoGrant);
+            return {
+                switched: false,
+                ammoAdded: ammoAdded,
                 weaponId: currentWeaponId,
                 isAmmo: true
             };

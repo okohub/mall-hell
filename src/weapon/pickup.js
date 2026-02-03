@@ -100,6 +100,23 @@ const WeaponPickup = {
                 glowColor: 0x7dffb2, // Mint glow
                 scale: 2.0
             }
+        },
+
+        // Health pickup - drop-only (enemy carried)
+        HEALTH_HEART: {
+            id: 'health_heart',
+            weaponId: null,
+            name: 'Health Heart',
+            isHealth: true,
+            healAmount: 20,
+            spawnChance: 0,
+            spawnWeight: 0,
+            dropOnly: true,
+            visual: {
+                color: 0xe74c3c,     // Rich red
+                glowColor: 0xff6b6b, // Warm red glow
+                scale: 1.8
+            }
         }
     },
 
@@ -168,7 +185,7 @@ const WeaponPickup = {
      * @returns {Object} Selected pickup type
      */
     selectRandom() {
-        const types = this.getAll();
+        const types = this.getAll().filter(type => !type.dropOnly);
         const totalWeight = types.reduce((sum, t) => sum + t.spawnWeight, 0);
         let random = Math.random() * totalWeight;
 

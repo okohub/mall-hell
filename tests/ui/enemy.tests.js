@@ -113,6 +113,51 @@
         }
     );
 
+    runner.addTest('skeleton-carries-heart-visual', 'Skeleton Enemy', 'Carrier skeleton shows heart pickup',
+        'Verifies carried heart mesh is attached to the cart when carry chance is forced',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+            const startBtn = runner.getElement('#start-btn');
+            runner.simulateClick(startBtn);
+            await runner.wait(500);
+
+            const THREE = runner.gameWindow.THREE;
+            const EnemyOrchestrator = runner.gameWindow.EnemyOrchestrator;
+            const Enemy = runner.gameWindow.Enemy;
+
+            if (!EnemyOrchestrator || !Enemy || !THREE) {
+                throw new Error('EnemyOrchestrator, Enemy, or THREE not found');
+            }
+
+            const originalChance = Enemy.types.SKELETON.healthCarryChance;
+            Enemy.types.SKELETON.healthCarryChance = 1;
+
+            const enemy = EnemyOrchestrator.createMesh(THREE, 'SKELETON', 0, 0);
+            Enemy.types.SKELETON.healthCarryChance = originalChance;
+
+            if (!enemy?.userData?.healthCarryMesh) {
+                throw new Error('Expected healthCarryMesh on carrier skeleton');
+            }
+
+            const heartMesh = enemy.userData.healthCarryMesh;
+            const hasExtrude = heartMesh.children.some((child) => child.geometry && child.geometry.type === 'ExtrudeGeometry');
+            if (!hasExtrude) {
+                throw new Error('Carried heart should include ExtrudeGeometry');
+            }
+
+            const hasGlowShell = heartMesh.children.some((child) =>
+                child.geometry &&
+                child.geometry.type === 'SphereGeometry' &&
+                child.material &&
+                child.material.type === 'MeshBasicMaterial'
+            );
+            if (!hasGlowShell) {
+                throw new Error('Carried heart should include a glow shell');
+            }
+        }
+    );
+
     runner.addTest('skeleton-has-teeth', 'Skeleton Enemy', 'Skeleton has teeth for smile',
         'Verifies skeleton model includes teeth geometry',
         async () => {

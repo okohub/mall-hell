@@ -305,6 +305,16 @@ const EnemyOrchestrator = {
                 });
             }
 
+            // Animate carried health heart (subtle bob + slow spin)
+            if (enemy.mesh?.userData?.healthCarryMesh) {
+                const heart = enemy.mesh.userData.healthCarryMesh;
+                const baseY = heart.userData.baseY ?? heart.position.y;
+                const phase = heart.userData.bobPhase ?? 0;
+                const t = Date.now() * 0.003;
+                heart.position.y = baseY + Math.sin(t + phase) * 0.05;
+                heart.rotation.y += dt * 0.6;
+            }
+
             // Update health bar
             if (enemy.mesh && enemy.mesh.userData.healthBar) {
                 const module = this.ENEMY_MODULES[enemy.type];
@@ -371,6 +381,10 @@ const EnemyOrchestrator = {
         const config = this.enemyData ? this.enemyData.get(typeId) : (typeof Enemy !== 'undefined' ? Enemy.get(typeId) : null);
         if (!config) return { active: true, health: 3, maxHealth: 3, hitFlash: 0 };
 
+        const carryChance = (typeId === 'SKELETON' || config.id === 'skeleton')
+            ? (config.healthCarryChance ?? 0.2)
+            : 0;
+
         return {
             type: typeId,
             config: config,
@@ -380,7 +394,8 @@ const EnemyOrchestrator = {
             driftSpeed: (Math.random() - 0.5) * config.driftSpeed,
             driftTimer: 0,
             hitFlash: 0,
-            walkTimer: Math.random() * Math.PI * 2
+            walkTimer: Math.random() * Math.PI * 2,
+            carriesHealth: Math.random() < carryChance
         };
     },
 
@@ -418,6 +433,26 @@ const EnemyOrchestrator = {
 
         // Remember spawn position (home) for AI
         group.userData.spawnPosition = { x, z };
+
+        // Attach carried health heart to skeleton cart (if applicable)
+        if (group.userData.carriesHealth && group.userData.cart && typeof PickupOrchestrator !== 'undefined') {
+            const healthInstance = (typeof WeaponPickup !== 'undefined')
+                ? WeaponPickup.createInstance('HEALTH_HEART', { x: 0, y: 0, z: 0 })
+                : null;
+            if (healthInstance && typeof PickupOrchestrator._createHealthMesh === 'function') {
+                const heartMesh = PickupOrchestrator._createHealthMesh(healthInstance, THREE);
+                if (typeof PickupOrchestrator._addGlowEffect === 'function') {
+                    PickupOrchestrator._addGlowEffect(heartMesh, healthInstance, THREE);
+                }
+                // Make it clearly visible above the cart contents
+                heartMesh.scale.set(0.8, 0.8, 0.8);
+                heartMesh.position.set(0, 1.6, 0.45);
+                heartMesh.userData.baseY = heartMesh.position.y;
+                heartMesh.userData.bobPhase = Math.random() * Math.PI * 2;
+                group.userData.cart.add(heartMesh);
+                group.userData.healthCarryMesh = heartMesh;
+            }
+        }
 
         return group;
     },

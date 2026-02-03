@@ -379,4 +379,126 @@
         }
     );
 
+    // Test 10: Health heart drops from skeleton on death
+    runner.addTest('health-heart-drops-on-skeleton-death', 'Pickup+PowerUp', 'Health heart drops when carrier skeleton dies',
+        'Verifies health heart pickup spawns when a carrier skeleton is destroyed',
+        async () => {
+            await helpers.bootGameForIntegration();
+
+            const THREE = runner.gameWindow.THREE;
+            const scene = runner.gameWindow.scene;
+            const PickupOrchestrator = runner.gameWindow.PickupOrchestrator;
+            const ProjectileOrchestrator = runner.gameWindow.ProjectileOrchestrator;
+            const EnemyOrchestrator = runner.gameWindow.EnemyOrchestrator;
+            const manualUpdate = runner.gameWindow.manualUpdate;
+            const gi = runner.gameWindow.__gameInternals;
+
+            if (!gi || !manualUpdate) {
+                throw new Error('Game internals or manualUpdate not available');
+            }
+
+            PickupOrchestrator.init(scene, THREE);
+
+            const enemies = gi.getEnemies();
+            const projectiles = gi.getProjectiles();
+
+            // Spawn a skeleton enemy and force health carry
+            const enemy = EnemyOrchestrator.createMesh(THREE, 'SKELETON', 45, 70);
+            enemy.userData.carriesHealth = true;
+            enemy.userData.health = 1;
+            scene.add(enemy);
+            enemies.push(enemy);
+
+            // Create a projectile aimed at the enemy
+            const spawnPos = new THREE.Vector3(enemy.position.x, 1.2, enemy.position.z + 2);
+            const direction = new THREE.Vector3(0, 0, -1);
+            const projectile = ProjectileOrchestrator.createMesh(THREE, direction, spawnPos, 60, {
+                projectileType: 'stone',
+                damage: 5
+            });
+            scene.add(projectile);
+            projectiles.push(projectile);
+
+            // Run a few frames to process collision and drop
+            for (let i = 0; i < 8; i++) {
+                manualUpdate(0.016);
+            }
+
+            const dropped = PickupOrchestrator.pickups.find((p) => p.config?.id === 'health_heart');
+            if (!dropped) {
+                throw new Error('Expected health_heart pickup to spawn on skeleton death');
+            }
+        }
+    );
+
+    // Test 11: Collecting health heart heals player
+    runner.addTest('collect-health-heart-heals-player', 'Pickup+PowerUp', 'Collecting health heart heals the player',
+        'Verifies health heart pickup increases player health and updates UI',
+        async () => {
+            await helpers.bootGameForIntegration();
+
+            const THREE = runner.gameWindow.THREE;
+            const scene = runner.gameWindow.scene;
+            const PickupOrchestrator = runner.gameWindow.PickupOrchestrator;
+            const PlayerOrchestrator = runner.gameWindow.PlayerOrchestrator;
+            const manualUpdate = runner.gameWindow.manualUpdate;
+
+            if (!manualUpdate) {
+                throw new Error('manualUpdate not available');
+            }
+
+            PickupOrchestrator.init(scene, THREE);
+
+            // Set player to mid health
+            PlayerOrchestrator.health = 60;
+
+            // Spawn health heart at player position
+            const playerPos = PlayerOrchestrator.position;
+            PickupOrchestrator.spawn('health_heart', { x: playerPos.x, y: 2, z: playerPos.z });
+
+            manualUpdate(0.016);
+
+            const healedHealth = PlayerOrchestrator.getHealth();
+            if (healedHealth !== 80) {
+                throw new Error(`Expected health 80 after healing, got ${healedHealth}`);
+            }
+
+            const healthValue = runner.getElement('#health-value');
+            if (!healthValue || healthValue.textContent !== '80') {
+                throw new Error(`Health UI not updated: ${healthValue?.textContent}`);
+            }
+        }
+    );
+
+    // Test 12: Carrier skeleton shows heart mesh before death
+    runner.addTest('carrier-skeleton-shows-heart', 'Pickup+PowerUp', 'Carrier skeleton shows heart before death',
+        'Verifies a carrier skeleton has a visible carried heart mesh attached to the cart',
+        async () => {
+            await helpers.bootGameForIntegration();
+
+            const THREE = runner.gameWindow.THREE;
+            const EnemyOrchestrator = runner.gameWindow.EnemyOrchestrator;
+            const Enemy = runner.gameWindow.Enemy;
+
+            if (!EnemyOrchestrator || !Enemy || !THREE) {
+                throw new Error('EnemyOrchestrator, Enemy, or THREE not found');
+            }
+
+            const originalChance = Enemy.types.SKELETON.healthCarryChance;
+            Enemy.types.SKELETON.healthCarryChance = 1;
+
+            const enemy = EnemyOrchestrator.createMesh(THREE, 'SKELETON', 45, 70);
+            Enemy.types.SKELETON.healthCarryChance = originalChance;
+
+            if (!enemy?.userData?.healthCarryMesh) {
+                throw new Error('Expected carried heart mesh on skeleton');
+            }
+
+            const heart = enemy.userData.healthCarryMesh;
+            if (!heart.children || heart.children.length < 3) {
+                throw new Error('Carried heart mesh missing expected children');
+            }
+        }
+    );
+
 })(window.runner || runner);

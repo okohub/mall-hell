@@ -20,6 +20,7 @@ const Enemy = {
             driftSpeed: 4,
             collisionRadius: 2.5,
             walkSpeed: 3.5,               // Walking animation speed
+            healthCarryChance: 0.2,       // 20% chance to carry health heart
             size: { w: 2.2, h: 1.5, d: 2.8 }
         },
 
