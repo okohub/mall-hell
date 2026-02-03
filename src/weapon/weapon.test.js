@@ -748,6 +748,46 @@
             test.assertTrue(ammoLarge.isAmmo, 'AMMO_LARGE should be ammo type');
             test.assertTrue(ammoSmall.visual.scale < 2, 'Ammo should be smaller than weapons');
         });
+
+        test.it('should report actual ammo added for ammo pickups when capped', () => {
+            const pickup = WeaponPickup.createInstance('AMMO_LARGE', { x: 0, y: 0, z: 0 });
+            const weaponOrchestrator = {
+                ammo: 11,
+                getAmmo() {
+                    return this.ammo;
+                },
+                addAmmo(amount) {
+                    this.ammo = Math.min(12, this.ammo + amount);
+                },
+                getCurrentId() {
+                    return 'nerfgun';
+                }
+            };
+
+            const result = PickupOrchestrator.collect(pickup, weaponOrchestrator, null, null, null);
+            test.assertEqual(result.ammoAdded, 1, 'Ammo added should reflect cap');
+            test.assertEqual(weaponOrchestrator.ammo, 12, 'Ammo should cap at max');
+        });
+
+        test.it('should report actual ammo added for same-weapon pickups when capped', () => {
+            const pickup = WeaponPickup.createInstance('NERFGUN', { x: 0, y: 0, z: 0 });
+            const weaponOrchestrator = {
+                ammo: 10,
+                getAmmo() {
+                    return this.ammo;
+                },
+                addAmmo(amount) {
+                    this.ammo = Math.min(12, this.ammo + amount);
+                },
+                getCurrentId() {
+                    return 'nerfgun';
+                }
+            };
+
+            const result = PickupOrchestrator.collect(pickup, weaponOrchestrator, null, null, null);
+            test.assertEqual(result.ammoAdded, 2, 'Ammo added should reflect cap');
+            test.assertEqual(weaponOrchestrator.ammo, 12, 'Ammo should cap at max');
+        });
     });
 
     // ==========================================
