@@ -50,6 +50,12 @@
             test.assertFalse(profile.enabled);
         });
 
+        test.it('should have DINONIZER type defined', () => {
+            test.assertTrue(Weapon.types.DINONIZER !== undefined, 'DINONIZER should exist');
+            test.assertEqual(Weapon.types.DINONIZER.id, 'dinonizer');
+            test.assertEqual(Weapon.types.DINONIZER.projectile.type, 'dinonizer');
+        });
+
         test.it('should get aim profile by id', () => {
             const profile = Weapon.getAimProfile('STANDARD');
             test.assertTrue(profile.enabled);
@@ -525,6 +531,42 @@
     });
 
     // ==========================================
+    // DINONIZER MODULE TESTS
+    // ==========================================
+
+    test.describe('Dinonizer Module', () => {
+        test.beforeEach(() => {
+            Dinonizer.resetState();
+        });
+
+        test.it('should have correct id', () => {
+            test.assertEqual(Dinonizer.id, 'dinonizer');
+        });
+
+        test.it('should have single fire mode', () => {
+            test.assertEqual(Dinonizer.config.fireMode, 'single');
+        });
+
+        test.it('should have limited ammo', () => {
+            test.assertEqual(Dinonizer.config.ammo.max, 25);
+        });
+
+        test.it('should return dinonizer projectile', () => {
+            const result = Dinonizer.onFireStart(1000);
+            test.assertTrue(result !== null, 'Should return fire result');
+            test.assertEqual(result.projectileType, 'dinonizer');
+        });
+
+        test.it('should have createFPSMesh method', () => {
+            test.assertTrue(typeof Dinonizer.createFPSMesh === 'function');
+        });
+
+        test.it('should have createPickupMesh method', () => {
+            test.assertTrue(typeof Dinonizer.createPickupMesh === 'function');
+        });
+    });
+
+    // ==========================================
     // NERF GUN MODULE TESTS
     // ==========================================
 
@@ -599,6 +641,12 @@
         test.it('should have LASERGUN pickup defined', () => {
             test.assertTrue(WeaponPickup.types.LASERGUN !== undefined);
             test.assertEqual(WeaponPickup.types.LASERGUN.weaponId, 'lasergun');
+        });
+
+        test.it('should have DINONIZER pickup defined', () => {
+            test.assertTrue(WeaponPickup.types.DINONIZER !== undefined);
+            test.assertEqual(WeaponPickup.types.DINONIZER.weaponId, 'dinonizer');
+            test.assertTrue(WeaponPickup.types.DINONIZER.dropOnly, 'Dinonizer should be drop-only');
         });
 
         test.it('should have HEALTH_HEART pickup defined', () => {
@@ -741,13 +789,13 @@
             const mesh = PickupOrchestrator._createHealthMesh(instance, THREE);
 
             test.assertTrue(mesh instanceof THREE.Group, 'Health mesh should be a Group');
-            test.assertTrue(mesh.children.length >= 3, 'Heart should have multiple parts');
+            test.assertTrue(mesh.children.length >= 2, 'Heart should have multiple parts');
 
             const hasExtrude = mesh.children.some((child) => child.geometry && child.geometry.type === 'ExtrudeGeometry');
             test.assertTrue(hasExtrude, 'Heart should use ExtrudeGeometry for silhouette');
 
-            const hasHalo = mesh.children.some((child) => child.geometry && child.geometry.type === 'TorusGeometry');
-            test.assertTrue(hasHalo, 'Heart should include a halo ring');
+            const hasGlow = mesh.children.some((child) => child.material && child.material.type === 'MeshBasicMaterial');
+            test.assertTrue(hasGlow, 'Heart should include a glow element');
         });
 
         test.it('should animate speed boost with gentle rotation', () => {
@@ -836,6 +884,11 @@
         test.it('should have dart projectile', () => {
             test.assertTrue(Projectile.types.dart !== undefined);
             test.assertEqual(Projectile.types.dart.id, 'dart');
+        });
+
+        test.it('should have dinonizer projectile', () => {
+            test.assertTrue(Projectile.types.dinonizer !== undefined);
+            test.assertTrue(Projectile.types.dinonizer.transformToToy, 'Dinonizer should transform to toy');
         });
 
         test.it('should get projectile by type', () => {

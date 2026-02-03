@@ -104,6 +104,28 @@ const Weapon = {
                 count: 1,
                 spread: 0.05         // Spread for auto-fire
             }
+        },
+
+        DINONIZER: {
+            id: 'dinonizer',
+            name: 'Dinonizer',
+            fireMode: 'single',      // Precision beam
+            cooldown: 450,
+            range: 140,
+            aimAssist: true,
+
+            spawnOffset: {
+                forward: 1.6,
+                down: 0.25,
+                right: 0
+            },
+
+            projectile: {
+                type: 'dinonizer',
+                speed: { min: 95, max: 95 },
+                damage: 0,
+                count: 1
+            }
         }
     },
 

@@ -127,6 +127,11 @@
             test.assertEqual(instance.maxHealth, 10);
             test.assertTrue(instance.active);
         });
+
+        test.it('should have DINO_TOY type defined', () => {
+            test.assertTrue(Enemy.types.DINO_TOY !== undefined);
+            test.assertTrue(Enemy.types.DINO_TOY.isToy === true);
+        });
     });
 
     // ==========================================

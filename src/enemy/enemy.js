@@ -39,6 +39,24 @@ const Enemy = {
             walkSpeed: 2.5,                // Slower stomp animation
             isBoss: true,                  // Boss flag for special handling
             size: { w: 3.5, h: 2.5, d: 4.5 }  // Much larger
+        },
+
+        DINO_TOY: {
+            id: 'dino_toy',
+            name: 'Dino Toy',
+            health: 1,
+            speed: 0.18,
+            damage: 0,
+            behavior: 'wander',
+            scoreHit: 0,
+            scoreDestroy: 0,
+            driftInterval: 2.0,
+            driftSpeed: 1.5,
+            collisionRadius: 1.4,
+            walkSpeed: 1.8,
+            isToy: true,
+            toyPoints: 250,
+            size: { w: 1.2, h: 0.9, d: 1.4 }
         }
     },
 

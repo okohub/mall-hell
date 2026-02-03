@@ -192,7 +192,56 @@
         }
     );
 
-    // Test 8: Pre-spawning ahead
+    // Test 8: Dinonizer transforms enemy into toy
+    runner.addTest('dinonizer-transforms-enemy', 'Special Weapon', 'Dinonizer turns enemy into toy',
+        'Verifies dinonizer projectile transforms enemies into collectible toys',
+        async () => {
+            const { enemy } = await helpers.setupCombatScenario({
+                weapon: 'dinonizer',
+                enemyType: 'SKELETON',
+                distance: 10,
+                enemyHealth: 4
+            });
+
+            await helpers.fireWeapon(0);
+
+            const transformed = await helpers.waitForCondition(() => enemy.userData.isToy === true, 2000);
+            if (!transformed) {
+                throw new Error('Enemy was not transformed into toy');
+            }
+        }
+    );
+
+    // Test 9: Dino kill drops dinonizer pickup
+    runner.addTest('dino-drops-dinonizer-pickup', 'Special Weapon', 'Dino drops dinonizer pickup on death',
+        'Verifies dinonizer pickup spawns when a dinosaur is destroyed',
+        async () => {
+            await helpers.bootGameForIntegration();
+
+            const THREE = runner.gameWindow.THREE;
+            const scene = runner.gameWindow.scene;
+            const PickupOrchestrator = runner.gameWindow.PickupOrchestrator;
+            const enemy = await helpers.spawnEnemyAt(45, 65, 'DINOSAUR', 1);
+
+            PickupOrchestrator.init(scene, THREE);
+
+            const WeaponOrchestrator = runner.gameWindow.WeaponOrchestrator;
+            const MaterialsTheme = runner.gameWindow.MaterialsTheme;
+            const camera = runner.gameWindow.camera;
+
+            WeaponOrchestrator.equip('slingshot', THREE, MaterialsTheme, camera);
+
+            await helpers.fireWeapon(0);
+            await helpers.waitForEnemyDeath(enemy, 1500);
+
+            const dropped = PickupOrchestrator.pickups.find((p) => p.config?.id === 'dinonizer');
+            if (!dropped) {
+                throw new Error('Expected dinonizer pickup to spawn on dino death');
+            }
+        }
+    );
+
+    // Test 10: Pre-spawning ahead
     runner.addTest('pre-spawning-ahead', 'Pre-Spawning', 'Enemies spawn in nearby rooms',
         'Verifies enemies exist in rooms player has not entered',
         async () => {

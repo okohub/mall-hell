@@ -36,6 +36,30 @@ const DinosaurMesh = {
     },
 
     /**
+     * Create toy dinosaur mesh (small, collectible look)
+     * @param {THREE} THREE - Three.js library
+     * @returns {THREE.Group} Toy dinosaur mesh group
+     */
+    createToy(THREE) {
+        const toyTheme = {
+            bodyColor: 0x2ecc71,
+            bellyColor: 0xa8ffcc,
+            stripeColor: 0x1e9e5a,
+            headColor: 0x27ae60,
+            mouthColor: 0x5d2a2a,
+            eyeColor: 0xffffff,
+            pupilColor: 0x1a1a1a,
+            teethColor: 0xfef6e4,
+            tongueColor: 0xff6b6b
+        };
+
+        const configWithTheme = { visual: { ...toyTheme, size: { w: 1.2, h: 0.9, d: 1.4 } } };
+        const toy = this.createMesh(THREE, configWithTheme);
+        toy.scale.set(0.35, 0.35, 0.35);
+        return toy;
+    },
+
+    /**
      * Create dinosaur enemy mesh - T-Rex style boss
      * @param {THREE} THREE - Three.js library
      * @param {Object} config - Enemy type config

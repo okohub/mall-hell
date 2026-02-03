@@ -102,6 +102,21 @@ const Projectile = {
             lifetime: 4000,
             piercing: false,
             spin: true             // Dart spins in flight
+        },
+
+        dinonizer: {
+            id: 'dinonizer',
+            geometry: 'cylinder',  // Focused energy beam
+            size: 0.16,
+            length: 0.9,
+            color: 0x00f5ff,       // Bright cyan
+            glow: true,
+            glowColor: 0x7ef9ff,
+            emissiveIntensity: { min: 0.9, max: 1.4 },
+            gravity: 0,
+            lifetime: 1600,
+            piercing: false,
+            transformToToy: true   // Special effect on hit
         }
     },
 

@@ -117,6 +117,22 @@ const WeaponPickup = {
                 glowColor: 0xff6b6b, // Warm red glow
                 scale: 1.8
             }
+        },
+
+        DINONIZER: {
+            id: 'dinonizer',
+            weaponId: 'dinonizer',
+            name: 'Dinonizer',
+            isWeapon: true,
+            spawnChance: 0,
+            spawnWeight: 0,
+            ammoGrant: 10,
+            dropOnly: true,
+            visual: {
+                color: 0x00f5ff,     // Cyan core
+                glowColor: 0x7ef9ff, // Bright glow
+                scale: 2.6
+            }
         }
     },
 

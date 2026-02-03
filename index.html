@@ -233,6 +233,9 @@
     <script src="./src/weapon/lasergun-mesh.js"></script>
     <script src="./src/weapon/lasergun-animation.js"></script>
     <script src="./src/weapon/lasergun.js"></script>
+    <script src="./src/weapon/dinonizer-mesh.js"></script>
+    <script src="./src/weapon/dinonizer-animation.js"></script>
+    <script src="./src/weapon/dinonizer.js"></script>
 
     <!-- Pickup System -->
     <script src="./src/weapon/pickup.js"></script>
@@ -386,7 +389,7 @@
             playerCart = p.cart;
             playerCart.position.set(0, 0, -5); scene.add(playerCart);
             WeaponOrchestrator.init(scene);
-            [Slingshot, WaterGun, LaserGun, NerfGun].forEach(w => WeaponOrchestrator.register(w));
+            [Slingshot, WaterGun, LaserGun, NerfGun, Dinonizer].forEach(w => WeaponOrchestrator.register(w));
             WeaponOrchestrator.equip('slingshot', THREE, MaterialsTheme, camera);
             PickupOrchestrator.init(scene, THREE);
             PowerUpOrchestrator.init();
@@ -719,6 +722,13 @@
                 baseSpeed: CART_SPEED,
                 isInvulnerable: PlayerOrchestrator.getIsInvulnerable(),
                 onPlayerCollision: () => damagePlayer(Player.health.ENEMY_DAMAGE, 'enemy'),
+                onToyCollected: (enemy) => {
+                    const points = enemy.userData.config?.toyPoints || 200;
+                    addScore(points, enemy.position);
+                    spawnParticles(enemy.position, 0x7ef9ff, 8);
+                    UIOrchestrator.showPickupNotification?.(`Toy +${points}`);
+                    enemy.userData.active = false;
+                },
                 collisionCheck: (nX, nZ, oX, oZ) => CollisionOrchestrator.checkAllCollisions(nX, nZ, oX, oZ, { gridOrchestrator: mallGrid, roomConfig: Room.structure, obstacles, shelves, playerRadius: 1.5 }),
                 hasLineOfSight: (fX, fZ, tX, tZ) => CollisionOrchestrator.hasLineOfSight(fX, fZ, tX, tZ, mallGrid, Room.structure),
                 clampToRoomBounds: (pos) => CollisionOrchestrator.clampToRoomBounds(pos, mallGrid, Room.structure, 1.5),
@@ -783,7 +793,16 @@
                         }
                     }
                     const color = (enemy.userData.config || ENEMY_TYPES.CART).visual?.bodyColor || 0xe94560;
-                    if (result.destroyed) {
+                    if (result.transformed) {
+                        spawnParticles(closestPoint, 0x7ef9ff, 6);
+                    } else if (result.destroyed) {
+                        if (enemyType === 'dinosaur') {
+                            PickupOrchestrator.spawn('dinonizer', {
+                                x: enemy.position.x,
+                                y: WeaponPickup.spawn.heightOffset,
+                                z: enemy.position.z
+                            });
+                        }
                         if (enemy.userData.carriesHealth && typeof PickupOrchestrator !== 'undefined') {
                             const dropY = (typeof WeaponPickup !== 'undefined' && WeaponPickup.spawn?.heightOffset)
                                 ? WeaponPickup.spawn.heightOffset

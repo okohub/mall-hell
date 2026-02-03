@@ -459,6 +459,60 @@ const EnemyOrchestrator = {
     },
 
     /**
+     * Transform an enemy into a collectible toy
+     * @param {Object} enemy - Enemy mesh
+     * @param {THREE} THREE - Three.js library
+     * @returns {boolean} True if transformed
+     */
+    transformToToy(enemy, THREE) {
+        if (!enemy || !enemy.userData || enemy.userData.isToy) return false;
+
+        const toyConfig = (typeof Enemy !== 'undefined' && Enemy.types?.DINO_TOY)
+            ? Enemy.types.DINO_TOY
+            : null;
+        if (!toyConfig) return false;
+
+        // Disable existing visuals
+        if (enemy.userData.cart) {
+            enemy.userData.cart.visible = false;
+        }
+        if (enemy.userData.healthBar) {
+            enemy.userData.healthBar.visible = false;
+        }
+        if (enemy.userData.healthCarryMesh && enemy.userData.healthCarryMesh.parent) {
+            enemy.userData.healthCarryMesh.parent.remove(enemy.userData.healthCarryMesh);
+            enemy.userData.healthCarryMesh = null;
+        }
+
+        // Remove any previous toy mesh
+        if (enemy.userData.toyMesh && enemy.userData.toyMesh.parent) {
+            enemy.userData.toyMesh.parent.remove(enemy.userData.toyMesh);
+        }
+
+        // Create toy mesh
+        if (typeof DinosaurMesh !== 'undefined' && DinosaurMesh.createToy) {
+            const toyMesh = DinosaurMesh.createToy(THREE);
+            toyMesh.position.set(0, 0, 0);
+            enemy.add(toyMesh);
+            enemy.userData.toyMesh = toyMesh;
+        }
+
+        // Update data to toy behavior
+        enemy.userData.isToy = true;
+        enemy.userData.type = 'DINO_TOY';
+        enemy.userData.config = toyConfig;
+        enemy.userData.health = toyConfig.health;
+        enemy.userData.maxHealth = toyConfig.health;
+        enemy.userData.driftSpeed = (Math.random() - 0.5) * toyConfig.driftSpeed;
+        enemy.userData.driftTimer = 0;
+        enemy.userData.walkTimer = Math.random() * Math.PI * 2;
+        enemy.userData.slowedUntil = null;
+        enemy.userData.slowMultiplier = null;
+
+        return true;
+    },
+
+    /**
      * Get health percentage for an enemy
      * @param {Object} enemy - Enemy mesh with userData
      * @returns {number} Health percentage 0-1
@@ -543,15 +597,25 @@ const EnemyOrchestrator = {
      * @param {number} collisionDistance - Collision distance threshold
      * @param {Function} onPlayerCollision - Callback when collision detected
      */
-    _checkPlayerCollision(enemy, playerCart, isInvulnerable, collisionDistance, onPlayerCollision) {
-        if (enemy.userData.active && !isInvulnerable && playerCart && onPlayerCollision) {
-            const cartDist = Math.sqrt(
-                Math.pow(enemy.position.x - playerCart.position.x, 2) +
-                Math.pow(enemy.position.z - playerCart.position.z, 2)
-            );
-            if (cartDist < collisionDistance) {
-                onPlayerCollision(enemy);
+    _checkPlayerCollision(enemy, playerCart, isInvulnerable, collisionDistance, onPlayerCollision, onToyCollected) {
+        if (!enemy.userData.active || !playerCart) return;
+
+        const cartDist = Math.sqrt(
+            Math.pow(enemy.position.x - playerCart.position.x, 2) +
+            Math.pow(enemy.position.z - playerCart.position.z, 2)
+        );
+
+        const effectiveRadius = enemy.userData.config?.collisionRadius || collisionDistance;
+
+        if (enemy.userData.isToy) {
+            if (cartDist < effectiveRadius && onToyCollected) {
+                onToyCollected(enemy);
             }
+            return;
+        }
+
+        if (!isInvulnerable && onPlayerCollision && cartDist < effectiveRadius) {
+            onPlayerCollision(enemy);
         }
     },
 
@@ -609,8 +673,8 @@ const EnemyOrchestrator = {
             // Visual updates (facing, animations, hit flash)
             this._updateVisuals(enemy, options);
 
-            // Player collision detection
-            this._checkPlayerCollision(enemy, playerCart, isInvulnerable, collisionDistance, onPlayerCollision);
+            // Player collision detection (supports toy collection)
+            this._checkPlayerCollision(enemy, playerCart, isInvulnerable, collisionDistance, onPlayerCollision, options.onToyCollected || null);
         });
     }
 };

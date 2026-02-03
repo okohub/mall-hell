@@ -935,6 +935,27 @@ const CollisionOrchestrator = {
                         proj.userData.active = false;
                         const damage = proj.userData.damage || 1;
 
+                        // Get projectile config for status effects
+                        const projConfig = proj.userData.projectileConfig ||
+                            (typeof Projectile !== 'undefined' && proj.userData.projectileType
+                                ? Projectile.get(proj.userData.projectileType) : null);
+
+                        // Transform enemies into toys (special weapon)
+                        if (projConfig?.transformToToy && typeof EnemyOrchestrator !== 'undefined') {
+                            EnemyOrchestrator.transformToToy?.(enemy, THREE);
+                            if (onEnemyHit) {
+                                onEnemyHit(enemy, damage, closestPoint, {
+                                    hit: true,
+                                    destroyed: false,
+                                    scoreHit: 0,
+                                    scoreDestroy: 0,
+                                    totalScore: 0,
+                                    transformed: true
+                                });
+                            }
+                            return;
+                        }
+
                         // Use EnemyOrchestrator for damage handling
                         const result = typeof EnemyOrchestrator !== 'undefined'
                             ? EnemyOrchestrator.damage(enemy, damage)
@@ -943,11 +964,6 @@ const CollisionOrchestrator = {
                         if (result && onEnemyHit) {
                             onEnemyHit(enemy, damage, closestPoint, result);
                         }
-
-                        // Get projectile config for status effects
-                        const projConfig = proj.userData.projectileConfig ||
-                            (typeof Projectile !== 'undefined' && proj.userData.projectileType
-                                ? Projectile.get(proj.userData.projectileType) : null);
 
                         // Apply slow effect if projectile has slow and enemy not destroyed
                         if (projConfig?.slow?.enabled && result && !result.destroyed) {
