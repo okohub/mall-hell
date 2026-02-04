@@ -1,48 +1,48 @@
 // ============================================
-// DINO TOY - Behavioral Module
+// TOY - Behavioral Module
 // ============================================
-// Collectible toy enemy (wander behavior)
+// Collectible toy enemy (flee behavior)
 
 var EnemyTypeRegistry = (typeof globalThis !== 'undefined')
     ? (globalThis.EnemyTypeRegistry = globalThis.EnemyTypeRegistry || {})
     : {};
 
-const DinoToy = {
+const Toy = {
     // ==========================================
     // IDENTITY
     // ==========================================
 
-    id: 'dino_toy',
-    name: 'Dino Toy',
+    id: 'toy',
+    name: 'Toy',
 
     // ==========================================
     // CONFIGURATION (References central config)
     // ==========================================
 
     get config() {
-        return Enemy.types.DINO_TOY;
+        return Enemy.types.TOY;
     },
 
     // ==========================================
-    // MESH CREATION (Delegates to DinoToyMesh)
+    // MESH CREATION (Delegates to ToyMesh)
     // ==========================================
 
     createMesh(THREE, config = this.config) {
-        return DinoToyMesh.createMesh(THREE, config);
+        return ToyMesh.createMesh(THREE, config);
     },
 
     // ==========================================
-    // ANIMATION (Delegates to DinoToyAnimation)
+    // ANIMATION (Delegates to ToyAnimation)
     // ==========================================
 
     animateWalk(enemyMesh, walkTimer) {
         const walkSpeed = this.config.walkSpeed || 1.8;
-        return DinoToyAnimation.animateWalk(enemyMesh, walkTimer, walkSpeed);
+        return ToyAnimation.animateWalk(enemyMesh, walkTimer, walkSpeed);
     },
 
     applyHitFlash(enemyMesh, intensity) {
-        DinoToyMesh.applyHitFlash(enemyMesh, intensity);
+        ToyMesh.applyHitFlash(enemyMesh, intensity);
     }
 };
 
-EnemyTypeRegistry.DINO_TOY = DinoToy;
+EnemyTypeRegistry.TOY = Toy;

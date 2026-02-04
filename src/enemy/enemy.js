@@ -41,22 +41,22 @@ const Enemy = {
             size: { w: 3.5, h: 2.5, d: 4.5 }  // Much larger
         },
 
-        DINO_TOY: {
-            id: 'dino_toy',
-            name: 'Dino Toy',
+        TOY: {
+            id: 'toy',
+            name: 'Toy',
             health: 1,
-            speed: 0.18,
+            speed: 0.28,
             damage: 0,
-            behavior: 'wander',
+            behavior: 'flee',
             scoreHit: 0,
             scoreDestroy: 0,
             driftInterval: 2.0,
             driftSpeed: 1.5,
-            collisionRadius: 1.4,
-            walkSpeed: 1.8,
+            collisionRadius: 1.1,
+            walkSpeed: 4.2,
             isToy: true,
             toyPoints: 250,
-            size: { w: 1.2, h: 0.9, d: 1.4 }
+            size: { w: 1.0, h: 0.75, d: 1.1 }
         }
     },
 
@@ -64,7 +64,7 @@ const Enemy = {
     defaultType: 'SKELETON',
 
     // Behavior definitions (what behaviors exist)
-    behaviors: ['chase', 'patrol', 'stationary', 'ranged'],
+    behaviors: ['chase', 'patrol', 'stationary', 'ranged', 'wander', 'flee'],
 
     // Behavior constants (defaults for AI)
     behaviorDefaults: {
@@ -76,7 +76,10 @@ const Enemy = {
         PATROL_SPEED: 0.2,           // Speed multiplier for patrol behavior
         HOME_RETURN_SPEED: 0.25,     // Speed multiplier when returning home
         HOME_RADIUS: 8,              // How far from home before returning
-        SEARCH_LAST_SEEN_CHANCE: 0.4 // Chance to move towards last seen position
+        SEARCH_LAST_SEEN_CHANCE: 0.4, // Chance to move towards last seen position
+        FLEE_MIN_DISTANCE: 10,       // Start fleeing when player is this close
+        FLEE_STOP_DISTANCE: 16,      // Stop fleeing (return to wander) past this distance
+        FLEE_SPEED_MULT: 1.4         // Speed multiplier when fleeing
     },
 
     // Visual effect constants

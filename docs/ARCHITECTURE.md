@@ -82,6 +82,9 @@ Enemies now follow the same registry-first pattern with per-type folders. Each e
 **Registry**
 `globalThis.EnemyTypeRegistry` is the single registry used by `enemy-orchestrator.js`.
 
+**Registry keys**
+Current keys are `SKELETON`, `DINOSAUR`, and `TOY` (toy uses `id: 'toy'`).
+
 **Key rules**:
 1. The type file is the only public API for an enemy.
 2. Mesh and animation live in separate files.

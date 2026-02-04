@@ -14,6 +14,9 @@ const EnemyAI = {
     get homeReturnSpeed() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.HOME_RETURN_SPEED : 0.25; },
     get homeRadius() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.HOME_RADIUS : 8; },
     get searchLastSeenChance() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.SEARCH_LAST_SEEN_CHANCE : 0.4; },
+    get fleeMinDistance() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.FLEE_MIN_DISTANCE : 10; },
+    get fleeStopDistance() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.FLEE_STOP_DISTANCE : 16; },
+    get fleeSpeedMult() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.FLEE_SPEED_MULT : 1.4; },
 
     /**
      * Update enemy AI behavior
@@ -53,6 +56,11 @@ const EnemyAI = {
             data.lostSightTimer = (data.lostSightTimer || 0) + dt;
         }
 
+        // Decay flee block timer (used to avoid walls/obstacles when fleeing)
+        if (data.fleeBlockedTimer) {
+            data.fleeBlockedTimer = Math.max(0, data.fleeBlockedTimer - dt);
+        }
+
         // Execute behavior based on LOS
         switch (behavior) {
             case 'chase':
@@ -65,6 +73,14 @@ const EnemyAI = {
                 } else {
                     // No LOS for a while - wander in room
                     this._behaviorWander(enemy, data, dt, baseSpeed);
+                }
+                break;
+            case 'flee':
+                if (data.fleeBlockedTimer > 0) {
+                    // If just hit a wall/obstacle, wander briefly to find a new path
+                    this._behaviorWander(enemy, data, dt, baseSpeed);
+                } else {
+                    this._behaviorFlee(enemy, data, playerPos, dt, baseSpeed);
                 }
                 break;
             case 'patrol':
@@ -103,6 +119,9 @@ const EnemyAI = {
             if (collision.blockedZ) {
                 position.z = oldZ;
                 data.wanderDirZ = -(data.wanderDirZ || 0);
+            }
+            if ((collision.blockedX || collision.blockedZ) && behavior === 'flee') {
+                data.fleeBlockedTimer = 0.6;
             }
         }
 
@@ -182,6 +201,31 @@ const EnemyAI = {
         const wanderSpeed = baseSpeed * this.wanderSpeed;
         position.x += data.wanderDirX * wanderSpeed * dt;
         position.z += data.wanderDirZ * wanderSpeed * dt;
+    },
+
+    /**
+     * Flee behavior - move away from player, wander when far enough
+     */
+    _behaviorFlee(enemy, data, playerPos, dt, baseSpeed) {
+        const position = enemy.position;
+        const dx = position.x - playerPos.x;
+        const dz = position.z - playerPos.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+
+        if (dist > this.fleeStopDistance) {
+            this._behaviorWander(enemy, data, dt, baseSpeed);
+            return;
+        }
+
+        if (dist < 0.001) return;
+
+        const nx = dx / dist;
+        const nz = dz / dist;
+        const panicBoost = dist < this.fleeMinDistance ? 1.15 : 1.0;
+        const speed = baseSpeed * data.config.speed * this.fleeSpeedMult * panicBoost;
+
+        position.x += nx * speed * dt;
+        position.z += nz * speed * dt;
     },
 
     /**

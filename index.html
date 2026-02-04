@@ -49,6 +49,10 @@
                             <span class="enemy-icon">🦖</span>
                             <span class="enemy-value">0</span>
                         </div>
+                        <div class="enemy-type-count" id="toy-count">
+                            <span class="enemy-icon">🧸</span>
+                            <span class="enemy-value">0</span>
+                        </div>
                     </div>
                     <div id="minimap-section">
                         <div id="minimap-grid"></div>
@@ -283,9 +287,9 @@
     <script src="./src/enemy/dinosaur/dinosaur.js"></script>
 
     <!-- Dino Toy -->
-    <script src="./src/enemy/dino-toy/dino-toy-mesh.js"></script>
-    <script src="./src/enemy/dino-toy/dino-toy-animation.js"></script>
-    <script src="./src/enemy/dino-toy/dino-toy.js"></script>
+    <script src="./src/enemy/toy/toy-mesh.js"></script>
+    <script src="./src/enemy/toy/toy-animation.js"></script>
+    <script src="./src/enemy/toy/toy.js"></script>
 
     <!-- Enemy modules -->
     <script src="./src/enemy/enemy-spawner.js"></script>
@@ -727,7 +731,8 @@
             const activeEnemies = enemies.filter(e => e.userData.active);
             const enemyCounts = {
                 skeleton: activeEnemies.filter(e => e.userData.type === 'SKELETON').length,
-                dinosaur: activeEnemies.filter(e => e.userData.type === 'DINOSAUR').length
+                dinosaur: activeEnemies.filter(e => e.userData.type === 'DINOSAUR').length,
+                toy: activeEnemies.filter(e => e.userData.type === 'TOY').length
             };
             UIOrchestrator.updateEnemyCount(enemyCounts);
             // Update minimap with LIVE enemy positions
@@ -750,9 +755,12 @@
                 onPlayerCollision: () => damagePlayer(Player.health.ENEMY_DAMAGE, 'enemy'),
                 onToyCollected: (enemy) => {
                     const points = enemy.userData.config?.toyPoints || 200;
+                    const enemyType = enemy.userData.config?.id || 'toy';
                     addScore(points, enemy.position);
                     spawnParticles(enemy.position, 0x7ef9ff, 8);
                     UIOrchestrator.showPickupNotification?.(`Toy +${points}`);
+                    UIOrchestrator.addKilledEnemy();
+                    AnalyticsOrchestrator.enemyKill(enemyType, points);
                     enemy.userData.active = false;
                 },
                 collisionCheck: (nX, nZ, oX, oZ) => CollisionOrchestrator.checkAllCollisions(nX, nZ, oX, oZ, { gridOrchestrator: mallGrid, roomConfig: Room.structure, obstacles, shelves, playerRadius: 1.5 }),

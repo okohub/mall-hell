@@ -128,9 +128,9 @@
             test.assertTrue(instance.active);
         });
 
-        test.it('should have DINO_TOY type defined', () => {
-            test.assertTrue(Enemy.types.DINO_TOY !== undefined);
-            test.assertTrue(Enemy.types.DINO_TOY.isToy === true);
+        test.it('should have TOY type defined', () => {
+            test.assertTrue(Enemy.types.TOY !== undefined);
+            test.assertTrue(Enemy.types.TOY.isToy === true);
         });
     });
 
@@ -143,13 +143,13 @@
             test.assertTrue(!!globalThis.EnemyTypeRegistry);
             test.assertTrue(!!globalThis.EnemyTypeRegistry.SKELETON);
             test.assertTrue(!!globalThis.EnemyTypeRegistry.DINOSAUR);
-            test.assertTrue(!!globalThis.EnemyTypeRegistry.DINO_TOY);
+            test.assertTrue(!!globalThis.EnemyTypeRegistry.TOY);
         });
 
         test.it('should expose required hooks for each type', () => {
             const registry = globalThis.EnemyTypeRegistry || {};
 
-            ['SKELETON', 'DINOSAUR', 'DINO_TOY'].forEach((key) => {
+            ['SKELETON', 'DINOSAUR', 'TOY'].forEach((key) => {
                 const entry = registry[key];
                 test.assertTrue(!!entry);
                 test.assertTrue(typeof entry.createMesh === 'function');

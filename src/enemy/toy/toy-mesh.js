@@ -1,9 +1,9 @@
 // ============================================
-// DINO TOY MESH - Stateless Mesh Creation
+// TOY MESH - Stateless Mesh Creation
 // ============================================
 // Delegates to DinosaurMesh.createToy
 
-const DinoToyMesh = {
+const ToyMesh = {
     /**
      * Create toy mesh
      * @param {THREE} THREE - Three.js library

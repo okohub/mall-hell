@@ -418,6 +418,10 @@ const EnemyOrchestrator = {
             throw new Error(`EnemyOrchestrator: createMesh returned null for '${typeId}'`);
         }
 
+        if (!group.userData.cart) {
+            group.userData.cart = group;
+        }
+
         // Set userData using createEnemyData helper
         const enemyData = this.createEnemyData(typeId);
         Object.assign(group.userData, enemyData);
@@ -461,8 +465,8 @@ const EnemyOrchestrator = {
     transformToToy(enemy, THREE) {
         if (!enemy || !enemy.userData || enemy.userData.isToy) return false;
 
-        const toyConfig = (typeof Enemy !== 'undefined' && Enemy.types?.DINO_TOY)
-            ? Enemy.types.DINO_TOY
+        const toyConfig = (typeof Enemy !== 'undefined' && Enemy.types?.TOY)
+            ? Enemy.types.TOY
             : null;
         if (!toyConfig) return false;
 
@@ -484,17 +488,19 @@ const EnemyOrchestrator = {
         }
 
         // Create toy mesh
-        const toyModule = this.getEnemyModule('DINO_TOY');
+        const toyModule = this.getEnemyModule('TOY');
         if (toyModule && typeof toyModule.createMesh === 'function') {
             const toyMesh = toyModule.createMesh(THREE, toyConfig);
             toyMesh.position.set(0, 0, 0);
             enemy.add(toyMesh);
             enemy.userData.toyMesh = toyMesh;
+            enemy.userData.cart = toyMesh;
+            enemy.userData.body = toyMesh.userData?.body || toyMesh.userData?.dinosaur || toyMesh;
         }
 
         // Update data to toy behavior
         enemy.userData.isToy = true;
-        enemy.userData.type = 'DINO_TOY';
+        enemy.userData.type = 'TOY';
         enemy.userData.config = toyConfig;
         enemy.userData.health = toyConfig.health;
         enemy.userData.maxHealth = toyConfig.health;
@@ -545,7 +551,8 @@ const EnemyOrchestrator = {
         const dx = playerPosition.x - enemy.position.x;
         const dz = playerPosition.z - enemy.position.z;
         const lookDir = Math.atan2(dx, dz);
-        enemy.rotation.y = lookDir;
+        const behavior = enemy.userData.config?.behavior;
+        enemy.rotation.y = behavior === 'flee' ? (lookDir + Math.PI) : lookDir;
 
         // Get type module for animations
         const typeId = enemy.userData.type;

@@ -57,6 +57,7 @@ const UIOrchestrator = {
         this.elements.statusPanel = document.getElementById('status-panel');
         this.elements.skeletonCount = document.getElementById('skeleton-count');
         this.elements.dinoCount = document.getElementById('dino-count');
+        this.elements.toyCount = document.getElementById('toy-count');
         this.elements.powerupTimer = document.getElementById('powerup-timer');
         this.elements.powerupTime = document.querySelector('#powerup-timer .powerup-time');
     },
@@ -158,11 +159,11 @@ const UIOrchestrator = {
     /**
      * Update the enemy count display with progress
      * Shows "KILLED / TOTAL" format
-     * @param {Object} counts - Object with active enemy counts { skeleton: N, dinosaur: N }
+     * @param {Object} counts - Object with active enemy counts { skeleton: N, dinosaur: N, toy: N }
      */
     updateEnemyCount(counts) {
-        const { skeleton = 0, dinosaur = 0 } = counts;
-        const totalActive = skeleton + dinosaur;
+        const { skeleton = 0, dinosaur = 0, toy = 0 } = counts;
+        const totalActive = skeleton + dinosaur + toy;
         const remaining = this._totalEnemies - this._killedEnemies;
 
         // Update the progress display element (shows killed / total)
@@ -184,6 +185,13 @@ const UIOrchestrator = {
             if (valueEl) valueEl.textContent = dinosaur;
             this.elements.dinoCount.classList.toggle('has-enemies', dinosaur > 0);
         }
+
+        if (this.elements.toyCount) {
+            const valueEl = this.elements.toyCount.querySelector('.enemy-value');
+            if (valueEl) valueEl.textContent = toy;
+            this.elements.toyCount.classList.toggle('has-enemies', toy > 0);
+        }
+
 
         // Check for victory condition (all enemies killed)
         if (this._totalEnemies > 0 && remaining <= 0 && totalActive === 0) {

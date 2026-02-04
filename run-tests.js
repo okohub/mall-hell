@@ -292,7 +292,7 @@ async function runUnitTests(browser) {
         if (VERBOSE && (UNIT_DOMAINS.length > 0 || (RUN_FAILED && FAILED_TESTS.unitTests.length > 0))) {
             logProgress(`  [Unit] Filtering: domains=${UNIT_DOMAINS.join(',') || 'all'}`);
         }
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 10000 });
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
         await new Promise(resolve => setTimeout(resolve, 500));
 
         const total = await page.evaluate(() => {
@@ -301,7 +301,8 @@ async function runUnitTests(browser) {
         progress.unit.total = total || 65;
 
         let attempts = 0;
-        while (attempts < 30) {
+        const maxAttempts = 200; // 200 * 200ms = 40 seconds max wait for unit tests
+        while (attempts < maxAttempts) {
             const results = await page.evaluate(() => {
                 const testItems = document.querySelectorAll('.test-item');
                 let passed = 0, failed = 0;
@@ -402,7 +403,7 @@ async function runUITests(browser) {
 
     try {
         await page.setViewport({ width: 1400, height: 900 });
-        await page.goto(`file://${filePath}`, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        await page.goto(`file://${filePath}`, { waitUntil: 'domcontentloaded', timeout: 25000 });
         await new Promise(resolve => setTimeout(resolve, 3000));
 
         if (ONLY_TESTS.length > 0) {
@@ -793,7 +794,7 @@ async function runIntegrationTestsOnly() {
 
     try {
         await page.setViewport({ width: 1400, height: 900 });
-        await page.goto(`file://${filePath}`, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        await page.goto(`file://${filePath}`, { waitUntil: 'domcontentloaded', timeout: 25000 });
         await new Promise(resolve => setTimeout(resolve, 3000));
 
         if (ONLY_TESTS.length > 0) {

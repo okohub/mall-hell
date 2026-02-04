@@ -55,7 +55,7 @@ const DinosaurMesh = {
 
         const configWithTheme = { visual: { ...toyTheme, size: { w: 1.2, h: 0.9, d: 1.4 } } };
         const toy = this.createMesh(THREE, configWithTheme);
-        toy.scale.set(0.35, 0.35, 0.35);
+        toy.scale.set(0.28, 0.28, 0.28);
         return toy;
     },
 
