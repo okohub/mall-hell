@@ -22,50 +22,50 @@
             test.assertTrue(stone.glow);
         });
 
-        test.it('should have water type defined', () => {
-            test.assertTrue(Projectile.types.water !== undefined);
+        test.it('should have blob type defined', () => {
+            test.assertTrue(Projectile.types.blob !== undefined);
         });
 
-        test.it('should have correct water properties', () => {
-            const water = Projectile.types.water;
-            test.assertEqual(water.id, 'water');
-            test.assertEqual(water.geometry, 'sphere');
-            test.assertEqual(water.color, 0x3498db);
-            test.assertTrue(water.glow);
-            test.assertTrue(water.gravity > 0);  // Water has gravity for arc
+        test.it('should have correct blob properties', () => {
+            const blob = Projectile.types.blob;
+            test.assertEqual(blob.id, 'blob');
+            test.assertEqual(blob.geometry, 'sphere');
+            test.assertEqual(blob.color, 0x3498db);
+            test.assertTrue(blob.glow);
+            test.assertTrue(blob.gravity > 0);  // Blob has gravity for arc
         });
 
-        test.it('should have laser type defined', () => {
-            test.assertTrue(Projectile.types.laser !== undefined);
+        test.it('should have ray type defined', () => {
+            test.assertTrue(Projectile.types.ray !== undefined);
         });
 
-        test.it('should have correct laser properties', () => {
-            const laser = Projectile.types.laser;
-            test.assertEqual(laser.id, 'laser');
-            test.assertEqual(laser.geometry, 'cylinder');
-            test.assertTrue(laser.length > 0, 'Laser should have length for beam shape');
-            test.assertEqual(laser.gravity, 0, 'Laser should have no gravity');
-            test.assertTrue(laser.glow, 'Laser should glow');
-            test.assertTrue(laser.emissiveIntensity.max > 0.5, 'Laser should be bright');
+        test.it('should have correct ray properties', () => {
+            const ray = Projectile.types.ray;
+            test.assertEqual(ray.id, 'ray');
+            test.assertEqual(ray.geometry, 'cylinder');
+            test.assertTrue(ray.length > 0, 'Ray should have length for beam shape');
+            test.assertEqual(ray.gravity, 0, 'Ray should have no gravity');
+            test.assertTrue(ray.glow, 'Ray should glow');
+            test.assertTrue(ray.emissiveIntensity.max > 0.5, 'Ray should be bright');
         });
 
-        test.it('should have dart type defined', () => {
-            test.assertTrue(Projectile.types.dart !== undefined);
+        test.it('should have soft-bullet type defined', () => {
+            test.assertTrue(Projectile.types['soft-bullet'] !== undefined);
         });
 
-        test.it('should have correct dart properties', () => {
-            const dart = Projectile.types.dart;
-            test.assertEqual(dart.id, 'dart');
-            test.assertEqual(dart.geometry, 'cylinder');
-            test.assertTrue(dart.length > 0);  // Darts have length for elongated shape
-            test.assertTrue(dart.gravity > 0);  // Darts have gravity for drop
+        test.it('should have correct soft-bullet properties', () => {
+            const softBullet = Projectile.types['soft-bullet'];
+            test.assertEqual(softBullet.id, 'soft-bullet');
+            test.assertEqual(softBullet.geometry, 'cylinder');
+            test.assertTrue(softBullet.length > 0);  // Soft bullets have length
+            test.assertTrue(softBullet.gravity > 0);  // Soft bullets have gravity for drop
         });
 
-        test.it('should have water splash properties', () => {
-            const water = Projectile.types.water;
-            test.assertTrue(water.splash, 'Water should have splash enabled');
-            test.assertTrue(water.splashRadius > 0, 'Water should have splash radius');
-            test.assertTrue(water.splashDamage > 0, 'Water should have splash damage');
+        test.it('should have blob splash properties', () => {
+            const blob = Projectile.types.blob;
+            test.assertTrue(blob.splash, 'Blob should have splash enabled');
+            test.assertTrue(blob.splashRadius > 0, 'Blob should have splash radius');
+            test.assertTrue(blob.splashDamage > 0, 'Blob should have splash damage');
         });
 
         test.it('should get projectile by id', () => {
@@ -74,22 +74,22 @@
             test.assertEqual(proj.id, 'stone');
         });
 
-        test.it('should get water projectile by id', () => {
-            const proj = Projectile.get('water');
+        test.it('should get blob projectile by id', () => {
+            const proj = Projectile.get('blob');
             test.assertTrue(proj !== null);
-            test.assertEqual(proj.id, 'water');
+            test.assertEqual(proj.id, 'blob');
         });
 
-        test.it('should get dart projectile by id', () => {
-            const proj = Projectile.get('dart');
+        test.it('should get soft-bullet projectile by id', () => {
+            const proj = Projectile.get('soft-bullet');
             test.assertTrue(proj !== null);
-            test.assertEqual(proj.id, 'dart');
+            test.assertEqual(proj.id, 'soft-bullet');
         });
 
-        test.it('should get laser projectile by id', () => {
-            const proj = Projectile.get('laser');
+        test.it('should get ray projectile by id', () => {
+            const proj = Projectile.get('ray');
             test.assertTrue(proj !== null);
-            test.assertEqual(proj.id, 'laser');
+            test.assertEqual(proj.id, 'ray');
         });
 
         test.it('should return stone for unknown type', () => {
@@ -262,7 +262,7 @@
             test.assertEqual(mesh.userData.gravity, 0);  // Stone has no gravity
         });
 
-        test.it('should create water projectile mesh with gravity', () => {
+        test.it('should create blob projectile mesh with gravity', () => {
             if (typeof THREE === 'undefined') {
                 test.skip('THREE.js not available');
                 return;
@@ -270,14 +270,14 @@
             const dir = new THREE.Vector3(0, 0, -1);
             const pos = new THREE.Vector3(0, 1, 0);
             const mesh = ProjectileOrchestrator.createMesh(THREE, dir, pos, 80, {
-                projectileType: 'water'
+                projectileType: 'blob'
             });
             test.assertTrue(mesh instanceof THREE.Group);
-            test.assertEqual(mesh.userData.projectileType, 'water');
+            test.assertEqual(mesh.userData.projectileType, 'blob');
             test.assertTrue(mesh.userData.gravity > 0);  // Water has gravity
         });
 
-        test.it('should create dart projectile mesh with gravity', () => {
+        test.it('should create soft-bullet projectile mesh with gravity', () => {
             if (typeof THREE === 'undefined') {
                 test.skip('THREE.js not available');
                 return;
@@ -285,10 +285,10 @@
             const dir = new THREE.Vector3(0, 0, -1);
             const pos = new THREE.Vector3(0, 1, 0);
             const mesh = ProjectileOrchestrator.createMesh(THREE, dir, pos, 100, {
-                projectileType: 'dart'
+                projectileType: 'soft-bullet'
             });
             test.assertTrue(mesh instanceof THREE.Group);
-            test.assertEqual(mesh.userData.projectileType, 'dart');
+            test.assertEqual(mesh.userData.projectileType, 'soft-bullet');
             test.assertTrue(mesh.userData.gravity > 0);  // Dart has gravity
         });
 
@@ -305,98 +305,81 @@
     });
 
     // ==========================================
-    // PROJECTILE MESH FACTORY TESTS
+    // PROJECTILE REGISTRY HOOKS
     // ==========================================
 
-    test.describe('Projectile Mesh Factory', () => {
-        test.it('should have createGroup method', () => {
-            test.assertTrue(typeof ProjectileMeshFactory.createGroup === 'function');
+    test.describe('Projectile Registry Hooks', () => {
+        test.it('should expose createMesh and animate for each type', () => {
+            const types = ['stone', 'blob', 'ray', 'soft-bullet', 'syringe'];
+            types.forEach((typeId) => {
+                const config = Projectile.get(typeId);
+                test.assertTrue(typeof config.createMesh === 'function', `${typeId} missing createMesh`);
+                test.assertTrue(typeof config.animate === 'function', `${typeId} missing animate`);
+            });
         });
 
-        test.it('should create group with THREE', () => {
+        test.it('should create mesh for ray and syringe', () => {
             if (typeof THREE === 'undefined') {
                 test.skip('THREE.js not available');
                 return;
             }
-            const config = Projectile.get('stone');
-            const group = ProjectileMeshFactory.createGroup(THREE, config, {
-                projectileType: 'stone',
-                speed: 100,
-                speedMin: 60,
-                speedMax: 180,
-                sizeScaleBase: 0.8,
-                sizeScalePower: 0.4,
-                glowOpacityBase: 0.2,
-                glowOpacityPower: 0.3
+            const ray = Projectile.get('ray');
+            const syringe = Projectile.get('syringe');
+            const rayMesh = ray.createMesh(THREE, {
+                baseSize: ray.size,
+                baseColor: ray.color,
+                glowColor: ray.glowColor,
+                hasGlow: ray.glow,
+                sizeScale: 1,
+                emissiveIntensity: ray.emissiveIntensity.max,
+                glowOpacity: 0.4,
+                length: ray.length
             });
-            test.assertTrue(group instanceof THREE.Group);
-            const mesh = group.children.find(child => child.isMesh);
-            test.assertTrue(mesh !== undefined);
-            test.assertEqual(mesh.geometry.type, 'SphereGeometry');
+            const syringeMesh = syringe.createMesh(THREE, {
+                baseSize: syringe.size,
+                baseColor: syringe.color,
+                glowColor: syringe.glowColor,
+                hasGlow: syringe.glow,
+                sizeScale: 1,
+                emissiveIntensity: syringe.emissiveIntensity.max,
+                glowOpacity: 0.4,
+                length: syringe.length
+            });
+            test.assertTrue(rayMesh instanceof THREE.Group);
+            test.assertTrue(syringeMesh instanceof THREE.Group);
         });
 
-        test.it('should create laser projectile group', () => {
+        test.it('should animate soft-bullet without errors', () => {
             if (typeof THREE === 'undefined') {
                 test.skip('THREE.js not available');
                 return;
             }
-            const config = Projectile.get('laser');
-            const group = ProjectileMeshFactory.createGroup(THREE, config, {
-                projectileType: 'laser',
-                speed: 120,
-                speedMin: 60,
-                speedMax: 180,
-                sizeScaleBase: 0.8,
-                sizeScalePower: 0.4,
-                glowOpacityBase: 0.2,
-                glowOpacityPower: 0.3
-            });
-            test.assertTrue(group instanceof THREE.Group);
-            test.assertTrue(group.children.length > 0);
-            const mesh = group.children.find(child => child.isMesh);
-            test.assertTrue(mesh !== undefined);
-            test.assertEqual(mesh.geometry.type, 'CylinderGeometry');
+            const mesh = new THREE.Group();
+            const initialRotation = mesh.rotation.z;
+            const softBullet = Projectile.get('soft-bullet');
+            softBullet.animate(mesh, 0.1);
+            test.assertTrue(mesh.rotation.z !== initialRotation);
         });
 
-        test.it('should create dart projectile group', () => {
+        test.it('should throw if createMesh is missing', () => {
             if (typeof THREE === 'undefined') {
                 test.skip('THREE.js not available');
                 return;
             }
-            const config = Projectile.get('dart');
-            const group = ProjectileMeshFactory.createGroup(THREE, config, {
-                projectileType: 'dart',
-                speed: 100,
-                speedMin: 60,
-                speedMax: 180,
-                sizeScaleBase: 0.8,
-                sizeScalePower: 0.4,
-                glowOpacityBase: 0.2,
-                glowOpacityPower: 0.3
+            const original = Projectile.get('stone');
+            Projectile.types['__bad'] = {
+                ...original,
+                createMesh: null,
+                animate: () => {}
+            };
+            test.assertThrows(() => {
+                const dir = new THREE.Vector3(0, 0, -1);
+                const pos = new THREE.Vector3(0, 1, 0);
+                ProjectileOrchestrator.createMesh(THREE, dir, pos, 100, {
+                    projectileType: '__bad'
+                });
             });
-            test.assertTrue(group instanceof THREE.Group);
-            test.assertTrue(group.children.length > 0);
-        });
-
-        test.it('should create dinonizer projectile group', () => {
-            if (typeof THREE === 'undefined') {
-                test.skip('THREE.js not available');
-                return;
-            }
-            const config = Projectile.get('dinonizer');
-            const group = ProjectileMeshFactory.createGroup(THREE, config, {
-                projectileType: 'dinonizer',
-                speed: 140,
-                speedMin: 60,
-                speedMax: 180,
-                sizeScaleBase: 0.8,
-                sizeScalePower: 0.4,
-                glowOpacityBase: 0.2,
-                glowOpacityPower: 0.3
-            });
-            test.assertTrue(group instanceof THREE.Group);
-            test.assertTrue(group.children.length > 0);
-            test.assertTrue(group.children.length >= 5);
+            delete Projectile.types['__bad'];
         });
     });
 

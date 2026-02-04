@@ -18,46 +18,31 @@ Most domains follow this file pattern:
 | `<domain>-orchestrator.js` | State management, logic |
 | `<domain>.test.js` | Unit tests |
 
-### Weapon Domain Pattern (Refactored)
+### Weapon Domain Pattern (Registry + Per-Type API)
 
-Weapons use a specialized pattern for better focus and context management:
+Weapons follow a registry-first, per-type folder pattern (matching projectiles). Each weapon type exposes a **single public API file** that delegates to mesh and animation modules, and registers itself into a global registry.
 
-| File | Purpose | Size Impact |
-|------|---------|-------------|
-| `weapon.js` | All weapon configs (single source of truth) | Centralized |
-| `weapon-orchestrator.js` | Weapon orchestration, lifecycle | Unchanged |
-| `<weapon>.js` | Thin behavioral module (delegates to mesh/animation) | **55-63% smaller** |
-| `<weapon>-mesh.js` | Stateless mesh creation functions | ~250 lines |
-| `<weapon>-animation.js` | Stateless animation functions | ~65 lines |
-| `pickup.js`, `pickup-orchestrator.js` | Weapon pickup logic | Unchanged |
-| `weapon.test.js` | Unit tests | Unchanged |
+| File | Purpose | Notes |
+|------|---------|-------|
+| `weapon.js` | Central weapon configs | Single source of truth |
+| `weapon-orchestrator.js` | Orchestration + registration | Adds `registerAllFromRegistry()` |
+| `weapon/<type>/<type>.js` | **Public API** for the type | Registers to registry, delegates to mesh/animation |
+| `weapon/<type>/<type>-mesh.js` | Stateless mesh creation | `createFPSMesh`, `createPickupMesh` |
+| `weapon/<type>/<type>-animation.js` | Stateless animation | `animateFPS`, `updateTransform` |
+| `pickup.js`, `pickup-orchestrator.js` | Weapon pickups | Unchanged |
+| `weapon.test.js` | Unit tests | Registry hooks enforced |
 
-**Key difference**: Individual weapons split visual concerns (mesh, animation) from behavioral concerns (firing, state).
+**Registry**
+`globalThis.WeaponTypeRegistry` is the single registry used for weapon registration.
 
-**Delegation Pattern**:
-```javascript
-// Config: Reference central source
-get config() {
-    return { ...Weapon.types.SLINGSHOT, ammo: { /* runtime */ } };
-}
+**Key rules**:
+1. The type file is the only public API for a weapon.
+2. Mesh and animation live in separate files.
+3. Registry entries must define `createFPSMesh`, `createPickupMesh`, and `animateFPS`.
+4. `WeaponOrchestrator.registerAllFromRegistry()` should be used to register weapons.
 
-// Mesh: Delegate to stateless module
-createFPSMesh(THREE, materials) {
-    return SlingshotMesh.createFPSMesh(THREE, materials, this.theme);
-}
-
-// Animation: Delegate to stateless module (state management stays in behavior)
-animateFPS(refs, dt) {
-    // Update state here if needed
-    SlingshotAnimation.animateFPS(refs, this.state, dt);
-}
-```
-
-**Benefits**:
-- **Focus**: Each file has one clear purpose (mesh OR animation OR behavior)
-- **Context**: Smaller files fit in LLM/editor context windows
-- **Reusability**: Mesh/animation modules are pure functions
-- **Maintainability**: Change mesh without touching animation or behavior
+**Script load order (non-modules)**:
+Mesh → Animation → Type for each weapon, then `weapon-orchestrator.js`.
 
 ### Projectile Domain Pattern (Registry + Per-Type API)
 
@@ -80,6 +65,34 @@ Projectiles use a registry-first pattern with per-type folders. Each projectile 
 
 **Script load order (non-modules)**:
 Mesh → Animation → Type for each projectile, then `projectile.js` → `projectile-orchestrator.js`.
+
+### Enemy Domain Pattern (Registry + Per-Type API)
+
+Enemies now follow the same registry-first pattern with per-type folders. Each enemy type exposes a **single API file** that delegates to mesh and animation modules and registers into a global registry.
+
+| File | Purpose | Notes |
+|------|---------|-------|
+| `enemy.js` | Central enemy configs | Single source of truth |
+| `enemy-orchestrator.js` | Spawning + updates | Uses registry hooks |
+| `enemy/<type>/<type>.js` | **Public API** for the type | Registers to registry, delegates to mesh/animation |
+| `enemy/<type>/<type>-mesh.js` | Stateless mesh creation | `createEnemy` / `createMesh` |
+| `enemy/<type>/<type>-animation.js` | Stateless animation | `animateWalk` / `animateEyes` |
+| `enemy.test.js` | Unit tests | Registry hooks enforced |
+
+**Registry**
+`globalThis.EnemyTypeRegistry` is the single registry used by `enemy-orchestrator.js`.
+
+**Key rules**:
+1. The type file is the only public API for an enemy.
+2. Mesh and animation live in separate files.
+3. Registry entries must define `createMesh`, `animateWalk`, and `applyHitFlash`.
+4. `animateEyes` is optional (skeleton only).
+
+**Script load order (non-modules)**:
+Mesh → Animation → Type for each enemy, then `enemy-orchestrator.js`.
+
+### Roadmap: Apply Pattern to Other Domains
+- **Next**: Remaining domains as needed (particles, powerups, etc.)
 
 ## Directory Structure
 
@@ -143,7 +156,7 @@ Consider true DDD if you need:
 5. **Single source of truth** - Config data centralized in `<domain>.js` files
 6. **Stateless helpers** - Mesh and animation modules receive all data as parameters
 7. **Module singletons** - Domains are singleton modules (not class instances)
-8. **Registry-driven types** - Projectile types register into a single global registry
+8. **Registry-driven types** - Projectile, weapon, and enemy types register into single global registries
 
 ## Script Loading Order
 
@@ -153,7 +166,7 @@ In `index.html`, load in this order:
 3. `src/ui/ui.js` → `ui-orchestrator.js`
 4. `src/engine/*` (engine.js first, then *-orchestrator.js)
 5. Domain files (data → theme → mesh → orchestrator)
-6. **Projectile special case**: mesh → animation → type for each projectile, then `projectile.js` → `projectile-orchestrator.js`
+6. **Registry domains**: mesh → animation → type for each projectile/weapon/enemy, then their domain files (`projectile.js` → `projectile-orchestrator.js`, `weapon-orchestrator.js`, `enemy-orchestrator.js`)
 
 ## Key Systems
 

@@ -135,6 +135,44 @@
     });
 
     // ==========================================
+    // ENEMY REGISTRY TESTS
+    // ==========================================
+
+    test.describe('Enemy Registry', () => {
+        test.it('should register core enemy types', () => {
+            test.assertTrue(!!globalThis.EnemyTypeRegistry);
+            test.assertTrue(!!globalThis.EnemyTypeRegistry.SKELETON);
+            test.assertTrue(!!globalThis.EnemyTypeRegistry.DINOSAUR);
+            test.assertTrue(!!globalThis.EnemyTypeRegistry.DINO_TOY);
+        });
+
+        test.it('should expose required hooks for each type', () => {
+            const registry = globalThis.EnemyTypeRegistry || {};
+
+            ['SKELETON', 'DINOSAUR', 'DINO_TOY'].forEach((key) => {
+                const entry = registry[key];
+                test.assertTrue(!!entry);
+                test.assertTrue(typeof entry.createMesh === 'function');
+                test.assertTrue(typeof entry.animateWalk === 'function');
+                test.assertTrue(typeof entry.applyHitFlash === 'function');
+            });
+
+            test.assertTrue(typeof registry.SKELETON.animateEyes === 'function');
+        });
+
+        test.it('should throw if createMesh hook is missing', () => {
+            const registry = globalThis.EnemyTypeRegistry || {};
+            const original = registry.SKELETON;
+            registry.SKELETON = { id: 'skeleton' };
+
+            EnemyOrchestrator.init(Enemy, null);
+            test.assertThrows(() => EnemyOrchestrator.createMesh(THREE, 'SKELETON', 0, 0));
+
+            registry.SKELETON = original;
+        });
+    });
+
+    // ==========================================
     // ENEMY SYSTEM TESTS
     // ==========================================
 

@@ -4,6 +4,10 @@
 // Single-shot foam dart launcher
 // Implements the weapon interface for WeaponOrchestrator
 
+var WeaponTypeRegistry = (typeof globalThis !== 'undefined')
+    ? (globalThis.WeaponTypeRegistry = globalThis.WeaponTypeRegistry || {})
+    : {};
+
 const NerfGun = {
     // ==========================================
     // IDENTITY
@@ -220,3 +224,5 @@ const NerfGun = {
         NerfGunAnimation.updateTransform(weapon, turnRate);
     }
 };
+
+WeaponTypeRegistry.nerfgun = NerfGun;

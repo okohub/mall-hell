@@ -35,18 +35,11 @@ const EnemyOrchestrator = {
     enemyData: null,
     scene: null,
 
-    // Type registry - maps enemy type ID to mesh/animation modules
-    get ENEMY_MODULES() {
-        return {
-            SKELETON: {
-                mesh: typeof SkeletonMesh !== 'undefined' ? SkeletonMesh : null,
-                animation: typeof SkeletonAnimation !== 'undefined' ? SkeletonAnimation : null
-            },
-            DINOSAUR: {
-                mesh: typeof DinosaurMesh !== 'undefined' ? DinosaurMesh : null,
-                animation: typeof DinosaurAnimation !== 'undefined' ? DinosaurAnimation : null
-            }
-        };
+    getEnemyModule(typeId) {
+        const registry = (typeof globalThis !== 'undefined' && globalThis.EnemyTypeRegistry)
+            ? globalThis.EnemyTypeRegistry
+            : {};
+        return registry[typeId] || null;
     },
 
     /**
@@ -132,9 +125,9 @@ const EnemyOrchestrator = {
         // Create visual - use registry dispatch
         let mesh = null;
         if (THREE) {
-            const module = this.ENEMY_MODULES[typeId];
-            if (module && module.mesh) {
-                mesh = module.mesh.createEnemy(THREE, config);
+            const module = this.getEnemyModule(typeId);
+            if (module && typeof module.createMesh === 'function') {
+                mesh = module.createMesh(THREE, config);
             }
 
             if (mesh) {
@@ -279,9 +272,9 @@ const EnemyOrchestrator = {
                 if (enemy.hitFlash < 0) enemy.hitFlash = 0;
 
                 if (enemy.mesh) {
-                    const module = this.ENEMY_MODULES[enemy.type];
-                    if (module && module.mesh) {
-                        module.mesh.applyHitFlash(enemy.mesh.userData.cart, enemy.hitFlash);
+                    const module = this.getEnemyModule(enemy.type);
+                    if (module && typeof module.applyHitFlash === 'function') {
+                        module.applyHitFlash(enemy.mesh.userData.cart, enemy.hitFlash);
                     }
                 }
             }
@@ -317,9 +310,9 @@ const EnemyOrchestrator = {
 
             // Update health bar
             if (enemy.mesh && enemy.mesh.userData.healthBar) {
-                const module = this.ENEMY_MODULES[enemy.type];
-                if (module && module.mesh) {
-                    module.mesh.updateHealthBar(
+                const module = this.getEnemyModule(enemy.type);
+                if (module && typeof module.updateHealthBar === 'function') {
+                    module.updateHealthBar(
                         enemy.mesh.userData.healthBar,
                         enemy.health / enemy.maxHealth
                     );
@@ -408,20 +401,21 @@ const EnemyOrchestrator = {
      * @returns {THREE.Group} Enemy mesh group with userData
      */
     createMesh(THREE, typeId = 'SKELETON', x = 0, z = 0) {
-        // Get config from ENEMY_TYPES registry
-        const config = (typeof ENEMY_TYPES !== 'undefined' && ENEMY_TYPES[typeId])
-            ? ENEMY_TYPES[typeId]
-            : (this.enemyData ? this.enemyData.get(typeId) : null);
+        // Get config from Enemy data
+        const config = this.enemyData ? this.enemyData.get(typeId) : null;
 
         if (!config) return null;
 
         // Create mesh - use registry dispatch
         let group = null;
-        const module = this.ENEMY_MODULES[typeId];
-        if (module && module.mesh) {
-            group = module.mesh.createEnemy(THREE, config);
-        } else {
-            group = new THREE.Group();
+        const module = this.getEnemyModule(typeId);
+        if (!module || typeof module.createMesh !== 'function') {
+            throw new Error(`EnemyOrchestrator: Enemy '${typeId}' missing createMesh`);
+        }
+
+        group = module.createMesh(THREE, config);
+        if (!group) {
+            throw new Error(`EnemyOrchestrator: createMesh returned null for '${typeId}'`);
         }
 
         // Set userData using createEnemyData helper
@@ -490,8 +484,9 @@ const EnemyOrchestrator = {
         }
 
         // Create toy mesh
-        if (typeof DinosaurMesh !== 'undefined' && DinosaurMesh.createToy) {
-            const toyMesh = DinosaurMesh.createToy(THREE);
+        const toyModule = this.getEnemyModule('DINO_TOY');
+        if (toyModule && typeof toyModule.createMesh === 'function') {
+            const toyMesh = toyModule.createMesh(THREE, toyConfig);
             toyMesh.position.set(0, 0, 0);
             enemy.add(toyMesh);
             enemy.userData.toyMesh = toyMesh;
@@ -554,19 +549,19 @@ const EnemyOrchestrator = {
 
         // Get type module for animations
         const typeId = enemy.userData.type;
-        const module = this.ENEMY_MODULES[typeId];
+        const module = this.getEnemyModule(typeId);
 
         // Animate eyes (track player - skeleton only)
-        if (enemy.userData.skeleton && module && module.animation) {
-            module.animation.animateEyes(enemy.userData.cart, playerPosition);
+        if (enemy.userData.skeleton && module && typeof module.animateEyes === 'function') {
+            module.animateEyes(enemy.userData.cart, playerPosition);
         }
 
         // Animate walking
         const walkSpeed = enemy.userData.config?.walkSpeed || 3.5;
         enemy.userData.walkTimer = (enemy.userData.walkTimer || 0) + dt * walkSpeed;
 
-        if (module && module.animation) {
-            module.animation.animateWalk(enemy.userData.cart, enemy.userData.walkTimer, walkSpeed);
+        if (module && typeof module.animateWalk === 'function') {
+            enemy.userData.walkTimer = module.animateWalk(enemy.userData.cart, enemy.userData.walkTimer, walkSpeed);
         }
 
         // Hit flash
@@ -575,8 +570,8 @@ const EnemyOrchestrator = {
             if (enemy.userData.hitFlash < 0) enemy.userData.hitFlash = 0;
 
             if (enemy.userData.cart) {
-                if (module && module.mesh) {
-                    module.mesh.applyHitFlash(enemy.userData.cart, enemy.userData.hitFlash);
+                if (module && typeof module.applyHitFlash === 'function') {
+                    module.applyHitFlash(enemy.userData.cart, enemy.userData.hitFlash);
                 }
             } else {
                 // Fallback for legacy enemies

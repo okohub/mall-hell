@@ -4,6 +4,10 @@
 // Complete slingshot weapon: config, theme, mesh, animation, state
 // Implements the weapon interface for WeaponOrchestrator
 
+var WeaponTypeRegistry = (typeof globalThis !== 'undefined')
+    ? (globalThis.WeaponTypeRegistry = globalThis.WeaponTypeRegistry || {})
+    : {};
+
 const Slingshot = {
     // ==========================================
     // IDENTITY
@@ -270,3 +274,5 @@ const Slingshot = {
         SlingshotAnimation.updateTransform(weapon, turnRate);
     }
 };
+
+WeaponTypeRegistry.slingshot = Slingshot;

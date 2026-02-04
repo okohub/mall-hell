@@ -4,6 +4,10 @@
 // Complete skeleton enemy module: delegates to mesh and animation
 // Provides interface for enemy orchestrator
 
+var EnemyTypeRegistry = (typeof globalThis !== 'undefined')
+    ? (globalThis.EnemyTypeRegistry = globalThis.EnemyTypeRegistry || {})
+    : {};
+
 const Skeleton = {
     // ==========================================
     // IDENTITY
@@ -41,8 +45,8 @@ const Skeleton = {
      * @param {THREE} THREE - Three.js library
      * @returns {THREE.Group} Skeleton mesh group
      */
-    createMesh(THREE) {
-        return SkeletonMesh.createMesh(THREE, this.config);
+    createMesh(THREE, config = this.config) {
+        return SkeletonMesh.createEnemy(THREE, config);
     },
 
     // ==========================================
@@ -59,6 +63,25 @@ const Skeleton = {
     },
 
     /**
+     * Apply hit flash effect
+     * @param {THREE.Group} enemyMesh - Enemy mesh
+     * @param {number} intensity - Flash intensity
+     */
+    applyHitFlash(enemyMesh, intensity) {
+        if (typeof SkeletonMesh !== 'undefined' && SkeletonMesh.applyHitFlash) {
+            SkeletonMesh.applyHitFlash(enemyMesh, intensity);
+            return;
+        }
+
+        if (!enemyMesh) return;
+        enemyMesh.traverse((child) => {
+            if (child.material && child.material.emissive) {
+                child.material.emissiveIntensity = intensity;
+            }
+        });
+    },
+
+    /**
      * Animate skeleton walking
      * @param {THREE.Group} enemyMesh - Enemy mesh
      * @param {number} walkTimer - Walk animation timer
@@ -67,5 +90,18 @@ const Skeleton = {
     animateWalk(enemyMesh, walkTimer) {
         const walkSpeed = this.config.walkSpeed || 3.5;
         return SkeletonAnimation.animateWalk(enemyMesh, walkTimer, walkSpeed);
+    },
+
+    /**
+     * Update skeleton health bar
+     * @param {THREE.Group} healthBar - Health bar mesh
+     * @param {number} percent - Health percent 0-1
+     */
+    updateHealthBar(healthBar, percent) {
+        if (typeof SkeletonMesh !== 'undefined' && SkeletonMesh.updateHealthBar) {
+            SkeletonMesh.updateHealthBar(healthBar, percent);
+        }
     }
 };
+
+EnemyTypeRegistry.SKELETON = Skeleton;

@@ -250,7 +250,6 @@ const TestBridge = {
 
         // Projectile domain
         if (typeof Projectile !== 'undefined') window.Projectile = Projectile;
-        if (typeof ProjectileMeshFactory !== 'undefined') window.ProjectileMeshFactory = ProjectileMeshFactory;
         if (typeof ProjectileOrchestrator !== 'undefined') window.ProjectileOrchestrator = ProjectileOrchestrator;
 
         // Enemy domain

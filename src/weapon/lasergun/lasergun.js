@@ -1,46 +1,49 @@
 // ============================================
-// WATER GUN - Self-Contained Weapon Module
+// LASER GUN - Self-Contained Weapon Module
 // ============================================
-// Pump-action water blaster: fires arcing water balloons with splash damage
+// Auto-fire energy weapon: hold to shoot rapid laser bolts
 // Implements the weapon interface for WeaponOrchestrator
 
-const WaterGun = {
+var WeaponTypeRegistry = (typeof globalThis !== 'undefined')
+    ? (globalThis.WeaponTypeRegistry = globalThis.WeaponTypeRegistry || {})
+    : {};
+
+const LaserGun = {
     // ==========================================
     // IDENTITY
     // ==========================================
 
-    id: 'watergun',
-    name: 'Water Blaster',
+    id: 'lasergun',
+    name: 'Laser Blaster',
 
     // ==========================================
     // CONFIGURATION
     // ==========================================
 
     get config() {
-        const baseConfig = Weapon.types.WATERGUN;
+        const baseConfig = Weapon.types.LASERGUN;
         return {
             ...baseConfig,
             ammo: {
-                max: 30,
-                current: 30,
+                max: 75,
+                current: 75,
                 consumePerShot: 1
             }
         };
     },
 
     // ==========================================
-    // THEME (Colors - Bright Toy Water Gun)
+    // THEME (Colors - Sci-Fi Red/Teal)
     // ==========================================
 
     theme: {
-        body: 0x3498db,           // Bright blue
-        bodyLight: 0x5dade2,
-        tank: 0x85c1e9,           // Translucent tank
-        tankWater: 0x2980b9,      // Water inside
-        pump: 0xf39c12,           // Orange pump
-        pumpAccent: 0xe67e22,
-        nozzle: 0x7f8c8d,
-        trigger: 0x2c3e50
+        body: 0x2c3e50,           // Dark metallic body
+        bodyLight: 0x34495e,
+        accent: 0x1abc9c,         // Teal accents
+        emitter: 0xe74c3c,        // Red emitter
+        emitterGlow: 0xff6b6b,    // Bright red glow
+        energyCell: 0x3498db,     // Blue energy cell
+        grip: 0x1a1a1a
     },
 
     // ==========================================
@@ -48,12 +51,13 @@ const WaterGun = {
     // ==========================================
 
     state: {
-        isCharging: false,
+        isCharging: false,  // Used as "isFiring" for auto weapons
         chargeAmount: 0,
         lastFireTime: 0,
-        ammo: 30,
+        ammo: 75,
         fireAnimProgress: 0,
-        pumpAnim: 0
+        isFiring: false,
+        glowPulse: 0
     },
 
     // ==========================================
@@ -65,15 +69,17 @@ const WaterGun = {
     },
 
     onUnequip() {
-        this.resetState();
+        this.state.isFiring = false;
+        this.state.isCharging = false;
     },
 
     resetState() {
         this.state.isCharging = false;
+        this.state.isFiring = false;
         this.state.chargeAmount = 0;
         this.state.lastFireTime = 0;
         this.state.fireAnimProgress = 0;
-        this.state.pumpAnim = 0;
+        this.state.glowPulse = 0;
         this.state.ammo = this.config.ammo.max;
     },
 
@@ -81,36 +87,36 @@ const WaterGun = {
     // INPUT HANDLERS
     // ==========================================
 
-    /**
-     * Fire on button press (single shot)
-     */
     onFireStart(time) {
-        if (this.state.ammo <= 0) return null;
-        if (!this.canFire(time)) return null;
-        return this.fire(time);
+        if (this.state.ammo <= 0) return;
+        this.state.isFiring = true;
+        this.state.isCharging = true;
     },
 
-    /**
-     * Nothing on release
-     */
     onFireRelease(time) {
+        this.state.isFiring = false;
+        this.state.isCharging = false;
         return null;
     },
 
-    /**
-     * Update - just animations
-     */
     update(dt, time) {
-        // Update pump animation
-        if (this.state.pumpAnim > 0) {
-            this.state.pumpAnim -= dt * 4;
-            if (this.state.pumpAnim < 0) this.state.pumpAnim = 0;
+        // Auto-fire while holding
+        if (this.state.isFiring && this.state.ammo > 0) {
+            if (this.canFire(time)) {
+                return this.fire(time);
+            }
         }
+
+        // Update glow pulse animation
+        this.state.glowPulse += dt * 8;
+        if (this.state.glowPulse > Math.PI * 2) this.state.glowPulse = 0;
+
         return null;
     },
 
     cancelAction() {
-        // Nothing to cancel for single-shot
+        this.state.isFiring = false;
+        this.state.isCharging = false;
     },
 
     // ==========================================
@@ -129,8 +135,15 @@ const WaterGun = {
         if (this.state.ammo < 0) this.state.ammo = 0;
 
         this.state.lastFireTime = time;
-        this.state.pumpAnim = 1.0;
         this.state.fireAnimProgress = 1.0;
+
+        if (this.state.ammo <= 0) {
+            this.state.isFiring = false;
+            this.state.isCharging = false;
+        }
+
+        const spreadX = (Math.random() - 0.5) * this.config.projectile.spread;
+        const spreadY = (Math.random() - 0.5) * this.config.projectile.spread;
 
         return {
             speed: this.config.projectile.speed.max,
@@ -138,9 +151,7 @@ const WaterGun = {
             damage: this.config.projectile.damage,
             projectileType: this.config.projectile.type,
             count: this.config.projectile.count,
-            gravity: this.config.projectile.gravity,
-            splashRadius: this.config.projectile.splashRadius,
-            splashDamage: this.config.projectile.splashDamage
+            spread: { x: spreadX, y: spreadY }
         };
     },
 
@@ -158,9 +169,9 @@ const WaterGun = {
 
     getAmmoDisplay() {
         if (this.state.ammo <= 0) {
-            return 'EMPTY';
+            return 'DEPLETED';
         }
-        return `WATER: ${this.state.ammo}/${this.config.ammo.max}`;
+        return `ENERGY: ${this.state.ammo}/${this.config.ammo.max}`;
     },
 
     isReloading(time) {
@@ -172,11 +183,11 @@ const WaterGun = {
     // ==========================================
 
     createFPSMesh(THREE, materials) {
-        return WaterGunMesh.createFPSMesh(THREE, materials, this.theme);
+        return LaserGunMesh.createFPSMesh(THREE, materials, this.theme);
     },
 
     createPickupMesh(THREE) {
-        return WaterGunMesh.createPickupMesh(THREE, this.theme);
+        return LaserGunMesh.createPickupMesh(THREE, this.theme);
     },
 
     // ==========================================
@@ -186,23 +197,24 @@ const WaterGun = {
     animateFPS(refs, dt) {
         // Fire animation decay (state management stays here)
         if (this.state.fireAnimProgress > 0) {
-            this.state.fireAnimProgress -= dt * 5;
+            this.state.fireAnimProgress -= dt * 15;
             if (this.state.fireAnimProgress < 0) this.state.fireAnimProgress = 0;
         }
         // Delegate to animation module
-        WaterGunAnimation.animateFPS(refs, this.state, dt, this.config);
+        LaserGunAnimation.animateFPS(refs, this.state, dt, this.config);
     },
 
     triggerFireAnim() {
-        this.state.pumpAnim = 1.0;
         this.state.fireAnimProgress = 1.0;
     },
 
     isFireAnimPlaying() {
-        return this.state.pumpAnim > 0;
+        return this.state.fireAnimProgress > 0;
     },
 
     updateTransform(weapon, turnRate) {
-        WaterGunAnimation.updateTransform(weapon, turnRate);
+        LaserGunAnimation.updateTransform(weapon, turnRate);
     }
 };
+
+WeaponTypeRegistry.lasergun = LaserGun;

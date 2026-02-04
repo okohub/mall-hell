@@ -127,52 +127,33 @@
             // Access game internals
             const PlayerOrchestrator = runner.gameWindow.PlayerOrchestrator;
             const PowerUpOrchestrator = runner.gameWindow.PowerUpOrchestrator;
-            const InputOrchestrator = runner.gameWindow.InputOrchestrator;
-            const manualUpdate = runner.gameWindow.manualUpdate;
 
             // Initialize systems
             PlayerOrchestrator.init();
             PowerUpOrchestrator.init();
 
-            if (!InputOrchestrator || !manualUpdate) {
-                throw new Error('InputOrchestrator or manualUpdate not available');
+            if (!PlayerOrchestrator || !PowerUpOrchestrator) {
+                throw new Error('PlayerOrchestrator or PowerUpOrchestrator not available');
             }
 
             const movementConfig = PlayerOrchestrator.getMovementConfig();
             const startX = 45;
             const startZ = 75;
-            const frames = 60;
             const dt = 1 / 60;
 
-            // Ensure forward input is active
-            InputOrchestrator.keys.forward = true;
-            InputOrchestrator.keys.backward = false;
-            InputOrchestrator.keys.turnLeft = false;
-            InputOrchestrator.keys.turnRight = false;
-
-            // Baseline movement without boost
+            // Baseline movement without boost (pure calculation to avoid collision jitter)
             PlayerOrchestrator.setPosition(startX, startZ);
             PlayerOrchestrator.setRotation(0); // Facing -Z
             PlayerOrchestrator.speed = movementConfig.MAX_SPEED;
-            for (let i = 0; i < frames; i++) {
-                manualUpdate(dt);
-            }
-            const normalDistance = Math.abs(PlayerOrchestrator.position.z - startZ);
+            const normalPos = PlayerOrchestrator.calculateNewPosition(dt);
+            const normalDistance = Math.abs(normalPos.z - startZ);
 
             // Activate speed boost
             PowerUpOrchestrator.activate('speed_boost', Date.now());
 
-            // Movement with boost
-            PlayerOrchestrator.setPosition(startX, startZ);
-            PlayerOrchestrator.setRotation(0);
-            PlayerOrchestrator.speed = movementConfig.MAX_SPEED;
-            for (let i = 0; i < frames; i++) {
-                manualUpdate(dt);
-            }
-            const boostedDistance = Math.abs(PlayerOrchestrator.position.z - startZ);
-
-            // Cleanup input state
-            InputOrchestrator.keys.forward = false;
+            // Movement with boost (pure calculation)
+            const boostedPos = PlayerOrchestrator.calculateNewPosition(dt);
+            const boostedDistance = Math.abs(boostedPos.z - startZ);
 
             // Verify 2x multiplier on actual movement
             const ratio = boostedDistance / normalDistance;

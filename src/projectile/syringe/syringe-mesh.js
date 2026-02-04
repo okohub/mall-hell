@@ -1,20 +1,18 @@
 // ============================================
-// DINONIZER PROJECTILE MESH - Syringe Visual
+// SYRINGE PROJECTILE MESH
 // ============================================
-// Builds the syringe-shaped projectile for Dinonizer
-// Pure mesh creation (no scene or orchestration)
+// Builds the syringe-shaped projectile mesh
 
-const DinonizerProjectileMesh = {
+const SyringeProjectileMesh = {
     /**
-     * Create syringe projectile group
+     * Create syringe projectile mesh group
      * @param {THREE} THREE - Three.js library
-     * @param {Object} config - Projectile config
-     * @param {Object} context - Visual context (sizes/colors/intensity)
+     * @param {Object} context - Visual context
      * @returns {THREE.Group}
      */
-    createGroup(THREE, config, context) {
+    createMesh(THREE, context) {
         const group = new THREE.Group();
-        const length = (config.length || 0.9) * context.sizeScale;
+        const length = context.length * context.sizeScale;
         const barrelRadius = context.baseSize * context.sizeScale * 0.45;
         const needleRadius = barrelRadius * 0.28;
         const glowColor = context.glowColor || context.baseColor;

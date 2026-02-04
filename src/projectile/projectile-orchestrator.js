@@ -76,6 +76,29 @@ const ProjectileOrchestrator = {
             ? Projectile.visual.GLOW_OPACITY_POWER : 0.3;
     },
 
+    buildVisualContext(config, speed, speedMin, speedMax) {
+        const baseSize = config.size || 0.2;
+        const baseColor = config.color || 0xf39c12;
+        const glowColor = config.glowColor || baseColor;
+        const hasGlow = config.glow !== false;
+        const emissiveMin = config.emissiveIntensity?.min || 0.2;
+        const emissiveMax = config.emissiveIntensity?.max || 0.6;
+
+        const sizeScale = this.sizeScaleBase + (speed / speedMax) * this.sizeScalePower;
+        const emissiveIntensity = emissiveMin + (speed / speedMax) * (emissiveMax - emissiveMin);
+        const glowOpacity = this.glowOpacityBase + (speed / speedMax) * this.glowOpacityPower;
+
+        return {
+            baseSize,
+            baseColor,
+            glowColor,
+            hasGlow,
+            sizeScale,
+            emissiveIntensity,
+            glowOpacity,
+            length: config.length || 1
+        };
+    },
     // References
     projectileData: null,
     scene: null,
@@ -124,20 +147,22 @@ const ProjectileOrchestrator = {
         const config = this.projectileData ? this.projectileData.get(typeId) : null;
         if (!config) return null;
 
+        if (typeof config.createMesh !== 'function' || typeof config.animate !== 'function') {
+            throw new Error(`ProjectileOrchestrator: Projectile '${typeId}' missing createMesh/animate`);
+        }
+
         // Create visual
         let mesh = null;
-        if (THREE && typeof ProjectileMeshFactory !== 'undefined') {
-            mesh = ProjectileMeshFactory.createGroup(THREE, config, {
-                projectileType: config.id || 'stone',
-                speed: speed,
-                speedMin: 60,
-                speedMax: 180,
-                sizeScaleBase: this.sizeScaleBase,
-                sizeScalePower: this.sizeScalePower,
-                glowOpacityBase: this.glowOpacityBase,
-                glowOpacityPower: this.glowOpacityPower
-            });
+        if (THREE) {
+            const context = this.buildVisualContext(config, speed, 60, 180);
+            mesh = config.createMesh(THREE, context);
+            if (!mesh) {
+                throw new Error(`ProjectileOrchestrator: createMesh returned null for '${typeId}'`);
+            }
             mesh.position.set(position.x, position.y, position.z);
+            mesh.userData.projectileConfig = config;
+            mesh.userData.projectileType = typeId;
+            mesh.userData.gravity = config.gravity || 0;
             // Orient projectile to travel direction (align -Z forward with direction)
             const dir = new THREE.Vector3(direction.x, direction.y, direction.z);
             if (dir.lengthSq() > 0.0001) {
@@ -266,7 +291,6 @@ const ProjectileOrchestrator = {
         }
 
         // Could trigger particle effects here
-        // ProjectileMeshFactory.createImpact(...)
     },
 
     /**
@@ -306,19 +330,17 @@ const ProjectileOrchestrator = {
         // Get projectile config from Projectile data definitions
         const projConfig = (typeof Projectile !== 'undefined' && Projectile.get)
             ? Projectile.get(projectileType)
-            : { size: 0.2, color: 0xf39c12, glow: true, geometry: 'sphere' };
-        const group = (typeof ProjectileMeshFactory !== 'undefined')
-            ? ProjectileMeshFactory.createGroup(THREE, projConfig, {
-                projectileType,
-                speed,
-                speedMin,
-                speedMax,
-                sizeScaleBase: this.sizeScaleBase,
-                sizeScalePower: this.sizeScalePower,
-                glowOpacityBase: this.glowOpacityBase,
-                glowOpacityPower: this.glowOpacityPower
-            })
-            : new THREE.Group();
+            : null;
+
+        if (!projConfig || typeof projConfig.createMesh !== 'function' || typeof projConfig.animate !== 'function') {
+            throw new Error(`ProjectileOrchestrator: Projectile '${projectileType}' missing createMesh/animate`);
+        }
+
+        const context = this.buildVisualContext(projConfig, speed, speedMin, speedMax);
+        const group = projConfig.createMesh(THREE, context);
+        if (!group) {
+            throw new Error(`ProjectileOrchestrator: createMesh returned null for '${projectileType}'`);
+        }
 
         // Use provided spawn position (slingshot) or fallback to camera
         if (spawnPos) {
@@ -459,6 +481,13 @@ const ProjectileOrchestrator = {
 
         projectiles.forEach(proj => {
             if (!proj.userData.active) return;
+            if (dt) {
+                const projConfig = proj.userData.projectileConfig;
+                if (!projConfig || typeof projConfig.animate !== 'function') {
+                    throw new Error(`ProjectileOrchestrator: Projectile '${proj.userData.projectileType}' missing animate`);
+                }
+                projConfig.animate(proj, dt);
+            }
 
             // Store previous position for sweep collision
             if (!proj.userData.prevPosition) {

@@ -1,19 +1,18 @@
 // ============================================
-// DART PROJECTILE MESH
+// SOFT BULLET PROJECTILE MESH
 // ============================================
-// Creates tapered dart mesh + optional glow
+// Creates tapered soft bullet mesh + optional glow
 
-const DartProjectileMesh = {
+const SoftBulletProjectileMesh = {
     /**
-     * Create dart projectile group
+     * Create soft bullet projectile mesh group
      * @param {THREE} THREE - Three.js library
-     * @param {Object} config - Projectile config
-     * @param {Object} context - Visual context (sizes/colors/intensity)
+     * @param {Object} context - Visual context
      * @returns {THREE.Group}
      */
-    createGroup(THREE, config, context) {
+    createMesh(THREE, context) {
         const group = new THREE.Group();
-        const length = (config.length || 0.5) * context.sizeScale;
+        const length = context.length * context.sizeScale;
         const geo = new THREE.CylinderGeometry(
             context.baseSize * context.sizeScale * 0.5,
             context.baseSize * context.sizeScale * 0.3,
@@ -38,8 +37,7 @@ const DartProjectileMesh = {
                 transparent: true,
                 opacity: context.glowOpacity
             });
-            const glow = new THREE.Mesh(glowGeo, glowMat);
-            group.add(glow);
+            group.add(new THREE.Mesh(glowGeo, glowMat));
         }
 
         return group;

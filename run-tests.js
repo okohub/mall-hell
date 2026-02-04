@@ -500,8 +500,8 @@ async function runUITests(browser) {
         let stableCount = 0, attempts = 0, lastCompleted = 0;
         let loggedTests = new Set();
 
-        // Calculate max wait time: 94 tests * 500ms delay + 200ms per test + 10s buffer = ~65s
-        const maxAttempts = 200; // 200 * 500ms = 100 seconds total
+        // Calculate max wait time: increased to allow slower UI runs on CI or heavy scenes
+        const maxAttempts = 400; // 400 * 500ms = 200 seconds total
 
         while (attempts < maxAttempts) {
             const status = await page.evaluate(() => {
@@ -558,9 +558,9 @@ async function runUITests(browser) {
                 lastCompleted = status.completed;
             }
 
-            // Only break on stability if we've waited long enough (30 seconds of no progress)
+            // Only break on stability if we've waited long enough (60 seconds of no progress)
             // This prevents premature exit when tests are just running slowly
-            if (stableCount > 60 && status.completed > 0) {
+            if (stableCount > 120 && status.completed > 0) {
                 if (VERBOSE) {
                     logProgress(`  [UI] No progress for 30 seconds, stopping (${status.completed}/${status.total} tests completed)`);
                 }

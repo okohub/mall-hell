@@ -51,7 +51,7 @@ const Weapon = {
             },
 
             projectile: {
-                type: 'dart',
+                type: 'soft-bullet',
                 speed: { min: 120, max: 120 },  // Constant speed
                 damage: 3,           // Flat 3 damage (reliable pistol)
                 count: 1
@@ -73,7 +73,7 @@ const Weapon = {
             },
 
             projectile: {
-                type: 'water',
+                type: 'blob',
                 speed: { min: 45, max: 45 },
                 damage: 2,           // Direct hit damage (was 1.0)
                 count: 1,
@@ -98,7 +98,7 @@ const Weapon = {
             },
 
             projectile: {
-                type: 'laser',
+                type: 'ray',
                 speed: { min: 80, max: 80 },  // Reduced speed (was 120)
                 damage: 1,           // Low damage per shot (was 0.5)
                 count: 1,
@@ -121,7 +121,7 @@ const Weapon = {
             },
 
             projectile: {
-                type: 'dinonizer',
+                type: 'syringe',
                 speed: { min: 95, max: 95 },
                 damage: 0,
                 count: 1

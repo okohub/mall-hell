@@ -53,7 +53,7 @@
         test.it('should have DINONIZER type defined', () => {
             test.assertTrue(Weapon.types.DINONIZER !== undefined, 'DINONIZER should exist');
             test.assertEqual(Weapon.types.DINONIZER.id, 'dinonizer');
-            test.assertEqual(Weapon.types.DINONIZER.projectile.type, 'dinonizer');
+            test.assertEqual(Weapon.types.DINONIZER.projectile.type, 'syringe');
         });
 
         test.it('should get aim profile by id', () => {
@@ -71,6 +71,29 @@
     // WEAPON MANAGER TESTS
     // ==========================================
 
+    test.describe('Weapon Registry', () => {
+        test.it('should expose weapon registry entries', () => {
+            const registry = (typeof globalThis !== 'undefined' && globalThis.WeaponTypeRegistry)
+                ? globalThis.WeaponTypeRegistry
+                : {};
+            const types = ['slingshot', 'watergun', 'nerfgun', 'lasergun', 'dinonizer'];
+            types.forEach((id) => {
+                test.assertTrue(registry[id] !== undefined, `${id} should be registered`);
+            });
+        });
+
+        test.it('registry weapons should expose mesh + animation hooks', () => {
+            const registry = (typeof globalThis !== 'undefined' && globalThis.WeaponTypeRegistry)
+                ? globalThis.WeaponTypeRegistry
+                : {};
+            Object.values(registry).forEach((weapon) => {
+                test.assertTrue(typeof weapon.createFPSMesh === 'function', 'Missing createFPSMesh');
+                test.assertTrue(typeof weapon.createPickupMesh === 'function', 'Missing createPickupMesh');
+                test.assertTrue(typeof weapon.animateFPS === 'function', 'Missing animateFPS');
+            });
+        });
+    });
+
     test.describe('WeaponOrchestrator - Initialization', () => {
         test.it('should have init method', () => {
             test.assertTrue(typeof WeaponOrchestrator.init === 'function');
@@ -78,6 +101,10 @@
 
         test.it('should have register method', () => {
             test.assertTrue(typeof WeaponOrchestrator.register === 'function');
+        });
+
+        test.it('should have registerAllFromRegistry method', () => {
+            test.assertTrue(typeof WeaponOrchestrator.registerAllFromRegistry === 'function');
         });
 
         test.it('should have equip method', () => {
@@ -181,7 +208,7 @@
             const result = WeaponOrchestrator.update(0.1, 1000);
             test.assertTrue(result !== null, 'update() should return fire result');
             test.assertTrue(result.speed > 0, 'Fire result should have speed');
-            test.assertEqual(result.projectileType, 'laser', 'Should have laser projectile type');
+            test.assertEqual(result.projectileType, 'ray', 'Should have ray projectile type');
         });
 
         test.it('should return null from update() when not firing', () => {
@@ -204,7 +231,7 @@
             const result = WeaponOrchestrator.onFireStart(1000);
             test.assertTrue(result !== null, 'onFireStart() should return fire result');
             test.assertTrue(result.speed > 0, 'Fire result should have speed');
-            test.assertEqual(result.projectileType, 'dart', 'Should have dart projectile type');
+            test.assertEqual(result.projectileType, 'soft-bullet', 'Should have soft-bullet projectile type');
         });
 
         test.it('should return no fire result from onFireStart() for charge weapons', () => {
@@ -500,7 +527,7 @@
             LaserGun.onFireStart(1000);
             const result = LaserGun.update(0.1, 1000);
             test.assertTrue(result !== null, 'Should return fire result');
-            test.assertEqual(result.projectileType, 'laser');
+            test.assertEqual(result.projectileType, 'ray');
         });
 
         test.it('should consume ammo when firing', () => {
@@ -554,7 +581,7 @@
         test.it('should return dinonizer projectile', () => {
             const result = Dinonizer.onFireStart(1000);
             test.assertTrue(result !== null, 'Should return fire result');
-            test.assertEqual(result.projectileType, 'dinonizer');
+            test.assertEqual(result.projectileType, 'syringe');
         });
 
         test.it('should have createFPSMesh method', () => {
@@ -876,37 +903,37 @@
             test.assertEqual(Projectile.types.stone.id, 'stone');
         });
 
-        test.it('should have water projectile', () => {
-            test.assertTrue(Projectile.types.water !== undefined);
-            test.assertEqual(Projectile.types.water.id, 'water');
+        test.it('should have blob projectile', () => {
+            test.assertTrue(Projectile.types.blob !== undefined);
+            test.assertEqual(Projectile.types.blob.id, 'blob');
         });
 
-        test.it('should have dart projectile', () => {
-            test.assertTrue(Projectile.types.dart !== undefined);
-            test.assertEqual(Projectile.types.dart.id, 'dart');
+        test.it('should have soft-bullet projectile', () => {
+            test.assertTrue(Projectile.types['soft-bullet'] !== undefined);
+            test.assertEqual(Projectile.types['soft-bullet'].id, 'soft-bullet');
         });
 
-        test.it('should have dinonizer projectile', () => {
-            test.assertTrue(Projectile.types.dinonizer !== undefined);
-            test.assertTrue(Projectile.types.dinonizer.transformToToy, 'Dinonizer should transform to toy');
+        test.it('should have syringe projectile', () => {
+            test.assertTrue(Projectile.types.syringe !== undefined);
+            test.assertTrue(Projectile.types.syringe.transformToToy, 'Syringe should transform to toy');
         });
 
         test.it('should get projectile by type', () => {
             const stone = Projectile.get('stone');
             test.assertTrue(stone !== null);
-            const water = Projectile.get('water');
-            test.assertTrue(water !== null);
-            const dart = Projectile.get('dart');
-            test.assertTrue(dart !== null);
+            const blob = Projectile.get('blob');
+            test.assertTrue(blob !== null);
+            const softBullet = Projectile.get('soft-bullet');
+            test.assertTrue(softBullet !== null);
         });
 
         test.it('should have different properties per type', () => {
             const stone = Projectile.get('stone');
-            const water = Projectile.get('water');
-            const dart = Projectile.get('dart');
+            const blob = Projectile.get('blob');
+            const softBullet = Projectile.get('soft-bullet');
 
-            test.assertNotEqual(stone.color, water.color);
-            test.assertNotEqual(water.color, dart.color);
+            test.assertNotEqual(stone.color, blob.color);
+            test.assertNotEqual(blob.color, softBullet.color);
         });
     });
 

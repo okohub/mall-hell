@@ -4,6 +4,10 @@
 // Complete dinosaur enemy module: delegates to mesh and animation
 // Provides interface for enemy orchestrator
 
+var EnemyTypeRegistry = (typeof globalThis !== 'undefined')
+    ? (globalThis.EnemyTypeRegistry = globalThis.EnemyTypeRegistry || {})
+    : {};
+
 const Dinosaur = {
     // ==========================================
     // IDENTITY
@@ -45,8 +49,8 @@ const Dinosaur = {
      * @param {THREE} THREE - Three.js library
      * @returns {THREE.Group} Dinosaur mesh group
      */
-    createMesh(THREE) {
-        return DinosaurMesh.createMesh(THREE, this.config);
+    createMesh(THREE, config = this.config) {
+        return DinosaurMesh.createEnemy(THREE, config);
     },
 
     // ==========================================
@@ -62,5 +66,37 @@ const Dinosaur = {
     animateWalk(enemyMesh, walkTimer) {
         const walkSpeed = this.config.walkSpeed || 2.5;
         return DinosaurAnimation.animateWalk(enemyMesh, walkTimer, walkSpeed);
+    },
+
+    /**
+     * Apply hit flash effect
+     * @param {THREE.Group} enemyMesh - Enemy mesh
+     * @param {number} intensity - Flash intensity
+     */
+    applyHitFlash(enemyMesh, intensity) {
+        if (typeof DinosaurMesh !== 'undefined' && DinosaurMesh.applyHitFlash) {
+            DinosaurMesh.applyHitFlash(enemyMesh, intensity);
+            return;
+        }
+
+        if (!enemyMesh) return;
+        enemyMesh.traverse((child) => {
+            if (child.material && child.material.emissive) {
+                child.material.emissiveIntensity = intensity;
+            }
+        });
+    },
+
+    /**
+     * Update dinosaur health bar
+     * @param {THREE.Group} healthBar - Health bar mesh
+     * @param {number} percent - Health percent 0-1
+     */
+    updateHealthBar(healthBar, percent) {
+        if (typeof DinosaurMesh !== 'undefined' && DinosaurMesh.updateHealthBar) {
+            DinosaurMesh.updateHealthBar(healthBar, percent);
+        }
     }
 };
+
+EnemyTypeRegistry.DINOSAUR = Dinosaur;

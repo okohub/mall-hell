@@ -3,6 +3,10 @@
 // ============================================
 // Precision beam that turns enemies into collectible dino toys
 
+var WeaponTypeRegistry = (typeof globalThis !== 'undefined')
+    ? (globalThis.WeaponTypeRegistry = globalThis.WeaponTypeRegistry || {})
+    : {};
+
 const Dinonizer = {
     // ==========================================
     // IDENTITY
@@ -167,3 +171,5 @@ const Dinonizer = {
         DinonizerAnimation.updateTransform(weapon, turnRate);
     }
 };
+
+WeaponTypeRegistry.dinonizer = Dinonizer;

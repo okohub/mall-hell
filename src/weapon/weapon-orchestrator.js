@@ -63,6 +63,16 @@ const WeaponOrchestrator = {
     },
 
     /**
+     * Register all weapons from the global registry
+     */
+    registerAllFromRegistry() {
+        const registry = (typeof globalThis !== 'undefined' && globalThis.WeaponTypeRegistry)
+            ? globalThis.WeaponTypeRegistry
+            : {};
+        Object.values(registry).forEach((weapon) => this.register(weapon));
+    },
+
+    /**
      * Equip a weapon by ID
      * @param {string} weaponId - ID of weapon to equip
      * @param {Object} THREE - Three.js library

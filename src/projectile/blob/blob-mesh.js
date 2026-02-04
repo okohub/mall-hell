@@ -1,16 +1,16 @@
 // ============================================
-// DEFAULT PROJECTILE MESH (Stone)
+// BLOB PROJECTILE MESH
 // ============================================
+// Creates water blob mesh + optional glow
 
-const StoneProjectileMesh = {
+const BlobProjectileMesh = {
     /**
-     * Create default projectile group
+     * Create blob projectile mesh group
      * @param {THREE} THREE - Three.js library
-     * @param {Object} config - Projectile config
-     * @param {Object} context - Visual context (sizes/colors/intensity)
+     * @param {Object} context - Visual context
      * @returns {THREE.Group}
      */
-    createGroup(THREE, config, context) {
+    createMesh(THREE, context) {
         const group = new THREE.Group();
         const geo = new THREE.SphereGeometry(context.baseSize * context.sizeScale, 12, 12);
         const projMat = new THREE.MeshStandardMaterial({
@@ -19,8 +19,7 @@ const StoneProjectileMesh = {
             emissiveIntensity: context.emissiveIntensity
         });
 
-        const mesh = new THREE.Mesh(geo, projMat);
-        group.add(mesh);
+        group.add(new THREE.Mesh(geo, projMat));
 
         if (context.hasGlow) {
             const glowGeo = new THREE.SphereGeometry(context.baseSize * 1.5 * context.sizeScale, 12, 12);
@@ -29,8 +28,7 @@ const StoneProjectileMesh = {
                 transparent: true,
                 opacity: context.glowOpacity
             });
-            const glow = new THREE.Mesh(glowGeo, glowMat);
-            group.add(glow);
+            group.add(new THREE.Mesh(glowGeo, glowMat));
         }
 
         return group;
