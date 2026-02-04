@@ -829,6 +829,15 @@
                     const color = (enemy.userData.config || ENEMY_TYPES.CART).visual?.bodyColor || 0xe94560;
                     if (result.transformed) {
                         spawnParticles(closestPoint, 0x7ef9ff, 6);
+
+                        // Remove the original enemy and spawn a toy in its place
+                        const spawnX = enemy.position.x;
+                        const spawnZ = enemy.position.z;
+                        enemy.userData.active = false;
+                        if (enemy.parent) {
+                            enemy.parent.remove(enemy);
+                        }
+                        createEnemy(spawnX, spawnZ, 'TOY');
                     } else if (result.destroyed) {
                         if (enemyType === 'dinosaur') {
                             PickupOrchestrator.spawn('dinonizer', {

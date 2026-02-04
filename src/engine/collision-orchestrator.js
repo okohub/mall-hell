@@ -941,8 +941,7 @@ const CollisionOrchestrator = {
                                 ? Projectile.get(proj.userData.projectileType) : null);
 
                         // Transform enemies into toys (special weapon)
-                        if (projConfig?.transformToToy && typeof EnemyOrchestrator !== 'undefined') {
-                            EnemyOrchestrator.transformToToy?.(enemy, THREE);
+                        if (projConfig?.transformToToy) {
                             if (onEnemyHit) {
                                 onEnemyHit(enemy, damage, closestPoint, {
                                     hit: true,
