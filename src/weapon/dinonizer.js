@@ -20,8 +20,8 @@ const Dinonizer = {
         return {
             ...baseConfig,
             ammo: {
-                max: 25,
-                current: 25,
+                max: 10,
+                current: 10,
                 consumePerShot: 1
             }
         };
@@ -32,11 +32,11 @@ const Dinonizer = {
     // ==========================================
 
     theme: {
-        body: 0x2c3e50,
-        accent: 0x1abc9c,
-        core: 0x00f5ff,
-        coreGlow: 0x7ef9ff,
-        grip: 0x1a1a1a
+        body: 0x4d3b1f,
+        accent: 0xffc857,
+        core: 0xffd166,
+        coreGlow: 0xfff1a8,
+        grip: 0x2b1d0f
     },
 
     // ==========================================
@@ -45,7 +45,7 @@ const Dinonizer = {
 
     state: {
         lastFireTime: 0,
-        ammo: 25,
+        ammo: 10,
         fireAnimProgress: 0
     },
 

@@ -548,7 +548,7 @@
         });
 
         test.it('should have limited ammo', () => {
-            test.assertEqual(Dinonizer.config.ammo.max, 25);
+            test.assertEqual(Dinonizer.config.ammo.max, 10);
         });
 
         test.it('should return dinonizer projectile', () => {
