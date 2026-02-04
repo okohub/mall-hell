@@ -75,7 +75,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## Task 2: Update Game Design Documentation
 
 **Files:**
-- Modify: `.claude/docs/GAME_DESIGN.md:88-98`
+- Modify: `docs/GAME_DESIGN.md:88-98`
 
 **Step 1: Replace scoring table**
 
@@ -100,7 +100,7 @@ Update the scoring section with new tier structure:
 
 **Step 2: Update game overview if needed**
 
-Check if the overview section at `.claude/docs/GAME_DESIGN.md:3-11` mentions the chaos theme. If it does, update to reflect hell-descent theme:
+Check if the overview section at `docs/GAME_DESIGN.md:3-11` mentions the chaos theme. If it does, update to reflect hell-descent theme:
 
 ```markdown
 | **Genre** | Arcade Score-Chaser / Hell Crawler |
@@ -110,7 +110,7 @@ Check if the overview section at `.claude/docs/GAME_DESIGN.md:3-11` mentions the
 **Step 3: Commit**
 
 ```bash
-git add .claude/docs/GAME_DESIGN.md
+git add docs/GAME_DESIGN.md
 git commit -m "docs: update score ratings to match hell-descent theme
 
 - Replace 6-tier chaos theme with 8-tier hell-descent
@@ -180,7 +180,7 @@ No commit needed. Confirm all integration points work correctly with new thresho
 ## Success Criteria
 
 - [ ] `src/ui/ui.js` has 8 tiers with correct thresholds
-- [ ] `.claude/docs/GAME_DESIGN.md` documents new system
+- [ ] `docs/GAME_DESIGN.md` documents new system
 - [ ] `UI.getScoreRating()` returns correct ratings for all thresholds
 - [ ] Game over screen displays new ratings correctly
 - [ ] No console errors during gameplay

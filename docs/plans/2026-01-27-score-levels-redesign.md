@@ -55,7 +55,7 @@ Rating names should blend:
 
 **Files to update:**
 - `src/ui/ui.js` - Update `scoreRatings` array
-- `.claude/docs/GAME_DESIGN.md` - Update scoring table
+- `docs/GAME_DESIGN.md` - Update scoring table
 - Any tests that verify score ratings
 
 **Data structure:**

@@ -59,6 +59,28 @@ animateFPS(refs, dt) {
 - **Reusability**: Mesh/animation modules are pure functions
 - **Maintainability**: Change mesh without touching animation or behavior
 
+### Projectile Domain Pattern (Registry + Per-Type API)
+
+Projectiles use a registry-first pattern with per-type folders. Each projectile type exposes a **single API file** that delegates to its mesh and animation modules.
+
+| File | Purpose | Notes |
+|------|---------|-------|
+| `projectile.js` | System constants + registry access | Uses `globalThis.ProjectileTypeRegistry` |
+| `projectile-orchestrator.js` | Spawning + update loop | **Fail-fast** if hooks missing |
+| `projectile/<type>/<type>.js` | **Public API** for the type | Registers to registry, delegates to mesh/animation |
+| `projectile/<type>/<type>-mesh.js` | Stateless mesh creation | `createMesh(THREE, context)` |
+| `projectile/<type>/<type>-animation.js` | Stateless animation | `animate(mesh, dt)` |
+| `projectile.test.js` | Unit tests | Asserts hooks exist + fail-fast |
+
+**Key rules**:
+1. The type file is the only public API for a projectile.
+2. Mesh and animation live in separate files.
+3. Registry entries must define `createMesh` and `animate`.
+4. Orchestrator throws if hooks are missing.
+
+**Script load order (non-modules)**:
+Mesh → Animation → Type for each projectile, then `projectile.js` → `projectile-orchestrator.js`.
+
 ## Directory Structure
 
 ```
@@ -121,6 +143,7 @@ Consider true DDD if you need:
 5. **Single source of truth** - Config data centralized in `<domain>.js` files
 6. **Stateless helpers** - Mesh and animation modules receive all data as parameters
 7. **Module singletons** - Domains are singleton modules (not class instances)
+8. **Registry-driven types** - Projectile types register into a single global registry
 
 ## Script Loading Order
 
@@ -130,6 +153,7 @@ In `index.html`, load in this order:
 3. `src/ui/ui.js` → `ui-orchestrator.js`
 4. `src/engine/*` (engine.js first, then *-orchestrator.js)
 5. Domain files (data → theme → mesh → orchestrator)
+6. **Projectile special case**: mesh → animation → type for each projectile, then `projectile.js` → `projectile-orchestrator.js`
 
 ## Key Systems
 

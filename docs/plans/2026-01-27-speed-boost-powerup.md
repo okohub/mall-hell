@@ -1695,8 +1695,8 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 
 **Files:**
 - Modify: `CLAUDE.md`
-- Modify: `.claude/docs/GAME_DESIGN.md`
-- Modify: `.claude/docs/ARCHITECTURE.md`
+- Modify: `docs/GAME_DESIGN.md`
+- Modify: `docs/ARCHITECTURE.md`
 
 **Step 1: Update CLAUDE.md**
 
@@ -1713,7 +1713,7 @@ Modify `CLAUDE.md` - add to domain quick reference table:
 
 **Step 2: Update GAME_DESIGN.md**
 
-Modify `.claude/docs/GAME_DESIGN.md` - add new section after Weapons:
+Modify `docs/GAME_DESIGN.md` - add new section after Weapons:
 
 ```markdown
 ---
@@ -1738,7 +1738,7 @@ Modify `.claude/docs/GAME_DESIGN.md` - add new section after Weapons:
 
 **Step 3: Update ARCHITECTURE.md**
 
-Modify `.claude/docs/ARCHITECTURE.md` - add powerup to directory structure:
+Modify `docs/ARCHITECTURE.md` - add powerup to directory structure:
 
 ```markdown
 src/
@@ -1758,7 +1758,7 @@ src/
 **Step 4: Commit documentation updates**
 
 ```bash
-git add CLAUDE.md .claude/docs/GAME_DESIGN.md .claude/docs/ARCHITECTURE.md
+git add CLAUDE.md docs/GAME_DESIGN.md docs/ARCHITECTURE.md
 git commit -m "docs: add power-up system documentation
 
 - Add powerup domain to CLAUDE.md quick reference
@@ -1881,7 +1881,7 @@ Implementation is complete when:
 - `src/ui/ui-orchestrator.js` - Timer display
 - `index.html` - Script loading, FOV effect, game loop integration
 - `src/styles/main.css` - Timer styles
-- `CLAUDE.md`, `.claude/docs/GAME_DESIGN.md`, `.claude/docs/ARCHITECTURE.md` - Documentation
+- `CLAUDE.md`, `docs/GAME_DESIGN.md`, `docs/ARCHITECTURE.md` - Documentation
 
 **Test Files (3):**
 - `src/powerup/powerup.test.js`

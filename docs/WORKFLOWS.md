@@ -276,7 +276,7 @@ updateMyElement(value) {
 | `package.json` | Line 3, `version` field | `"5.1.0"` |
 | `CLAUDE.md` | Line 3, header | `**Version 5.1**` |
 | `README.md` | Version History section | `- **v5.1** - ...` |
-| `.claude/docs/GAME_DESIGN.md` | Overview table | `| **Version** | 5.1 |` |
+| `docs/GAME_DESIGN.md` | Overview table | `| **Version** | 5.1 |` |
 
 ### Step 2: Run full test suite
 ```bash

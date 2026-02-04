@@ -18,10 +18,10 @@
 
 | Need to... | Read |
 |------------|------|
-| Understand codebase structure | [Architecture](.claude/docs/ARCHITECTURE.md) |
-| Know game mechanics/enemies/weapons | [Game Design](.claude/docs/GAME_DESIGN.md) |
-| Add enemy, weapon, UI, fix bug | [Workflows](.claude/docs/WORKFLOWS.md) |
-| Write or run tests | [Testing](.claude/docs/TESTING.md) |
+| Understand codebase structure | [Architecture](docs/ARCHITECTURE.md) |
+| Know game mechanics/enemies/weapons | [Game Design](docs/GAME_DESIGN.md) |
+| Add enemy, weapon, UI, fix bug | [Workflows](docs/WORKFLOWS.md) |
+| Write or run tests | [Testing](docs/TESTING.md) |
 
 ## Development Rules
 
@@ -37,6 +37,7 @@
 10. **Damage calculations in domain files** - collision-orchestrator reads damage from userData, never calculates it
 11. **Weapon fire() returns damage** - Must pass through createMesh options chain to projectile userData
 12. **Status effects use userData timestamps** - Store `slowedUntil`, check `Date.now() < timestamp`, auto-expire
+13. **Projectile registry pattern** - Each projectile type is a folder; its type file is the public API and must register `createMesh` + `animate`
 
 ## Domain Quick Reference
 
