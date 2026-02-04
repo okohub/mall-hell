@@ -106,13 +106,13 @@ const Projectile = {
 
         dinonizer: {
             id: 'dinonizer',
-            geometry: 'cylinder',  // Focused energy beam
+            geometry: 'cylinder',  // Syringe silhouette
             size: 0.16,
             length: 0.9,
-            color: 0x00f5ff,       // Bright cyan
+            color: 0xf2f6ff,       // Syringe barrel (cool white)
             glow: true,
-            glowColor: 0x7ef9ff,
-            emissiveIntensity: { min: 0.9, max: 1.4 },
+            glowColor: 0xff7b6a,   // Warm fluid tint
+            emissiveIntensity: { min: 0.5, max: 1.1 },
             gravity: 0,
             lifetime: 1600,
             piercing: false,

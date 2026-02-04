@@ -305,40 +305,98 @@
     });
 
     // ==========================================
-    // PROJECTILE VISUAL TESTS
+    // PROJECTILE MESH FACTORY TESTS
     // ==========================================
 
-    test.describe('Projectile Visual', () => {
-        test.it('should have createMesh method', () => {
-            test.assertTrue(typeof ProjectileVisual.createMesh === 'function');
+    test.describe('Projectile Mesh Factory', () => {
+        test.it('should have createGroup method', () => {
+            test.assertTrue(typeof ProjectileMeshFactory.createGroup === 'function');
         });
 
-        test.it('should have createGlowLight method', () => {
-            test.assertTrue(typeof ProjectileVisual.createGlowLight === 'function');
-        });
-
-        test.it('should have createProjectileGroup method', () => {
-            test.assertTrue(typeof ProjectileVisual.createProjectileGroup === 'function');
-        });
-
-        test.it('should create mesh with THREE', () => {
+        test.it('should create group with THREE', () => {
             if (typeof THREE === 'undefined') {
                 test.skip('THREE.js not available');
                 return;
             }
             const config = Projectile.get('stone');
-            const mesh = ProjectileVisual.createMesh(THREE, config, 1.0);
-            test.assertTrue(mesh instanceof THREE.Mesh);
+            const group = ProjectileMeshFactory.createGroup(THREE, config, {
+                projectileType: 'stone',
+                speed: 100,
+                speedMin: 60,
+                speedMax: 180,
+                sizeScaleBase: 0.8,
+                sizeScalePower: 0.4,
+                glowOpacityBase: 0.2,
+                glowOpacityPower: 0.3
+            });
+            test.assertTrue(group instanceof THREE.Group);
+            const mesh = group.children.find(child => child.isMesh);
+            test.assertTrue(mesh !== undefined);
+            test.assertEqual(mesh.geometry.type, 'SphereGeometry');
         });
 
-        test.it('should create glow light for glowing projectile', () => {
+        test.it('should create laser projectile group', () => {
             if (typeof THREE === 'undefined') {
                 test.skip('THREE.js not available');
                 return;
             }
-            const config = Projectile.get('stone');
-            const light = ProjectileVisual.createGlowLight(THREE, config, 1.0);
-            test.assertTrue(light instanceof THREE.PointLight);
+            const config = Projectile.get('laser');
+            const group = ProjectileMeshFactory.createGroup(THREE, config, {
+                projectileType: 'laser',
+                speed: 120,
+                speedMin: 60,
+                speedMax: 180,
+                sizeScaleBase: 0.8,
+                sizeScalePower: 0.4,
+                glowOpacityBase: 0.2,
+                glowOpacityPower: 0.3
+            });
+            test.assertTrue(group instanceof THREE.Group);
+            test.assertTrue(group.children.length > 0);
+            const mesh = group.children.find(child => child.isMesh);
+            test.assertTrue(mesh !== undefined);
+            test.assertEqual(mesh.geometry.type, 'CylinderGeometry');
+        });
+
+        test.it('should create dart projectile group', () => {
+            if (typeof THREE === 'undefined') {
+                test.skip('THREE.js not available');
+                return;
+            }
+            const config = Projectile.get('dart');
+            const group = ProjectileMeshFactory.createGroup(THREE, config, {
+                projectileType: 'dart',
+                speed: 100,
+                speedMin: 60,
+                speedMax: 180,
+                sizeScaleBase: 0.8,
+                sizeScalePower: 0.4,
+                glowOpacityBase: 0.2,
+                glowOpacityPower: 0.3
+            });
+            test.assertTrue(group instanceof THREE.Group);
+            test.assertTrue(group.children.length > 0);
+        });
+
+        test.it('should create dinonizer projectile group', () => {
+            if (typeof THREE === 'undefined') {
+                test.skip('THREE.js not available');
+                return;
+            }
+            const config = Projectile.get('dinonizer');
+            const group = ProjectileMeshFactory.createGroup(THREE, config, {
+                projectileType: 'dinonizer',
+                speed: 140,
+                speedMin: 60,
+                speedMax: 180,
+                sizeScaleBase: 0.8,
+                sizeScalePower: 0.4,
+                glowOpacityBase: 0.2,
+                glowOpacityPower: 0.3
+            });
+            test.assertTrue(group instanceof THREE.Group);
+            test.assertTrue(group.children.length > 0);
+            test.assertTrue(group.children.length >= 5);
         });
     });
 

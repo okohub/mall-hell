@@ -126,9 +126,24 @@ const ProjectileOrchestrator = {
 
         // Create visual
         let mesh = null;
-        if (THREE && typeof ProjectileVisual !== 'undefined') {
-            mesh = ProjectileVisual.createProjectileGroup(THREE, config, power);
+        if (THREE && typeof ProjectileMeshFactory !== 'undefined') {
+            mesh = ProjectileMeshFactory.createGroup(THREE, config, {
+                projectileType: config.id || 'stone',
+                speed: speed,
+                speedMin: 60,
+                speedMax: 180,
+                sizeScaleBase: this.sizeScaleBase,
+                sizeScalePower: this.sizeScalePower,
+                glowOpacityBase: this.glowOpacityBase,
+                glowOpacityPower: this.glowOpacityPower
+            });
             mesh.position.set(position.x, position.y, position.z);
+            // Orient projectile to travel direction (align -Z forward with direction)
+            const dir = new THREE.Vector3(direction.x, direction.y, direction.z);
+            if (dir.lengthSq() > 0.0001) {
+                dir.normalize();
+                mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, -1), dir);
+            }
             if (this.scene) {
                 this.scene.add(mesh);
             }
@@ -251,7 +266,7 @@ const ProjectileOrchestrator = {
         }
 
         // Could trigger particle effects here
-        // ProjectileVisual.createImpact(...)
+        // ProjectileMeshFactory.createImpact(...)
     },
 
     /**
@@ -288,85 +303,22 @@ const ProjectileOrchestrator = {
             projectileType = 'stone'
         } = options;
 
-        const group = new THREE.Group();
-
         // Get projectile config from Projectile data definitions
         const projConfig = (typeof Projectile !== 'undefined' && Projectile.get)
             ? Projectile.get(projectileType)
             : { size: 0.2, color: 0xf39c12, glow: true, geometry: 'sphere' };
-
-        const baseSize = projConfig.size || 0.2;
-        const baseColor = projConfig.color || 0xf39c12;
-        const hasGlow = projConfig.glow !== false;
-        const emissiveMin = projConfig.emissiveIntensity?.min || 0.2;
-        const emissiveMax = projConfig.emissiveIntensity?.max || 0.6;
-        const geometry = projConfig.geometry || 'sphere';
-
-        // Size scales slightly with power
-        const sizeScale = this.sizeScaleBase + (speed / speedMax) * this.sizeScalePower;
-
-        // Create geometry based on type
-        let geo;
-        const isLaser = projectileType === 'laser';
-        const isDart = projectileType === 'dart';
-
-        if (isLaser && projConfig.length) {
-            // Laser beam: thin, uniform width, very elongated
-            const laserRadius = baseSize * sizeScale * 0.4;
-            const laserLength = projConfig.length * sizeScale * 1.5;
-            geo = new THREE.CylinderGeometry(laserRadius, laserRadius, laserLength, 8);
-        } else if (isDart && projConfig.length) {
-            // Dart-style: tapered elongated projectile
-            geo = new THREE.CylinderGeometry(baseSize * sizeScale * 0.5, baseSize * sizeScale * 0.3, projConfig.length * sizeScale, 8);
-        } else if (geometry === 'cylinder' && projConfig.length) {
-            // Generic cylinder: uniform width
-            geo = new THREE.CylinderGeometry(baseSize * sizeScale * 0.5, baseSize * sizeScale * 0.5, projConfig.length * sizeScale, 8);
-        } else {
-            // Default sphere
-            geo = new THREE.SphereGeometry(baseSize * sizeScale, 12, 12);
-        }
-
-        const emissiveIntensity = emissiveMin + (speed / speedMax) * (emissiveMax - emissiveMin);
-        const projMat = new THREE.MeshStandardMaterial({
-            color: baseColor,
-            emissive: hasGlow ? (projConfig.glowColor || baseColor) : 0x000000,
-            emissiveIntensity: isLaser ? emissiveIntensity * 1.5 : emissiveIntensity  // Brighter for laser
-        });
-        const projMesh = new THREE.Mesh(geo, projMat);
-
-        // Rotate cylinder to face forward
-        if (geometry === 'cylinder' || isLaser || isDart) {
-            projMesh.rotation.x = Math.PI / 2;
-        }
-
-        group.add(projMesh);
-
-        // Glow - brighter for faster projectiles (if enabled)
-        if (hasGlow) {
-            const glowColor = projConfig.glowColor || baseColor;
-            let glowGeo;
-            if (isLaser) {
-                // Elongated glow for laser beams
-                const glowRadius = baseSize * 2.5 * sizeScale;
-                const glowLength = projConfig.length * sizeScale * 1.3;
-                glowGeo = new THREE.CylinderGeometry(glowRadius, glowRadius, glowLength, 8);
-            } else {
-                // Spherical glow for other projectiles
-                glowGeo = new THREE.SphereGeometry(baseSize * 1.5 * sizeScale, 12, 12);
-            }
-            const glowMat = new THREE.MeshBasicMaterial({
-                color: glowColor,
-                transparent: true,
-                opacity: isLaser
-                    ? (this.glowOpacityBase + (speed / speedMax) * this.glowOpacityPower) * 1.5
-                    : this.glowOpacityBase + (speed / speedMax) * this.glowOpacityPower
-            });
-            const glow = new THREE.Mesh(glowGeo, glowMat);
-            if (isLaser) {
-                glow.rotation.x = Math.PI / 2;  // Match laser orientation
-            }
-            group.add(glow);
-        }
+        const group = (typeof ProjectileMeshFactory !== 'undefined')
+            ? ProjectileMeshFactory.createGroup(THREE, projConfig, {
+                projectileType,
+                speed,
+                speedMin,
+                speedMax,
+                sizeScaleBase: this.sizeScaleBase,
+                sizeScalePower: this.sizeScalePower,
+                glowOpacityBase: this.glowOpacityBase,
+                glowOpacityPower: this.glowOpacityPower
+            })
+            : new THREE.Group();
 
         // Use provided spawn position (slingshot) or fallback to camera
         if (spawnPos) {
@@ -374,6 +326,12 @@ const ProjectileOrchestrator = {
         } else if (fallbackCamera) {
             group.position.copy(fallbackCamera.position);
             group.position.y -= 0.5;
+        }
+
+        // Orient projectile to travel direction (align -Z forward with direction)
+        if (direction && direction.lengthSq && direction.lengthSq() > 0.0001) {
+            const dir = direction.clone().normalize();
+            group.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, -1), dir);
         }
 
         // Calculate power (0-1) based on speed
