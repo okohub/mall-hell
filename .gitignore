@@ -34,6 +34,8 @@ npm-debug.log*
 .env.local
 .test-output/
 .playtest-output/
+/output/
+/output/playwright/
 
 # Local progress tracker
 progress.md
