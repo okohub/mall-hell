@@ -6,7 +6,7 @@
 
 const Engine = {
     // Version
-    version: '1.0.0',
+    version: '5.10.0',
 
     // ==========================================
     // GAME STATES
