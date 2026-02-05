@@ -173,6 +173,71 @@
         }
     );
 
+    runner.addTest('dinosaur-boss-safe-spawn-distance', 'Boss Enemy', 'Boss does not spawn on player',
+        'Verifies boss spawn retries when candidate position is too close to the player cart',
+        async () => {
+            await helpers.bootGameForIntegration();
+
+            const EnemyOrchestrator = runner.gameWindow.EnemyOrchestrator;
+            const SpawnOrchestrator = runner.gameWindow.SpawnOrchestrator;
+            const GameSession = runner.gameWindow.GameSession;
+            const PlayerOrchestrator = runner.gameWindow.PlayerOrchestrator;
+            const internals = runner.gameWindow.__gameInternals;
+
+            if (!EnemyOrchestrator || !SpawnOrchestrator || !GameSession || !PlayerOrchestrator || !internals) {
+                throw new Error('Required game modules not available for boss spawn distance test');
+            }
+
+            // Center of default starting room for deterministic distance checks.
+            PlayerOrchestrator.position = { x: 45, z: 75 };
+            if (internals.playerCart) {
+                internals.playerCart.position.set(45, 0, 75);
+            }
+
+            const originalFindValidPosition = SpawnOrchestrator.findValidPosition;
+            let findCallCount = 0;
+            SpawnOrchestrator.findValidPosition = () => {
+                findCallCount += 1;
+                if (findCallCount === 1) {
+                    return { x: 45, z: 75 }; // Unsafe: exact player position.
+                }
+                return { x: 45, z: 60 }; // Safe fallback candidate.
+            };
+
+            try {
+                EnemyOrchestrator._dinoSpawnCount = 0;
+                GameSession.setScore(5000);
+
+                if (runner.gameWindow.manualUpdate) {
+                    runner.gameWindow.manualUpdate(0.016);
+                }
+                await runner.wait(50);
+
+                const enemies = internals.getEnemies();
+                const dinos = enemies.filter((e) => e?.userData?.config?.id === 'dinosaur');
+                if (dinos.length === 0) {
+                    throw new Error('Expected a dinosaur boss to spawn at 5000 score');
+                }
+
+                const dino = dinos[dinos.length - 1];
+                const dx = dino.position.x - PlayerOrchestrator.position.x;
+                const dz = dino.position.z - PlayerOrchestrator.position.z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+                const dinoCollisionRadius = dino.userData?.config?.collisionRadius || 5.5;
+
+                if (dist <= dinoCollisionRadius + 1.0) {
+                    throw new Error(`Dinosaur spawned too close (${dist.toFixed(2)} <= ${dinoCollisionRadius + 1.0})`);
+                }
+
+                if (findCallCount < 2) {
+                    throw new Error('Expected spawn search to retry after unsafe boss spawn position');
+                }
+            } finally {
+                SpawnOrchestrator.findValidPosition = originalFindValidPosition;
+            }
+        }
+    );
+
     // Test 7: Dinosaur takes multiple hits
     runner.addTest('dinosaur-takes-multiple-hits', 'Boss Enemy', 'Boss has 10 health',
         'Verifies dinosaur boss requires multiple hits to kill',

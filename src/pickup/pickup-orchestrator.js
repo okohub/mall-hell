@@ -469,6 +469,24 @@ const PickupOrchestrator = {
             };
         }
 
+        // Extra-time pickup - adds to match timer (not a timed effect)
+        if (config.isTimeBonus) {
+            const bonusSeconds = config.timeBonusSeconds || 0;
+            const timeAdded = (typeof GameSession !== 'undefined' && typeof GameSession.addTime === 'function')
+                ? GameSession.addTime(bonusSeconds)
+                : 0;
+
+            return {
+                switched: false,
+                ammoAdded: 0,
+                weaponId: currentWeaponId,
+                isPowerup: true,
+                powerupType: config.id,
+                isTimeBonus: true,
+                timeAdded: timeAdded
+            };
+        }
+
         // Power-up pickup - activate effect
         if (config.isPowerup) {
             if (typeof PowerUpOrchestrator !== 'undefined') {

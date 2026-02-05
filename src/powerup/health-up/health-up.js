@@ -1,14 +1,14 @@
 // ============================================
-// HEALTH HEART - Type Definition
+// HEALTH UP - Type Definition
 // ============================================
 
 var PowerUpTypeRegistry = (typeof globalThis !== 'undefined')
     ? (globalThis.PowerUpTypeRegistry = globalThis.PowerUpTypeRegistry || {})
     : {};
 
-const HealthHeart = {
-    id: 'health_heart',
-    name: 'Health Heart',
+const HealthUp = {
+    id: 'health_up',
+    name: 'Health Up',
     isPowerup: true,
     isHealth: true,
     healAmount: 20,
@@ -22,8 +22,8 @@ const HealthHeart = {
         scale: 1.8
     },
     createPickupMesh(THREE, instance) {
-        return HealthHeartMesh.createPickupMesh(THREE, instance.config);
+        return HealthUpMesh.createPickupMesh(THREE, instance.config);
     }
 };
 
-PowerUpTypeRegistry.HEALTH_HEART = HealthHeart;
+PowerUpTypeRegistry.HEALTH_UP = HealthUp;

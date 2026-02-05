@@ -185,8 +185,10 @@
     <!-- PowerUp Domain -->
     <script src="./src/powerup/speed-boost/speed-boost-mesh.js"></script>
     <script src="./src/powerup/speed-boost/speed-boost.js"></script>
-    <script src="./src/powerup/health-heart/health-heart-mesh.js"></script>
-    <script src="./src/powerup/health-heart/health-heart.js"></script>
+    <script src="./src/powerup/extra-time/extra-time-mesh.js"></script>
+    <script src="./src/powerup/extra-time/extra-time.js"></script>
+    <script src="./src/powerup/health-up/health-up-mesh.js"></script>
+    <script src="./src/powerup/health-up/health-up.js"></script>
     <script src="./src/powerup/powerup.js"></script>
     <script src="./src/powerup/powerup-orchestrator.js"></script>
 
@@ -635,6 +637,52 @@
             }
         }
 
+        function findSafeBossSpawnPosition(room, minDistanceFromPlayer, minSpacing = 5) {
+            if (!room) return null;
+
+            const playerPos = PlayerOrchestrator.position || { x: 0, z: 0 };
+            const minDistanceSq = minDistanceFromPlayer * minDistanceFromPlayer;
+            const attempts = 12;
+
+            for (let i = 0; i < attempts; i++) {
+                const pos = SpawnOrchestrator.findValidPosition(room, Room.structure, [], minSpacing, 1);
+                if (!pos) continue;
+
+                const dx = pos.x - playerPos.x;
+                const dz = pos.z - playerPos.z;
+                if ((dx * dx + dz * dz) >= minDistanceSq) {
+                    return pos;
+                }
+            }
+
+            return null;
+        }
+
+        function spawnDinoBossSafely(anchorRoom) {
+            if (!anchorRoom) return false;
+
+            const dinoCollisionRadius = Enemy?.types?.DINOSAUR?.collisionRadius || EnemyOrchestrator.collisionDistance;
+            const minSafeDistance = Math.max(10, dinoCollisionRadius + 2.5);
+            const candidateRooms = (typeof RoomOrchestrator.getRoomWithAdjacent === 'function')
+                ? RoomOrchestrator.getRoomWithAdjacent(anchorRoom, mallGrid)
+                : [anchorRoom];
+
+            for (const room of candidateRooms) {
+                if (!room || room.theme === 'ENTRANCE') continue;
+
+                const pos = findSafeBossSpawnPosition(room, minSafeDistance, 5);
+                if (!pos) continue;
+
+                const dino = createEnemy(pos.x, pos.z, 'DINOSAUR');
+                if (dino) {
+                    UIOrchestrator.showBossWarning('DINO BOSS!');
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         function update(dt) {
             if (!StateOrchestrator.is('PLAYING') || isFrozen) return;
 
@@ -713,6 +761,13 @@
                     UIOrchestrator.showPickupNotification?.(p.config.name);
                     AnalyticsOrchestrator.weaponSwitch(r.weaponId, prevWeapon);
                     AnalyticsOrchestrator.pickupCollected('weapon', r.weaponId);
+                } else if (r?.isTimeBonus) {
+                    const roundedTime = Math.round((r.timeAdded || 0) * 10) / 10;
+                    const displayTime = Number.isInteger(roundedTime)
+                        ? String(roundedTime)
+                        : roundedTime.toFixed(1);
+                    UIOrchestrator.showPickupNotification?.(`+${displayTime}s TIME`);
+                    AnalyticsOrchestrator.pickupCollected('time_bonus', p.config.id);
                 } else if (r?.ammoAdded > 0) {
                     UIOrchestrator.showPickupNotification?.(`+${r.ammoAdded} Ammo`);
                     AnalyticsOrchestrator.pickupCollected(p.config.isAmmo ? 'ammo' : 'weapon_ammo', p.config.id);
@@ -731,22 +786,6 @@
                 WeaponOrchestrator.getMinTension(),
                 WeaponOrchestrator.getChargeRate()
             );
-            // Count enemies by type
-            const activeEnemies = enemies.filter(e => e.userData.active);
-            const enemyCounts = {
-                skeleton: activeEnemies.filter(e => e.userData.type === 'SKELETON').length,
-                dinosaur: activeEnemies.filter(e => e.userData.type === 'DINOSAUR').length,
-                toy: activeEnemies.filter(e => e.userData.type === 'TOY').length
-            };
-            UIOrchestrator.updateEnemyCount(enemyCounts);
-            // Update minimap with LIVE enemy positions
-            UIOrchestrator.updateMinimap({
-                currentRoom,
-                enemies: activeEnemies,
-                gridOrchestrator: mallGrid,
-                roomConfig: Room.structure
-            });
-
             // Entity updates
             ProjectileOrchestrator.updateMeshArray(projectiles, { dt, cameraPosition: camera.position });
 
@@ -767,9 +806,16 @@
                     AnalyticsOrchestrator.enemyKill(enemyType, points);
                     enemy.userData.active = false;
                 },
-                collisionCheck: (nX, nZ, oX, oZ) => CollisionOrchestrator.checkAllCollisions(nX, nZ, oX, oZ, { gridOrchestrator: mallGrid, roomConfig: Room.structure, obstacles, shelves, playerRadius: 1.5 }),
+                collisionCheck: (nX, nZ, oX, oZ, enemyRadius = 1.5) =>
+                    CollisionOrchestrator.checkAllCollisions(nX, nZ, oX, oZ, {
+                        gridOrchestrator: mallGrid,
+                        roomConfig: Room.structure,
+                        obstacles,
+                        shelves,
+                        playerRadius: enemyRadius
+                    }),
                 hasLineOfSight: (fX, fZ, tX, tZ) => CollisionOrchestrator.hasLineOfSight(fX, fZ, tX, tZ, mallGrid, Room.structure),
-                clampToRoomBounds: (pos) => CollisionOrchestrator.clampToRoomBounds(pos, mallGrid, Room.structure, 1.5),
+                clampToRoomBounds: (pos, enemyRadius = 1.5) => CollisionOrchestrator.clampToRoomBounds(pos, mallGrid, Room.structure, enemyRadius),
                 obstacles,
                 shelves
             });
@@ -789,12 +835,10 @@
             if (EnemyOrchestrator.checkDinoSpawn(GameSession.getScore())) {
                 // Spawn dino in player's current room or nearby
                 const spawnRoom = currentRoom || mallGrid.getRoomAtWorld(PlayerOrchestrator.position.x, PlayerOrchestrator.position.z);
-                if (spawnRoom && spawnRoom.theme !== 'ENTRANCE') {
-                    const pos = SpawnOrchestrator.findValidPosition(spawnRoom, Room.structure, [], 5);
-                    if (pos) {
-                        const dino = createEnemy(pos.x, pos.z, 'DINOSAUR');
-                        if (dino) UIOrchestrator.showBossWarning('DINO BOSS!');
-                    }
+                const spawned = spawnDinoBossSafely(spawnRoom);
+                if (!spawned && EnemyOrchestrator._dinoSpawnCount > 0) {
+                    // Retry on subsequent frames if no safe spawn point was found this frame.
+                    EnemyOrchestrator._dinoSpawnCount -= 1;
                 }
             }
 
@@ -854,7 +898,7 @@
                             const dropY = (typeof Pickup !== 'undefined' && Pickup.spawn?.heightOffset)
                                 ? Pickup.spawn.heightOffset
                                 : 1.8;
-                            PickupOrchestrator.spawn('health_heart', {
+                            PickupOrchestrator.spawn('health_up', {
                                 x: enemy.position.x,
                                 y: dropY,
                                 z: enemy.position.z
@@ -884,6 +928,30 @@
             enemies.length = 0; enemies.push(...c.enemies);
             obstacles.length = 0; obstacles.push(...c.obstacles);
             particles.length = 0; particles.push(...c.particles);
+
+            // Count enemies by type from finalized state (after collection/transforms/cleanup)
+            const activeEnemies = enemies.filter((e) => e?.userData?.active);
+            const enemyCounts = { skeleton: 0, dinosaur: 0, toy: 0 };
+            activeEnemies.forEach((enemy) => {
+                const type = enemy?.userData?.type;
+                const configId = enemy?.userData?.config?.id;
+                if (type === 'SKELETON' || configId === 'skeleton') {
+                    enemyCounts.skeleton += 1;
+                } else if (type === 'DINOSAUR' || configId === 'dinosaur') {
+                    enemyCounts.dinosaur += 1;
+                } else if (type === 'TOY' || configId === 'toy') {
+                    enemyCounts.toy += 1;
+                }
+            });
+            UIOrchestrator.updateEnemyCount(enemyCounts);
+
+            // Update minimap with finalized LIVE enemy positions
+            UIOrchestrator.updateMinimap({
+                currentRoom,
+                enemies: activeEnemies,
+                gridOrchestrator: mallGrid,
+                roomConfig: Room.structure
+            });
         }
 
         // Event Listeners

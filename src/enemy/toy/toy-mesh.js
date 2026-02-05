@@ -66,8 +66,8 @@ const ToyMesh = {
             metalness: 0.0
         });
 
-        const legHeight = 0.25 * size.h;
-        const bodyHeight = 0.45 * size.h;
+        const legHeight = 0.30 * size.h;
+        const bodyHeight = 0.52 * size.h;
         const bodyWidth = 0.8 * size.w;
         const bodyDepth = 0.75 * size.d;
 
@@ -108,7 +108,7 @@ const ToyMesh = {
 
         const headGroup = new THREE.Group();
         const head = new THREE.Mesh(
-            new THREE.BoxGeometry(0.5 * size.w, 0.35 * size.h, 0.45 * size.d),
+            new THREE.BoxGeometry(0.5 * size.w, 0.44 * size.h, 0.45 * size.d),
             headMat
         );
         head.position.set(0, 0, 0);
@@ -149,7 +149,14 @@ const ToyMesh = {
         pupilRight.position.set(-0.14 * size.w, 0.08 * size.h, 0.26 * size.d);
         headGroup.add(eyeLeft, eyeRight, pupilLeft, pupilRight);
 
-        headGroup.position.set(0, legHeight + bodyHeight * 0.8, bodyDepth * 0.35);
+        const crest = new THREE.Mesh(
+            new THREE.BoxGeometry(0.16 * size.w, 0.12 * size.h, 0.12 * size.d),
+            accentMat
+        );
+        crest.position.set(0, 0.31 * size.h, -0.03 * size.d);
+        headGroup.add(crest);
+
+        headGroup.position.set(0, legHeight + bodyHeight * 1.02, bodyDepth * 0.35);
         group.add(headGroup);
 
         const tail = new THREE.Group();

@@ -132,6 +132,19 @@
             test.assertTrue(Enemy.types.TOY !== undefined);
             test.assertTrue(Enemy.types.TOY.isToy === true);
         });
+
+        test.it('should expose toy collectionRadius greater than collisionRadius', () => {
+            const toy = Enemy.types.TOY;
+            test.assertTrue(toy.collectionRadius !== undefined, 'TOY should define collectionRadius');
+            test.assertTrue(toy.collectionRadius > toy.collisionRadius, 'collectionRadius should be greater than collisionRadius');
+        });
+
+        test.it('should expose updated toy visual size profile', () => {
+            const toy = Enemy.types.TOY;
+            test.assertEqual(toy.size.w, 1.35);
+            test.assertEqual(toy.size.h, 1.55);
+            test.assertEqual(toy.size.d, 1.45);
+        });
     });
 
     // ==========================================
@@ -399,6 +412,82 @@
 
             // Drift should reverse
             test.assertEqual(e.driftSpeed, -5);
+        });
+
+        test.it('should derive wall collision radius from visual size footprint', () => {
+            const toy = {
+                userData: {
+                    config: {
+                        size: { w: 1.35, h: 1.55, d: 1.45 }
+                    }
+                }
+            };
+            const dino = {
+                userData: {
+                    config: {
+                        size: { w: 3.5, h: 2.5, d: 4.5 }
+                    }
+                }
+            };
+
+            const toyRadius = EnemyOrchestrator._getWallCollisionRadius(toy);
+            const dinoRadius = EnemyOrchestrator._getWallCollisionRadius(dino);
+
+            test.assertTrue(toyRadius >= 1.0, 'Toy wall radius should keep minimum safety margin');
+            test.assertCloseTo(dinoRadius, 2.4, 0.001, 'Dino wall radius should track mesh footprint');
+            test.assertTrue(dinoRadius > toyRadius, 'Larger meshes should get larger wall radius');
+        });
+
+        test.it('should pass per-enemy wall radius into collision and clamp callbacks', () => {
+            let receivedCollisionRadius = null;
+            let receivedClampRadius = null;
+            const originalUpdateBehavior = EnemyOrchestrator.updateBehavior;
+            const originalResolve = EnemyOrchestrator._resolveEnvironmentCollisions;
+            const originalUpdateVisuals = EnemyOrchestrator._updateVisuals;
+
+            try {
+                EnemyOrchestrator.updateBehavior = (enemy, playerPos, dt, baseSpeed, aiOptions) => {
+                    if (aiOptions?.collisionCheck) {
+                        aiOptions.collisionCheck(enemy.position.x, enemy.position.z, enemy.position.x, enemy.position.z);
+                    }
+                };
+                EnemyOrchestrator._resolveEnvironmentCollisions = () => {};
+                EnemyOrchestrator._updateVisuals = () => {};
+
+                const enemy = {
+                    position: { x: 10, y: 0, z: -10 },
+                    rotation: { y: 0 },
+                    userData: {
+                        active: true,
+                        config: {
+                            size: { w: 3.5, h: 2.5, d: 4.5 },
+                            behavior: 'chase',
+                            walkSpeed: 2.5
+                        }
+                    }
+                };
+
+                EnemyOrchestrator.updateAll([enemy], {
+                    playerPosition: { x: 0, z: 0 },
+                    playerCart: null,
+                    dt: 0.016,
+                    baseSpeed: 10,
+                    collisionCheck: (nX, nZ, oX, oZ, radius) => {
+                        receivedCollisionRadius = radius;
+                        return { blocked: false, blockedX: false, blockedZ: false };
+                    },
+                    clampToRoomBounds: (pos, radius) => {
+                        receivedClampRadius = radius;
+                    }
+                });
+            } finally {
+                EnemyOrchestrator.updateBehavior = originalUpdateBehavior;
+                EnemyOrchestrator._resolveEnvironmentCollisions = originalResolve;
+                EnemyOrchestrator._updateVisuals = originalUpdateVisuals;
+            }
+
+            test.assertCloseTo(receivedCollisionRadius, 2.4, 0.001);
+            test.assertCloseTo(receivedClampRadius, 2.4, 0.001);
         });
     });
 
@@ -672,6 +761,36 @@
 
             // Should not be pushed (distance 10 > minDist 5)
             test.assertEqual(enemy1.position.x, initialX);
+        });
+
+        test.it('should collect toy when inside collectionRadius but outside collisionRadius', () => {
+            let collected = false;
+            const toyEnemy = {
+                position: { x: 0, y: 0, z: 0 },
+                userData: {
+                    active: true,
+                    isToy: true,
+                    config: {
+                        isToy: true,
+                        collisionRadius: 1.1,
+                        collectionRadius: 1.9
+                    }
+                }
+            };
+            const playerCart = {
+                position: { x: 1.5, y: 0, z: 0 } // > collisionRadius (1.1), < collectionRadius (1.9)
+            };
+
+            EnemyOrchestrator._checkPlayerCollision(
+                toyEnemy,
+                playerCart,
+                false,
+                1.1,
+                null,
+                () => { collected = true; }
+            );
+
+            test.assertTrue(collected, 'Toy should be collectible within collectionRadius');
         });
     });
 
@@ -950,6 +1069,20 @@
             test.assertTrue(enemy.userData.dinosaur !== undefined);
             // Boss should have larger health bar
             test.assertTrue(enemy.userData.healthBar !== undefined);
+        });
+
+        test.it('should keep toy mesh grounded while reaching hit-level height', () => {
+            if (typeof THREE === 'undefined') {
+                test.skip('THREE.js not available');
+                return;
+            }
+
+            const config = Enemy.get('TOY');
+            const mesh = ToyMesh.createMesh(THREE, config);
+            const box = new THREE.Box3().setFromObject(mesh);
+
+            test.assertTrue(box.min.y <= 0.05, 'Toy mesh should stay grounded');
+            test.assertTrue(box.max.y >= 1.2, 'Toy mesh should visually reach hit-level height');
         });
 
         test.it('should create health bar with THREE', () => {

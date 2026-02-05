@@ -66,6 +66,11 @@
     // ==========================================
 
     test.describe('Engine: Collision Detection', () => {
+        test.it('should keep projectile enemy-hit defaults unchanged', () => {
+            test.assertEqual(CollisionOrchestrator.config.enemyHitboxYOffset, 1.2);
+            test.assertEqual(CollisionOrchestrator.config.enemyHitRadius, 2.5);
+        });
+
         test.it('should detect 2D distance collision', () => {
             const pos1 = { x: 0, z: 0 };
             const pos2 = { x: 3, z: 4 }; // Distance = 5

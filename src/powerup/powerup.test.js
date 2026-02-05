@@ -36,12 +36,23 @@
             test.assertEqual(invalid, null, 'Returns null for invalid ID');
         });
 
-        test.it('should expose health heart as drop-only power-up', () => {
-            const config = PowerUp.get('health_heart');
-            test.assertTrue(config !== null, 'Health heart config exists');
-            test.assertTrue(config.isHealth === true, 'Health heart isHealth flag');
+        test.it('should expose health up as drop-only power-up', () => {
+            const config = PowerUp.get('health_up');
+            test.assertTrue(config !== null, 'Health up config exists');
+            test.assertTrue(config.isHealth === true, 'Health up isHealth flag');
             test.assertEqual(config.healAmount, 20, 'Heal amount is 20');
-            test.assertTrue(config.dropOnly === true, 'Health heart is drop-only');
+            test.assertTrue(config.dropOnly === true, 'Health up is drop-only');
+            test.assertTrue(typeof config.createPickupMesh === 'function', 'Has createPickupMesh hook');
+        });
+
+        test.it('should expose extra time power-up with timer bonus fields', () => {
+            const config = PowerUp.get('extra_time');
+            test.assertTrue(config !== null, 'Extra time config exists');
+            test.assertTrue(config.isPowerup === true, 'Extra time is a power-up');
+            test.assertTrue(config.isTimeBonus === true, 'Extra time has isTimeBonus flag');
+            test.assertEqual(config.timeBonusSeconds, 15, 'Extra time grants 15 seconds');
+            test.assertEqual(config.spawnWeight, 2, 'Extra time spawn weight is 2');
+            test.assertEqual(config.spawnChance, 0.25, 'Extra time spawn chance is 25%');
             test.assertTrue(typeof config.createPickupMesh === 'function', 'Has createPickupMesh hook');
         });
 

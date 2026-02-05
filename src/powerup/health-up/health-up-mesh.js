@@ -1,11 +1,11 @@
 // ============================================
-// HEALTH HEART - Pickup Mesh
+// HEALTH UP - Pickup Mesh
 // ============================================
 // Stylized heart pickup (drop-only)
 
-const HealthHeartMesh = {
+const HealthUpMesh = {
     /**
-     * Create pickup mesh for health heart
+     * Create pickup mesh for health up
      * @param {THREE} THREE - Three.js library
      * @param {Object} config - Power-up config (includes visual)
      * @returns {THREE.Group}

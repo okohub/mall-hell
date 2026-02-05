@@ -637,6 +637,43 @@
         }
     );
 
+    runner.addTest('status-panel-shows-toy-counter', 'Minimap', 'Toy counter visible with zero at start',
+        'Verifies toy counter is rendered, readable, and initialized to 0 when gameplay begins',
+        async () => {
+            runner.resetGame();
+            await runner.wait(100);
+
+            const startBtn = runner.getElement('#start-btn');
+            runner.simulateClick(startBtn);
+            await runner.wait(500);
+
+            const toyCountEl = runner.getElement('#toy-count');
+            if (!toyCountEl) {
+                throw new Error('Toy count element (#toy-count) not found');
+            }
+
+            const toyValueEl = toyCountEl.querySelector('.enemy-value');
+            if (!toyValueEl) {
+                throw new Error('Toy count value element (.enemy-value) not found');
+            }
+
+            if (toyValueEl.textContent.trim() !== '0') {
+                throw new Error(`Toy count should start at 0, got ${toyValueEl.textContent.trim()}`);
+            }
+
+            const toyStyle = runner.gameWindow.getComputedStyle(toyCountEl);
+            const toyValueStyle = runner.gameWindow.getComputedStyle(toyValueEl);
+
+            if (toyStyle.display === 'none' || toyStyle.visibility === 'hidden' || parseFloat(toyStyle.opacity) === 0) {
+                throw new Error('Toy count should be visible in status panel');
+            }
+
+            if (toyValueStyle.color === 'rgb(0, 0, 0)' || toyValueStyle.color === 'rgba(0, 0, 0, 0)') {
+                throw new Error(`Toy count text color is not readable: ${toyValueStyle.color}`);
+            }
+        }
+    );
+
     runner.addTest('minimap-has-rooms', 'Minimap', 'Minimap shows room cells',
         'Verifies minimap grid contains room cells after game start',
         async () => {

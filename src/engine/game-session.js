@@ -217,6 +217,24 @@ const GameSession = {
     },
 
     /**
+     * Add time to the timer (capped at session duration)
+     * @param {number} seconds - Seconds to add
+     * @returns {number} Actual seconds added after cap
+     */
+    addTime(seconds) {
+        const amount = Math.max(0, Number(seconds) || 0);
+        if (amount <= 0) return 0;
+
+        const current = this._timer;
+        const next = Math.min(this._duration, current + amount);
+        const actualAdded = next - current;
+
+        this._timer = next;
+        this.updateTimerDisplay();
+        return actualAdded;
+    },
+
+    /**
      * Get timer percentage (0-1)
      * @returns {number}
      */

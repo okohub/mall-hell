@@ -118,7 +118,116 @@
         }
     );
 
-    // Test 4: Player moves 2x faster with speed boost active
+    // Test 4: Collecting extra time increases timer by 15s
+    runner.addTest('collect-extra-time-adds-seconds', 'Pickup+PowerUp', 'Collecting extra time adds 15 seconds',
+        'Verifies timer increases by 15 seconds and result reports exact gain',
+        async () => {
+            await helpers.bootGameForIntegration();
+
+            const THREE = runner.gameWindow.THREE;
+            const scene = runner.gameWindow.scene;
+            const PickupOrchestrator = runner.gameWindow.PickupOrchestrator;
+            const WeaponOrchestrator = runner.gameWindow.WeaponOrchestrator;
+            const MaterialsTheme = runner.gameWindow.MaterialsTheme;
+            const camera = runner.gameWindow.camera;
+            const GameSession = runner.gameWindow.GameSession;
+
+            PickupOrchestrator.init(scene, THREE);
+            GameSession.setTimer(120);
+
+            const pickup = PickupOrchestrator.spawn('extra_time', { x: 50, y: 2, z: 75 });
+            const before = GameSession.getTimer();
+            const result = PickupOrchestrator.collect(pickup, WeaponOrchestrator, THREE, MaterialsTheme, camera);
+            const after = GameSession.getTimer();
+
+            if (!result?.isTimeBonus) {
+                throw new Error('Expected isTimeBonus=true');
+            }
+            if (result.powerupType !== 'extra_time') {
+                throw new Error(`Expected powerupType extra_time, got ${result.powerupType}`);
+            }
+            if (result.timeAdded !== 15) {
+                throw new Error(`Expected timeAdded=15, got ${result.timeAdded}`);
+            }
+            if ((after - before) !== 15) {
+                throw new Error(`Timer should increase by 15, got ${after - before}`);
+            }
+        }
+    );
+
+    // Test 5: Extra time caps at session duration
+    runner.addTest('extra-time-caps-at-duration', 'Pickup+PowerUp', 'Extra time respects max timer cap',
+        'Verifies timer caps at 180 and reports only actual seconds added',
+        async () => {
+            await helpers.bootGameForIntegration();
+
+            const THREE = runner.gameWindow.THREE;
+            const scene = runner.gameWindow.scene;
+            const PickupOrchestrator = runner.gameWindow.PickupOrchestrator;
+            const WeaponOrchestrator = runner.gameWindow.WeaponOrchestrator;
+            const MaterialsTheme = runner.gameWindow.MaterialsTheme;
+            const camera = runner.gameWindow.camera;
+            const GameSession = runner.gameWindow.GameSession;
+
+            PickupOrchestrator.init(scene, THREE);
+            GameSession.setTimer(178);
+
+            const pickup = PickupOrchestrator.spawn('extra_time', { x: 50, y: 2, z: 75 });
+            const result = PickupOrchestrator.collect(pickup, WeaponOrchestrator, THREE, MaterialsTheme, camera);
+            const timerAfter = GameSession.getTimer();
+
+            if (!result?.isTimeBonus) {
+                throw new Error('Expected isTimeBonus=true');
+            }
+            if (result.timeAdded !== 2) {
+                throw new Error(`Expected timeAdded=2 at cap, got ${result.timeAdded}`);
+            }
+            if (timerAfter !== GameSession.getDuration()) {
+                throw new Error(`Expected capped timer ${GameSession.getDuration()}, got ${timerAfter}`);
+            }
+        }
+    );
+
+    // Test 6: Pickup flow shows time bonus notification text
+    runner.addTest('extra-time-shows-popup-notification', 'Pickup+PowerUp', 'Extra time pickup shows +Xs TIME popup',
+        'Verifies gameplay pickup flow displays popup with actual added seconds',
+        async () => {
+            await helpers.bootGameForIntegration();
+
+            const THREE = runner.gameWindow.THREE;
+            const scene = runner.gameWindow.scene;
+            const PickupOrchestrator = runner.gameWindow.PickupOrchestrator;
+            const PlayerOrchestrator = runner.gameWindow.PlayerOrchestrator;
+            const GameSession = runner.gameWindow.GameSession;
+            const manualUpdate = runner.gameWindow.manualUpdate;
+
+            if (!manualUpdate) {
+                throw new Error('manualUpdate not available');
+            }
+
+            PickupOrchestrator.init(scene, THREE);
+            GameSession.setTimer(178);
+
+            // Clear previous notifications to avoid false positives
+            runner.gameDocument.querySelectorAll('.pickup-notification').forEach((el) => el.remove());
+
+            const pos = PlayerOrchestrator.position;
+            PickupOrchestrator.spawn('extra_time', { x: pos.x, y: 2, z: pos.z });
+            manualUpdate(0.016);
+
+            const notifications = runner.gameDocument.querySelectorAll('.pickup-notification');
+            if (!notifications.length) {
+                throw new Error('Expected pickup notification to appear');
+            }
+
+            const latest = notifications[notifications.length - 1];
+            if (!latest.textContent.includes('+2s TIME')) {
+                throw new Error(`Expected "+2s TIME" notification, got "${latest.textContent}"`);
+            }
+        }
+    );
+
+    // Test 7: Player moves 2x faster with speed boost active
     runner.addTest('player-speed-2x-with-boost', 'Pickup+PowerUp', 'Player moves 2x faster with speed boost active',
         'Verifies speed multiplier is applied to player movement',
         async () => {
@@ -163,7 +272,7 @@
         }
     );
 
-    // Test 5: FOV increases when speed boost is active
+    // Test 8: FOV increases when speed boost is active
     runner.addTest('fov-increases-with-boost', 'Pickup+PowerUp', 'FOV increases by 10 when speed boost is active',
         'Verifies camera FOV changes from 75 to 85 with speed boost',
         async () => {
@@ -212,7 +321,7 @@
         }
     );
 
-    // Test 6: Power-up expires after duration
+    // Test 9: Power-up expires after duration
     runner.addTest('powerup-expires-after-duration', 'Pickup+PowerUp', 'Power-up expires after duration',
         'Verifies power-up deactivates after 10 seconds',
         async () => {
@@ -252,7 +361,7 @@
         }
     );
 
-    // Test 7: Power-ups reset on game over
+    // Test 10: Power-ups reset on game over
     runner.addTest('powerup-resets-on-game-over', 'Pickup+PowerUp', 'Power-ups reset on game over',
         'Verifies power-ups are cleared when game ends',
         async () => {
@@ -283,7 +392,7 @@
         }
     );
 
-    // Test 8: Power-ups reset on player death
+    // Test 11: Power-ups reset on player death
     runner.addTest('powerup-resets-on-death', 'Pickup+PowerUp', 'Power-ups reset on player death',
         'Verifies power-ups are cleared when player dies',
         async () => {
@@ -326,7 +435,7 @@
         }
     );
 
-    // Test 9: UI timer hidden after reset
+    // Test 12: UI timer hidden after reset
     runner.addTest('ui-timer-hidden-after-reset', 'Pickup+PowerUp', 'UI timer hidden after power-up reset',
         'Verifies timer UI is hidden when power-ups are reset',
         async () => {
@@ -360,9 +469,9 @@
         }
     );
 
-    // Test 10: Health heart drops from skeleton on death
-    runner.addTest('health-heart-drops-on-skeleton-death', 'Pickup+PowerUp', 'Health heart drops when carrier skeleton dies',
-        'Verifies health heart pickup spawns when a carrier skeleton is destroyed',
+    // Test 13: Health up drops from skeleton on death
+    runner.addTest('health-up-drops-on-skeleton-death', 'Pickup+PowerUp', 'Health up drops when carrier skeleton dies',
+        'Verifies health up pickup spawns when a carrier skeleton is destroyed',
         async () => {
             await helpers.bootGameForIntegration();
 
@@ -405,16 +514,16 @@
                 manualUpdate(0.016);
             }
 
-            const dropped = PickupOrchestrator.pickups.find((p) => p.config?.id === 'health_heart');
+            const dropped = PickupOrchestrator.pickups.find((p) => p.config?.id === 'health_up');
             if (!dropped) {
-                throw new Error('Expected health_heart pickup to spawn on skeleton death');
+                throw new Error('Expected health_up pickup to spawn on skeleton death');
             }
         }
     );
 
-    // Test 11: Collecting health heart heals player
-    runner.addTest('collect-health-heart-heals-player', 'Pickup+PowerUp', 'Collecting health heart heals the player',
-        'Verifies health heart pickup increases player health and updates UI',
+    // Test 14: Collecting health up heals player
+    runner.addTest('collect-health-up-heals-player', 'Pickup+PowerUp', 'Collecting health up heals the player',
+        'Verifies health up pickup increases player health and updates UI',
         async () => {
             await helpers.bootGameForIntegration();
 
@@ -433,9 +542,9 @@
             // Set player to mid health
             PlayerOrchestrator.health = 60;
 
-            // Spawn health heart at player position
+            // Spawn health up at player position
             const playerPos = PlayerOrchestrator.position;
-            PickupOrchestrator.spawn('health_heart', { x: playerPos.x, y: 2, z: playerPos.z });
+            PickupOrchestrator.spawn('health_up', { x: playerPos.x, y: 2, z: playerPos.z });
 
             manualUpdate(0.016);
 
@@ -451,7 +560,7 @@
         }
     );
 
-    // Test 12: Carrier skeleton shows heart mesh before death
+    // Test 15: Carrier skeleton shows heart mesh before death
     runner.addTest('carrier-skeleton-shows-heart', 'Pickup+PowerUp', 'Carrier skeleton shows heart before death',
         'Verifies a carrier skeleton has a visible carried heart mesh attached to the cart',
         async () => {

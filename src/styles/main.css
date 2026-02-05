@@ -401,6 +401,31 @@ canvas { display: block; }
     text-shadow: 0 0 15px rgba(255, 100, 0, 0.8);
 }
 
+/* Toy styling */
+#toy-count {
+    border: 1px solid rgba(214, 154, 92, 0.3);
+}
+
+#toy-count .enemy-value {
+    color: #d69a5c;
+    text-shadow: 0 0 10px rgba(214, 154, 92, 0.45);
+}
+
+#toy-count.has-enemies {
+    border-color: rgba(214, 154, 92, 0.6);
+    background: rgba(214, 154, 92, 0.16);
+}
+
+#toy-count.has-enemies .enemy-icon {
+    animation: toyWobble 1s ease-in-out infinite;
+    filter: drop-shadow(0 0 7px rgba(214, 154, 92, 0.6));
+}
+
+#toy-count.has-enemies .enemy-value {
+    color: #f2c58f;
+    text-shadow: 0 0 14px rgba(214, 154, 92, 0.75);
+}
+
 @keyframes skullBob {
     0%, 100% { transform: translateY(0) rotate(0deg); }
     25% { transform: translateY(-2px) rotate(-5deg); }
@@ -419,6 +444,11 @@ canvas { display: block; }
     50% {
         box-shadow: 0 0 20px rgba(255, 100, 0, 0.5);
     }
+}
+
+@keyframes toyWobble {
+    0%, 100% { transform: rotate(-4deg) translateY(0); }
+    50% { transform: rotate(4deg) translateY(-1px); }
 }
 
 /* ============================================

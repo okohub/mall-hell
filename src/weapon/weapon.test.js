@@ -676,11 +676,19 @@
             test.assertTrue(Pickup.types.DINONIZER.dropOnly, 'Dinonizer should be drop-only');
         });
 
-        test.it('should have HEALTH_HEART powerup defined', () => {
-            const config = (typeof PowerUp !== 'undefined') ? PowerUp.get('health_heart') : null;
-            test.assertTrue(config !== null, 'Health heart config exists');
-            test.assertTrue(config.isHealth, 'Health heart should be isHealth');
+        test.it('should have HEALTH_UP powerup defined', () => {
+            const config = (typeof PowerUp !== 'undefined') ? PowerUp.get('health_up') : null;
+            test.assertTrue(config !== null, 'Health up config exists');
+            test.assertTrue(config.isHealth, 'Health up should be isHealth');
             test.assertEqual(config.healAmount, 20);
+        });
+
+        test.it('should have EXTRA_TIME powerup defined', () => {
+            const config = (typeof PowerUp !== 'undefined') ? PowerUp.get('extra_time') : null;
+            test.assertTrue(config !== null, 'Extra time config exists');
+            test.assertTrue(config.isTimeBonus, 'Extra time should be isTimeBonus');
+            test.assertEqual(config.timeBonusSeconds, 15, 'Extra time grants 15 seconds');
+            test.assertEqual(config.spawnWeight, 2, 'Extra time spawn weight should match speed boost');
         });
 
         test.it('should get pickup by id', () => {
@@ -828,13 +836,13 @@
             test.assertTrue(hasBasicGlow, 'Should include at least one basic glow element');
         });
 
-        test.it('should create health heart mesh with multiple parts', () => {
+        test.it('should create health up mesh with multiple parts', () => {
             if (typeof THREE === 'undefined') {
                 test.skip('THREE.js not available');
                 return;
             }
 
-            const instance = Pickup.createInstance('health_heart', { x: 0, y: 1, z: 0 });
+            const instance = Pickup.createInstance('health_up', { x: 0, y: 1, z: 0 });
             test.assertTrue(instance.config.isHealth, 'Should be health type');
 
             PickupOrchestrator.THREE = THREE;
@@ -848,6 +856,25 @@
 
             const hasGlow = mesh.children.some((child) => child.material && child.material.type === 'MeshBasicMaterial');
             test.assertTrue(hasGlow, 'Heart should include a glow element');
+        });
+
+        test.it('should create extra time stopwatch mesh with neon ring', () => {
+            if (typeof THREE === 'undefined') {
+                test.skip('THREE.js not available');
+                return;
+            }
+
+            const instance = Pickup.createInstance('extra_time', { x: 0, y: 1, z: 0 });
+            test.assertTrue(instance.config.isTimeBonus, 'Should be time bonus type');
+
+            PickupOrchestrator.THREE = THREE;
+            const mesh = PickupOrchestrator._createPowerUpMesh(instance, THREE);
+
+            test.assertTrue(mesh instanceof THREE.Group, 'Extra time mesh should be a Group');
+            test.assertTrue(mesh.children.length >= 8, 'Stopwatch should include multiple visual parts');
+
+            const hasRing = mesh.children.some((child) => child.geometry && child.geometry.type === 'TorusGeometry');
+            test.assertTrue(hasRing, 'Stopwatch should include a torus ring');
         });
 
         test.it('should animate speed boost with gentle rotation', () => {
@@ -875,6 +902,50 @@
             test.assertTrue(ammoSmall.isAmmo, 'AMMO_SMALL should be ammo type');
             test.assertTrue(ammoLarge.isAmmo, 'AMMO_LARGE should be ammo type');
             test.assertTrue(ammoSmall.visual.scale < 2, 'Ammo should be smaller than weapons');
+        });
+
+        test.it('should treat extra time pickup as timer bonus and skip boost activation', () => {
+            const pickup = Pickup.createInstance('extra_time', { x: 0, y: 0, z: 0 });
+            const weaponOrchestrator = {
+                getCurrentId() {
+                    return 'nerfgun';
+                },
+                getAmmo() {
+                    return 0;
+                },
+                addAmmo() {}
+            };
+
+            const originalGameSession = globalThis.GameSession;
+            const originalPowerUpOrchestrator = globalThis.PowerUpOrchestrator;
+            let addTimeArg = 0;
+            let activateCalled = false;
+
+            globalThis.GameSession = {
+                addTime(seconds) {
+                    addTimeArg = seconds;
+                    return 2;
+                }
+            };
+            globalThis.PowerUpOrchestrator = {
+                activate() {
+                    activateCalled = true;
+                }
+            };
+
+            const result = PickupOrchestrator.collect(pickup, weaponOrchestrator, null, null, null);
+
+            if (originalGameSession === undefined) delete globalThis.GameSession;
+            else globalThis.GameSession = originalGameSession;
+            if (originalPowerUpOrchestrator === undefined) delete globalThis.PowerUpOrchestrator;
+            else globalThis.PowerUpOrchestrator = originalPowerUpOrchestrator;
+
+            test.assertTrue(result.isPowerup, 'Result should be power-up typed');
+            test.assertTrue(result.isTimeBonus, 'Result should mark time bonus');
+            test.assertEqual(result.powerupType, 'extra_time');
+            test.assertEqual(result.timeAdded, 2, 'Time added should come from GameSession');
+            test.assertEqual(addTimeArg, 15, 'Should request 15 seconds bonus');
+            test.assertFalse(activateCalled, 'Should not activate timed power-up effect');
         });
 
         test.it('should report actual ammo added for ammo pickups when capped', () => {

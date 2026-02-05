@@ -20,7 +20,7 @@ const Enemy = {
             driftSpeed: 4,
             collisionRadius: 2.5,
             walkSpeed: 3.5,               // Walking animation speed
-            healthCarryChance: 0.2,       // 20% chance to carry health heart
+            healthCarryChance: 0.2,       // 20% chance to carry health up
             size: { w: 2.2, h: 1.5, d: 2.8 }
         },
 
@@ -45,7 +45,7 @@ const Enemy = {
             id: 'toy',
             name: 'Toy',
             health: 1,
-            speed: 0.28,
+            speed: 0.24,
             damage: 0,
             behavior: 'flee',
             scoreHit: 0,
@@ -53,10 +53,11 @@ const Enemy = {
             driftInterval: 2.0,
             driftSpeed: 1.5,
             collisionRadius: 1.1,
+            collectionRadius: 1.9,        // Cart collection range (separate from combat collision)
             walkSpeed: 4.2,
             isToy: true,
             toyPoints: 250,
-            size: { w: 1.0, h: 0.75, d: 1.1 }
+            size: { w: 1.35, h: 1.55, d: 1.45 }
         }
     },
 

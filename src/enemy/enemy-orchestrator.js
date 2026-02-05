@@ -298,7 +298,7 @@ const EnemyOrchestrator = {
                 });
             }
 
-            // Animate carried health heart (subtle bob + slow spin)
+            // Animate carried health up (subtle bob + slow spin)
             if (enemy.mesh?.userData?.healthCarryMesh) {
                 const heart = enemy.mesh.userData.healthCarryMesh;
                 const baseY = heart.userData.baseY ?? heart.position.y;
@@ -432,10 +432,10 @@ const EnemyOrchestrator = {
         // Remember spawn position (home) for AI
         group.userData.spawnPosition = { x, z };
 
-        // Attach carried health heart to skeleton cart (if applicable)
+        // Attach carried health up to skeleton cart (if applicable)
         if (group.userData.carriesHealth && group.userData.cart && typeof PickupOrchestrator !== 'undefined') {
             const healthInstance = (typeof Pickup !== 'undefined')
-                ? Pickup.createInstance('health_heart', { x: 0, y: 0, z: 0 })
+                ? Pickup.createInstance('health_up', { x: 0, y: 0, z: 0 })
                 : null;
             if (healthInstance && typeof PickupOrchestrator._createPowerUpMesh === 'function') {
                 const heartMesh = PickupOrchestrator._createPowerUpMesh(healthInstance, THREE);
@@ -554,7 +554,10 @@ const EnemyOrchestrator = {
 
         const isToy = enemy.userData.isToy || enemy.userData.config?.isToy;
         if (isToy) {
-            if (cartDist < effectiveRadius && onToyCollected) {
+            const toyCollectRadius = enemy.userData.config?.collectionRadius
+                ?? enemy.userData.config?.collisionRadius
+                ?? collisionDistance;
+            if (cartDist < toyCollectRadius && onToyCollected) {
                 onToyCollected(enemy);
             }
             return;
@@ -563,6 +566,31 @@ const EnemyOrchestrator = {
         if (!isInvulnerable && onPlayerCollision && cartDist < effectiveRadius) {
             onPlayerCollision(enemy);
         }
+    },
+
+    /**
+     * Compute wall collision radius from visual footprint (separate from combat radius).
+     * Uses explicit config override when present, otherwise derives from size.
+     * @param {Object} enemy - Enemy mesh
+     * @returns {number} Radius used for wall checks and room clamping
+     */
+    _getWallCollisionRadius(enemy) {
+        const config = enemy?.userData?.config || {};
+        const explicit = config.wallCollisionRadius;
+        if (typeof explicit === 'number' && Number.isFinite(explicit) && explicit > 0) {
+            return explicit;
+        }
+
+        const size = config.size || config.visual?.size;
+        if (size) {
+            const maxDim = Math.max(Number(size.w) || 0, Number(size.d) || 0);
+            if (maxDim > 0) {
+                // Slight padding keeps meshes off wall edges without over-inflating doorway checks.
+                return Math.max(1.0, maxDim * 0.5 + 0.15);
+            }
+        }
+
+        return 1.5;
     },
 
     /**
@@ -602,8 +630,13 @@ const EnemyOrchestrator = {
         enemies.forEach(enemy => {
             if (!enemy.userData.active) return;
 
+            const wallRadius = this._getWallCollisionRadius(enemy);
+            const enemyCollisionCheck = collisionCheck
+                ? (nX, nZ, oX, oZ) => collisionCheck(nX, nZ, oX, oZ, wallRadius, enemy)
+                : null;
+
             // AI behavior with wall collision and LOS awareness
-            this.updateBehavior(enemy, playerPosition, dt, baseSpeed, { collisionCheck, hasLineOfSight });
+            this.updateBehavior(enemy, playerPosition, dt, baseSpeed, { collisionCheck: enemyCollisionCheck, hasLineOfSight });
 
             // Environment collision (obstacles, other enemies, shelves)
             // Run multiple passes to handle nested overlaps
@@ -613,7 +646,7 @@ const EnemyOrchestrator = {
 
             // Hard clamp to room bounds (never go through walls)
             if (clampToRoomBounds) {
-                clampToRoomBounds(enemy.position);
+                clampToRoomBounds(enemy.position, wallRadius, enemy);
             }
 
             // Visual updates (facing, animations, hit flash)

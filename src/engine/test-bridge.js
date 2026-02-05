@@ -278,6 +278,7 @@ const TestBridge = {
         if (typeof Shelf !== 'undefined') window.Shelf = Shelf;
         if (typeof ShelfVisual !== 'undefined') window.ShelfVisual = ShelfVisual;
         if (typeof EnvironmentOrchestrator !== 'undefined') window.EnvironmentOrchestrator = EnvironmentOrchestrator;
+        if (typeof SpawnOrchestrator !== 'undefined') window.SpawnOrchestrator = SpawnOrchestrator;
 
         // UI domain
         if (typeof UIOrchestrator !== 'undefined') window.UIOrchestrator = UIOrchestrator;
