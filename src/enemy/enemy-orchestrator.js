@@ -552,7 +552,8 @@ const EnemyOrchestrator = {
 
         const effectiveRadius = enemy.userData.config?.collisionRadius || collisionDistance;
 
-        if (enemy.userData.isToy) {
+        const isToy = enemy.userData.isToy || enemy.userData.config?.isToy;
+        if (isToy) {
             if (cartDist < effectiveRadius && onToyCollected) {
                 onToyCollected(enemy);
             }
