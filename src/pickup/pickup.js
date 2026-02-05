@@ -1,10 +1,10 @@
 // ============================================
-// WEAPON PICKUP - Pure Data Definitions
+// PICKUP SYSTEM - Pure Data Definitions
 // ============================================
-// Defines weapon pickup types and spawn rules
+// Defines weapon/ammo pickup types and spawn rules
 // Self-contained, zero external dependencies
 
-const WeaponPickup = {
+const Pickup = {
     // ==========================================
     // PICKUP TYPE DEFINITIONS
     // ==========================================
@@ -215,3 +215,5 @@ const WeaponPickup = {
         };
     }
 };
+
+// Backwards-compat is removed; pickup is now its own domain.

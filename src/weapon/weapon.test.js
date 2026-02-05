@@ -654,26 +654,26 @@
     // WEAPON PICKUP TESTS
     // ==========================================
 
-    test.describe('WeaponPickup Data', () => {
+    test.describe('Pickup Data', () => {
         test.it('should have WATERGUN pickup defined', () => {
-            test.assertTrue(WeaponPickup.types.WATERGUN !== undefined);
-            test.assertEqual(WeaponPickup.types.WATERGUN.weaponId, 'watergun');
+            test.assertTrue(Pickup.types.WATERGUN !== undefined);
+            test.assertEqual(Pickup.types.WATERGUN.weaponId, 'watergun');
         });
 
         test.it('should have NERFGUN pickup defined', () => {
-            test.assertTrue(WeaponPickup.types.NERFGUN !== undefined);
-            test.assertEqual(WeaponPickup.types.NERFGUN.weaponId, 'nerfgun');
+            test.assertTrue(Pickup.types.NERFGUN !== undefined);
+            test.assertEqual(Pickup.types.NERFGUN.weaponId, 'nerfgun');
         });
 
         test.it('should have LASERGUN pickup defined', () => {
-            test.assertTrue(WeaponPickup.types.LASERGUN !== undefined);
-            test.assertEqual(WeaponPickup.types.LASERGUN.weaponId, 'lasergun');
+            test.assertTrue(Pickup.types.LASERGUN !== undefined);
+            test.assertEqual(Pickup.types.LASERGUN.weaponId, 'lasergun');
         });
 
         test.it('should have DINONIZER pickup defined', () => {
-            test.assertTrue(WeaponPickup.types.DINONIZER !== undefined);
-            test.assertEqual(WeaponPickup.types.DINONIZER.weaponId, 'dinonizer');
-            test.assertTrue(WeaponPickup.types.DINONIZER.dropOnly, 'Dinonizer should be drop-only');
+            test.assertTrue(Pickup.types.DINONIZER !== undefined);
+            test.assertEqual(Pickup.types.DINONIZER.weaponId, 'dinonizer');
+            test.assertTrue(Pickup.types.DINONIZER.dropOnly, 'Dinonizer should be drop-only');
         });
 
         test.it('should have HEALTH_HEART powerup defined', () => {
@@ -684,39 +684,63 @@
         });
 
         test.it('should get pickup by id', () => {
-            const pickup = WeaponPickup.get('WATERGUN');
+            const pickup = Pickup.get('WATERGUN');
             test.assertTrue(pickup !== null);
             test.assertEqual(pickup.weaponId, 'watergun');
         });
 
         test.it('should get pickup by weapon id', () => {
-            const pickup = WeaponPickup.getByWeaponId('nerfgun');
+            const pickup = Pickup.getByWeaponId('nerfgun');
             test.assertTrue(pickup !== null);
             test.assertEqual(pickup.id, 'nerfgun');
         });
 
         test.it('should select random pickup', () => {
-            const pickup = WeaponPickup.selectRandom();
+            const pickup = Pickup.selectRandom();
             test.assertTrue(pickup !== null);
             test.assertTrue(pickup.id !== undefined);
         });
 
+        test.it('should include powerups in selectRandom when available', () => {
+            if (typeof PowerUp === 'undefined') {
+                test.skip('PowerUp not available');
+                return;
+            }
+
+            const originalPickupGetAll = Pickup.getAll;
+            const originalPowerUpGetAll = PowerUp.getAll;
+
+            const fakePowerUp = { id: 'test_powerup', spawnWeight: 1000, isPowerup: true };
+
+            // Force selectRandom to only see power-ups
+            Pickup.getAll = () => [];
+            PowerUp.getAll = () => [fakePowerUp];
+
+            const selected = Pickup.selectRandom();
+
+            // Restore originals
+            Pickup.getAll = originalPickupGetAll;
+            PowerUp.getAll = originalPowerUpGetAll;
+
+            test.assertEqual(selected.id, 'test_powerup');
+        });
+
         test.it('should create pickup instance', () => {
-            const instance = WeaponPickup.createInstance('WATERGUN', { x: 0, y: 1, z: -10 });
+            const instance = Pickup.createInstance('WATERGUN', { x: 0, y: 1, z: -10 });
             test.assertTrue(instance !== null);
             test.assertEqual(instance.type, 'WATERGUN');
             test.assertTrue(instance.active);
         });
 
         test.it('should have spawn config', () => {
-            test.assertTrue(WeaponPickup.spawn !== undefined);
-            test.assertTrue(WeaponPickup.spawn.chancePerRoom > 0);
-            test.assertTrue(WeaponPickup.spawn.maxPerRoom > 0);
+            test.assertTrue(Pickup.spawn !== undefined);
+            test.assertTrue(Pickup.spawn.chancePerRoom > 0);
+            test.assertTrue(Pickup.spawn.maxPerRoom > 0);
         });
 
         test.it('should have collection config', () => {
-            test.assertTrue(WeaponPickup.collection !== undefined);
-            test.assertTrue(WeaponPickup.collection.radius > 0);
+            test.assertTrue(Pickup.collection !== undefined);
+            test.assertTrue(Pickup.collection.radius > 0);
         });
     });
 
@@ -771,7 +795,7 @@
                 return;
             }
             // Create ammo instance
-            const instance = WeaponPickup.createInstance('AMMO_SMALL', { x: 0, y: 1, z: 0 });
+            const instance = Pickup.createInstance('AMMO_SMALL', { x: 0, y: 1, z: 0 });
             test.assertTrue(instance.config.isAmmo, 'Should be ammo type');
 
             // Test the private mesh creation method
@@ -788,7 +812,7 @@
                 return;
             }
 
-            const instance = WeaponPickup.createInstance('speed_boost', { x: 0, y: 1, z: 0 });
+            const instance = Pickup.createInstance('speed_boost', { x: 0, y: 1, z: 0 });
             test.assertTrue(instance.config.isPowerup, 'Should be powerup type');
 
             PickupOrchestrator.THREE = THREE;
@@ -810,7 +834,7 @@
                 return;
             }
 
-            const instance = WeaponPickup.createInstance('health_heart', { x: 0, y: 1, z: 0 });
+            const instance = Pickup.createInstance('health_heart', { x: 0, y: 1, z: 0 });
             test.assertTrue(instance.config.isHealth, 'Should be health type');
 
             PickupOrchestrator.THREE = THREE;
@@ -832,7 +856,7 @@
                 return;
             }
 
-            const instance = WeaponPickup.createInstance('speed_boost', { x: 0, y: 1, z: 0 });
+            const instance = Pickup.createInstance('speed_boost', { x: 0, y: 1, z: 0 });
             const mesh = new THREE.Group();
 
             PickupOrchestrator.pickups = [instance];
@@ -845,8 +869,8 @@
         });
 
         test.it('should have ammo types with distinct visual', () => {
-            const ammoSmall = WeaponPickup.types.AMMO_SMALL;
-            const ammoLarge = WeaponPickup.types.AMMO_LARGE;
+            const ammoSmall = Pickup.types.AMMO_SMALL;
+            const ammoLarge = Pickup.types.AMMO_LARGE;
 
             test.assertTrue(ammoSmall.isAmmo, 'AMMO_SMALL should be ammo type');
             test.assertTrue(ammoLarge.isAmmo, 'AMMO_LARGE should be ammo type');
@@ -854,7 +878,7 @@
         });
 
         test.it('should report actual ammo added for ammo pickups when capped', () => {
-            const pickup = WeaponPickup.createInstance('AMMO_LARGE', { x: 0, y: 0, z: 0 });
+            const pickup = Pickup.createInstance('AMMO_LARGE', { x: 0, y: 0, z: 0 });
             const weaponOrchestrator = {
                 ammo: 11,
                 getAmmo() {
@@ -874,7 +898,7 @@
         });
 
         test.it('should report actual ammo added for same-weapon pickups when capped', () => {
-            const pickup = WeaponPickup.createInstance('NERFGUN', { x: 0, y: 0, z: 0 });
+            const pickup = Pickup.createInstance('NERFGUN', { x: 0, y: 0, z: 0 });
             const weaponOrchestrator = {
                 ammo: 10,
                 getAmmo() {

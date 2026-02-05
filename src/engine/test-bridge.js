@@ -245,7 +245,7 @@ const TestBridge = {
         if (typeof Slingshot !== 'undefined') window.Slingshot = Slingshot;
         if (typeof WaterGun !== 'undefined') window.WaterGun = WaterGun;
         if (typeof NerfGun !== 'undefined') window.NerfGun = NerfGun;
-        if (typeof WeaponPickup !== 'undefined') window.WeaponPickup = WeaponPickup;
+        if (typeof Pickup !== 'undefined') window.Pickup = Pickup;
         if (typeof PickupOrchestrator !== 'undefined') window.PickupOrchestrator = PickupOrchestrator;
 
         // Projectile domain

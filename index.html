@@ -249,8 +249,8 @@
     <script src="./src/weapon/weapon-orchestrator.js"></script>
 
     <!-- Pickup System -->
-    <script src="./src/weapon/pickup.js"></script>
-    <script src="./src/weapon/pickup-orchestrator.js"></script>
+    <script src="./src/pickup/pickup.js"></script>
+    <script src="./src/pickup/pickup-orchestrator.js"></script>
 
     <!-- Projectile Domain -->
     <script src="./src/projectile/stone/stone-mesh.js"></script>
@@ -317,7 +317,7 @@
         // Domain modules loaded:
         // - Room: Room, RoomTheme, RoomMesh, RoomOrchestrator
         // - Player: Player, PlayerTheme, PlayerMesh, PlayerOrchestrator
-        // - Weapon: Weapon, WeaponOrchestrator, Slingshot, WaterGun, LaserGun, NerfGun, WeaponPickup, PickupOrchestrator
+        // - Weapon: Weapon, WeaponOrchestrator, Slingshot, WaterGun, LaserGun, NerfGun, Pickup, PickupOrchestrator
         // - Projectile: Projectile, ProjectileOrchestrator
         // - Enemy: Enemy, Skeleton/Dinosaur (themes, mesh, animation), EnemyOrchestrator
         // - Environment: Obstacle, ObstacleTheme, ObstacleMesh (as ObstacleVisual), Shelf, ShelfTheme, ShelfMesh, EnvironmentOrchestrator
@@ -846,13 +846,13 @@
                         if (enemyType === 'dinosaur') {
                             PickupOrchestrator.spawn('dinonizer', {
                                 x: enemy.position.x,
-                                y: WeaponPickup.spawn.heightOffset,
+                                y: Pickup.spawn.heightOffset,
                                 z: enemy.position.z
                             });
                         }
                         if (enemy.userData.carriesHealth && typeof PickupOrchestrator !== 'undefined') {
-                            const dropY = (typeof WeaponPickup !== 'undefined' && WeaponPickup.spawn?.heightOffset)
-                                ? WeaponPickup.spawn.heightOffset
+                            const dropY = (typeof Pickup !== 'undefined' && Pickup.spawn?.heightOffset)
+                                ? Pickup.spawn.heightOffset
                                 : 1.8;
                             PickupOrchestrator.spawn('health_heart', {
                                 x: enemy.position.x,

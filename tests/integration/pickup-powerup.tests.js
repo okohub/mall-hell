@@ -54,12 +54,12 @@
         async () => {
             await helpers.bootGameForIntegration();
 
-            const WeaponPickup = runner.gameWindow.WeaponPickup;
+            const Pickup = runner.gameWindow.Pickup;
 
             // Test that selectRandom can return power-ups
             const results = {};
             for (let i = 0; i < 1000; i++) {
-                const pickup = WeaponPickup.selectRandom();
+                const pickup = Pickup.selectRandom();
                 results[pickup.id] = (results[pickup.id] || 0) + 1;
             }
 

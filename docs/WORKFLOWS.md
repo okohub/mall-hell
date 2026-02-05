@@ -193,7 +193,7 @@ WeaponTypeRegistry.myweapon = MyWeapon;
 WeaponOrchestrator.registerAllFromRegistry();
 ```
 
-### Step 7: Add pickup in `src/weapon/pickup.js`
+### Step 7: Add pickup in `src/pickup/pickup.js`
 ```javascript
 MYWEAPON_AMMO: {
     weaponId: 'myweapon',

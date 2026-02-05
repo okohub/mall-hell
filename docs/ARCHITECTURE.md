@@ -29,7 +29,7 @@ Weapons follow a registry-first, per-type folder pattern (matching projectiles).
 | `weapon/<type>/<type>.js` | **Public API** for the type | Registers to registry, delegates to mesh/animation |
 | `weapon/<type>/<type>-mesh.js` | Stateless mesh creation | `createFPSMesh`, `createPickupMesh` |
 | `weapon/<type>/<type>-animation.js` | Stateless animation | `animateFPS`, `updateTransform` |
-| `pickup.js`, `pickup-orchestrator.js` | Weapon pickups | Unchanged |
+| `pickup/pickup.js`, `pickup/pickup-orchestrator.js` | Shared pickup system | Standalone domain |
 | `weapon.test.js` | Unit tests | Registry hooks enforced |
 
 **Registry**
@@ -86,6 +86,23 @@ Power-ups now follow the same registry-first pattern. Each power-up type exposes
 **Script load order (non-modules)**:
 Mesh → Type for each power-up, then `powerup.js` → `powerup-orchestrator.js`.
 
+### Pickup Domain Pattern (Shared Spawner + Collector)
+
+Pickups are now a standalone domain, not owned by weapons. The pickup system handles **spawn rules, mesh creation, and collection**, and supports weapon/ammo pickups as well as power-ups (including drop-only health hearts).
+
+| File | Purpose | Notes |
+|------|---------|-------|
+| `pickup/pickup.js` | Pickup data + spawn/collection config | Handles weapon/ammo pickups; uses PowerUp registry for power-up pickups |
+| `pickup/pickup-orchestrator.js` | Spawning + collection + mesh creation | Delegates to weapon or power-up mesh hooks |
+
+**Key rules**:
+1. `Pickup` is the single source of truth for pickup spawn/collection config.
+2. Power-ups are surfaced through `Pickup.selectRandom()` via `PowerUp.getAll()`.
+3. Mesh creation delegates to weapon/powerup type hooks (no inline meshes here).
+
+**Script load order (non-modules)**:
+`pickup.js` → `pickup-orchestrator.js` (after weapon + powerup registries).
+
 ### Enemy Domain Pattern (Registry + Per-Type API)
 
 Enemies now follow the same registry-first pattern with per-type folders. Each enemy type exposes a **single API file** that delegates to mesh and animation modules and registers into a global registry.
@@ -126,6 +143,7 @@ src/
 ├── ui/              # HUD, menus, minimap
 ├── room/            # Room grid, themes, meshes
 ├── player/          # Player cart, movement, health
+├── pickup/          # Pickup spawning and collection
 ├── weapon/          # Weapons (slingshot, watergun, nerfgun)
 ├── projectile/      # Projectile physics, visuals
 ├── enemy/           # Enemy types, AI, spawning

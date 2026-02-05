@@ -1,7 +1,7 @@
 // ============================================
 // PICKUP SYSTEM - Spawn and Collection
 // ============================================
-// Manages weapon pickup spawning, animation, and collection
+// Manages pickup spawning, animation, and collection
 
 const PickupOrchestrator = {
     // ==========================================
@@ -58,7 +58,7 @@ const PickupOrchestrator = {
      */
     trySpawnForRoom(roomPosition, roomWidth, roomLength, obstacles = [], shelves = []) {
         // Check spawn chance
-        if (Math.random() > WeaponPickup.spawn.chancePerRoom) {
+        if (Math.random() > Pickup.spawn.chancePerRoom) {
             return false;
         }
 
@@ -69,12 +69,12 @@ const PickupOrchestrator = {
             return dx < roomWidth / 2 && dz < roomLength / 2;
         });
 
-        if (existingInRoom.length >= WeaponPickup.spawn.maxPerRoom) {
+        if (existingInRoom.length >= Pickup.spawn.maxPerRoom) {
             return false;
         }
 
         // Select random pickup type
-        const pickupType = WeaponPickup.selectRandom();
+        const pickupType = Pickup.selectRandom();
 
         // Try multiple positions to find a clear spot
         const maxAttempts = 5;
@@ -84,7 +84,7 @@ const PickupOrchestrator = {
             // Random position within room center (avoid edges where shelves are)
             const spawnX = roomPosition.x + (Math.random() - 0.5) * (roomWidth * 0.4);
             const spawnZ = roomPosition.z + (Math.random() - 0.5) * (roomLength * 0.3);
-            const spawnY = WeaponPickup.spawn.heightOffset;
+            const spawnY = Pickup.spawn.heightOffset;
 
             // Check collision with obstacles
             let collides = false;
@@ -140,7 +140,7 @@ const PickupOrchestrator = {
         }
 
         // Create pickup instance
-        const instance = WeaponPickup.createInstance(typeId, position);
+        const instance = Pickup.createInstance(typeId, position);
         if (!instance) return null;
 
         // Create mesh based on weapon type
@@ -359,9 +359,9 @@ const PickupOrchestrator = {
      */
     update(dt, playerPosition, time) {
         const collected = [];
-        const collectionRadius = WeaponPickup.collection.radius;
-        const magnetRadius = WeaponPickup.collection.magnetRadius;
-        const magnetSpeed = WeaponPickup.collection.magnetSpeed;
+        const collectionRadius = Pickup.collection.radius;
+        const magnetRadius = Pickup.collection.magnetRadius;
+        const magnetSpeed = Pickup.collection.magnetSpeed;
 
         for (let i = this.pickups.length - 1; i >= 0; i--) {
             const pickup = this.pickups[i];
@@ -400,9 +400,9 @@ const PickupOrchestrator = {
                 pickup.position.z += nz * attractSpeed;
             }
 
-            let bobSpeed = WeaponPickup.spawn.bobSpeed;
-            let bobAmplitude = WeaponPickup.spawn.bobAmplitude;
-            let rotationSpeed = WeaponPickup.spawn.rotationSpeed;
+            let bobSpeed = Pickup.spawn.bobSpeed;
+            let bobAmplitude = Pickup.spawn.bobAmplitude;
+            let rotationSpeed = Pickup.spawn.rotationSpeed;
 
             if (pickup.config && pickup.config.id === 'speed_boost') {
                 bobSpeed = Math.PI; // ~0.5 Hz
@@ -412,7 +412,7 @@ const PickupOrchestrator = {
 
             // Animate: bob up and down
             const bobOffset = pickup.bobOffset + time * 0.001 * bobSpeed;
-            const bobY = WeaponPickup.spawn.heightOffset + Math.sin(bobOffset) * bobAmplitude;
+            const bobY = Pickup.spawn.heightOffset + Math.sin(bobOffset) * bobAmplitude;
 
             // Animate: rotation
             pickup.rotation += dt * rotationSpeed;
