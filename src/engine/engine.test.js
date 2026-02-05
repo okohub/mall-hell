@@ -261,6 +261,46 @@
             });
             test.assertFalse(result.blocked, 'Should not crash with null arrays');
         });
+
+        test.it('should shrink doorway pass range by collision margin in wall checks', () => {
+            const mockGrid = {
+                getRoomAtWorld: () => ({
+                    gridX: 0, gridZ: 0,
+                    doors: ['east']
+                })
+            };
+            const mockRoomConfig = { UNIT: 30, DOOR_WIDTH: 8 };
+
+            const centerDoorResult = CollisionOrchestrator.checkWallCollision(
+                27.2, 15.4, 26.8, 15.4, mockGrid, mockRoomConfig, 3
+            );
+            const edgeDoorResult = CollisionOrchestrator.checkWallCollision(
+                27.2, 17.5, 26.8, 17.5, mockGrid, mockRoomConfig, 3
+            );
+
+            test.assertFalse(centerDoorResult.blockedX, 'Center of doorway should remain passable');
+            test.assertTrue(edgeDoorResult.blockedX, 'Doorway edge should block when radius would clip wall');
+        });
+
+        test.it('should clamp doorway edge positions while allowing center doorway passage', () => {
+            const mockGrid = {
+                getRoomAtWorld: () => ({
+                    gridX: 0, gridZ: 0,
+                    doors: ['east']
+                })
+            };
+            const mockRoomConfig = { UNIT: 30, DOOR_WIDTH: 8 };
+
+            const edgePos = { x: 29, z: 17.5 };
+            const edgeClamped = CollisionOrchestrator.clampToRoomBounds(edgePos, mockGrid, mockRoomConfig, 3);
+            test.assertTrue(edgeClamped, 'Edge doorway position should clamp to room bounds');
+            test.assertCloseTo(edgePos.x, 27, 0.001);
+
+            const centerPos = { x: 29, z: 15.4 };
+            const centerClamped = CollisionOrchestrator.clampToRoomBounds(centerPos, mockGrid, mockRoomConfig, 3);
+            test.assertFalse(centerClamped, 'Center doorway position should remain unclamped');
+            test.assertCloseTo(centerPos.x, 29, 0.001);
+        });
     });
 
     // ==========================================
@@ -445,6 +485,39 @@
                 playerRadius: 1.2
             });
             test.assertTrue(result, 'Should ignore hit obstacle');
+        });
+
+        test.it('hasLineOfSightWithPhysicals - should honor dynamic playerRadius margin', () => {
+            const mockGrid = {
+                getRoomAtWorld: () => ({
+                    gridX: 0, gridZ: 0,
+                    doors: ['north', 'south', 'east', 'west']
+                })
+            };
+            const mockRoomConfig = { UNIT: 30, DOOR_WIDTH: 6 };
+
+            const obstacles = [{
+                position: { x: 5, z: 1.6 },
+                userData: { active: true, hit: false, collisionRadius: 1.0 }
+            }];
+
+            const narrowResult = CollisionOrchestrator.hasLineOfSightWithPhysicals(0, 0, 10, 0, {
+                gridOrchestrator: mockGrid,
+                roomConfig: mockRoomConfig,
+                obstacles,
+                shelves: [],
+                playerRadius: 0.2
+            });
+            const wideResult = CollisionOrchestrator.hasLineOfSightWithPhysicals(0, 0, 10, 0, {
+                gridOrchestrator: mockGrid,
+                roomConfig: mockRoomConfig,
+                obstacles,
+                shelves: [],
+                playerRadius: 2.0
+            });
+
+            test.assertTrue(narrowResult, 'Narrow collision margin should keep LOS open');
+            test.assertFalse(wideResult, 'Wider collision margin should block LOS');
         });
 
         test.it('hasLineOfSightWithPhysicals - should handle null options gracefully', () => {

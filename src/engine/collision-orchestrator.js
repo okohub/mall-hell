@@ -362,13 +362,14 @@ const CollisionOrchestrator = {
         const doorCenterX = roomMinX + ROOM_UNIT / 2;
         const doorCenterZ = roomMinZ + ROOM_UNIT / 2;
         const doorHalf = DOOR_WIDTH / 2;
+        const doorPassHalf = Math.max(0, doorHalf - margin);
 
         // Check each wall
         const doors = room.doors || [];
 
         // West wall (x min)
         if (newX < roomMinX + margin) {
-            if (doors.includes('west') && newZ > doorCenterZ - doorHalf && newZ < doorCenterZ + doorHalf) {
+            if (doors.includes('west') && Math.abs(newZ - doorCenterZ) < doorPassHalf) {
                 // In doorway - allow
             } else {
                 result.blockedX = true;
@@ -377,7 +378,7 @@ const CollisionOrchestrator = {
 
         // East wall (x max)
         if (newX > roomMaxX - margin) {
-            if (doors.includes('east') && newZ > doorCenterZ - doorHalf && newZ < doorCenterZ + doorHalf) {
+            if (doors.includes('east') && Math.abs(newZ - doorCenterZ) < doorPassHalf) {
                 // In doorway - allow
             } else {
                 result.blockedX = true;
@@ -386,7 +387,7 @@ const CollisionOrchestrator = {
 
         // North wall (z min)
         if (newZ < roomMinZ + margin) {
-            if (doors.includes('north') && newX > doorCenterX - doorHalf && newX < doorCenterX + doorHalf) {
+            if (doors.includes('north') && Math.abs(newX - doorCenterX) < doorPassHalf) {
                 // In doorway - allow
             } else {
                 result.blockedZ = true;
@@ -395,7 +396,7 @@ const CollisionOrchestrator = {
 
         // South wall (z max)
         if (newZ > roomMaxZ - margin) {
-            if (doors.includes('south') && newX > doorCenterX - doorHalf && newX < doorCenterX + doorHalf) {
+            if (doors.includes('south') && Math.abs(newX - doorCenterX) < doorPassHalf) {
                 // In doorway - allow
             } else {
                 result.blockedZ = true;
@@ -727,18 +728,19 @@ const CollisionOrchestrator = {
         const doorCenterX = room.gridX * ROOM_UNIT + ROOM_UNIT / 2;
         const doorCenterZ = room.gridZ * ROOM_UNIT + ROOM_UNIT / 2;
         const doorHalf = roomConfig.DOOR_WIDTH / 2;
+        const doorPassHalf = Math.max(0, doorHalf - margin);
         const doors = room.doors || [];
 
         // Clamp X
         if (position.x < roomMinX) {
-            const inWestDoor = doors.includes('west') && position.z > doorCenterZ - doorHalf && position.z < doorCenterZ + doorHalf;
+            const inWestDoor = doors.includes('west') && Math.abs(position.z - doorCenterZ) < doorPassHalf;
             if (!inWestDoor) {
                 position.x = roomMinX;
                 clamped = true;
             }
         }
         if (position.x > roomMaxX) {
-            const inEastDoor = doors.includes('east') && position.z > doorCenterZ - doorHalf && position.z < doorCenterZ + doorHalf;
+            const inEastDoor = doors.includes('east') && Math.abs(position.z - doorCenterZ) < doorPassHalf;
             if (!inEastDoor) {
                 position.x = roomMaxX;
                 clamped = true;
@@ -747,14 +749,14 @@ const CollisionOrchestrator = {
 
         // Clamp Z
         if (position.z < roomMinZ) {
-            const inNorthDoor = doors.includes('north') && position.x > doorCenterX - doorHalf && position.x < doorCenterX + doorHalf;
+            const inNorthDoor = doors.includes('north') && Math.abs(position.x - doorCenterX) < doorPassHalf;
             if (!inNorthDoor) {
                 position.z = roomMinZ;
                 clamped = true;
             }
         }
         if (position.z > roomMaxZ) {
-            const inSouthDoor = doors.includes('south') && position.x > doorCenterX - doorHalf && position.x < doorCenterX + doorHalf;
+            const inSouthDoor = doors.includes('south') && Math.abs(position.x - doorCenterX) < doorPassHalf;
             if (!inSouthDoor) {
                 position.z = roomMaxZ;
                 clamped = true;
