@@ -6,6 +6,12 @@
 const EnemyAI = {
     // Behavior defaults (use Enemy.behaviorDefaults if available)
     get chaseMinDistance() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.CHASE_MIN_DISTANCE : 3; },
+    get chaseStuckTimeout() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.CHASE_STUCK_TIMEOUT : 0.45; },
+    get chaseProgressEpsilon() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.CHASE_PROGRESS_EPSILON : 0.12; },
+    get chaseBypassDuration() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.CHASE_BYPASS_DURATION : 0.9; },
+    get chaseBypassDistance() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.CHASE_BYPASS_DISTANCE : 3.2; },
+    get chaseBypassForwardBias() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.CHASE_BYPASS_FORWARD_BIAS : 2.0; },
+    get chaseReplanCooldown() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.CHASE_REPLAN_COOLDOWN : 0.25; },
     get lostSightTimeout() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.LOST_SIGHT_TIMEOUT : 2; },
     get lostSightSpeed() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.LOST_SIGHT_SPEED : 0.5; },
     get wanderInterval() { return (typeof Enemy !== 'undefined' && Enemy.behaviorDefaults) ? Enemy.behaviorDefaults.WANDER_INTERVAL : 2; },
@@ -42,6 +48,7 @@ const EnemyAI = {
         const position = enemy.position;
         const oldX = position.x;
         const oldZ = position.z;
+        data.chaseIsBypassing = false;
 
         // Check line of sight to player
         const canSeePlayer = hasLineOfSight
@@ -60,18 +67,43 @@ const EnemyAI = {
         if (data.fleeBlockedTimer) {
             data.fleeBlockedTimer = Math.max(0, data.fleeBlockedTimer - dt);
         }
+        if (data.chaseBlockedTimer) {
+            data.chaseBlockedTimer = Math.max(0, data.chaseBlockedTimer - dt);
+        }
+        if (data.chaseReplanCooldown) {
+            data.chaseReplanCooldown = Math.max(0, data.chaseReplanCooldown - dt);
+        }
+        if (data.chaseBypassTimer) {
+            data.chaseBypassTimer = Math.max(0, data.chaseBypassTimer - dt);
+            if (data.chaseBypassTimer === 0) {
+                data.chaseBypassTarget = null;
+            }
+        }
 
         // Execute behavior based on LOS
         switch (behavior) {
             case 'chase':
                 if (canSeePlayer) {
-                    // Can see player - chase directly
-                    this._behaviorChase({ position, config }, playerPos, dt, baseSpeed);
+                    // Can see player - chase with local bypass logic when physically blocked
+                    this._behaviorChaseHybrid(enemy, data, playerPos, dt, baseSpeed, {
+                        collisionCheck,
+                        hasLineOfSight,
+                        canSeeTarget: canSeePlayer
+                    });
                 } else if (data.lastSeenPlayerPos && data.lostSightTimer < this.lostSightTimeout) {
                     // Lost sight recently - move to last known position
-                    this._behaviorChase({ position, config }, data.lastSeenPlayerPos, dt, baseSpeed * this.lostSightSpeed);
+                    this._behaviorChaseHybrid(enemy, data, data.lastSeenPlayerPos, dt, baseSpeed * this.lostSightSpeed, {
+                        collisionCheck,
+                        hasLineOfSight,
+                        canSeeTarget: false
+                    });
                 } else {
                     // No LOS for a while - wander in room
+                    data.chaseBypassTarget = null;
+                    data.chaseBypassTimer = 0;
+                    data.chaseNoProgressTimer = 0;
+                    data.chaseLastDistToTarget = null;
+                    data.chaseIsBypassing = false;
                     this._behaviorWander(enemy, data, dt, baseSpeed);
                 }
                 break;
@@ -98,14 +130,19 @@ const EnemyAI = {
                 }
         }
 
-        // Random drift only when can see player (adds unpredictability to chase)
-        if (canSeePlayer) {
+        // Random drift only for non-chase behaviors with LOS.
+        // Chase behavior should move directly when LOS is clear.
+        const allowDrift = canSeePlayer && behavior !== 'chase';
+        if (allowDrift) {
             data.driftTimer = (data.driftTimer || 0) + dt;
             if (data.driftTimer > config.driftInterval) {
                 data.driftTimer = 0;
                 data.driftSpeed = (Math.random() - 0.5) * config.driftSpeed;
             }
             position.x += (data.driftSpeed || 0) * dt;
+        } else if (behavior === 'chase') {
+            data.driftTimer = 0;
+            data.driftSpeed = 0;
         }
 
         // Wall collision check - revert movement if blocked
@@ -119,6 +156,14 @@ const EnemyAI = {
             if (collision.blockedZ) {
                 position.z = oldZ;
                 data.wanderDirZ = -(data.wanderDirZ || 0);
+            }
+            if ((collision.blockedX || collision.blockedZ) && behavior === 'chase') {
+                data.chaseBlockedTimer = Math.max(data.chaseBlockedTimer || 0, this.chaseStuckTimeout);
+                data.chaseNoProgressTimer = Math.max(data.chaseNoProgressTimer || 0, this.chaseStuckTimeout);
+                data.chaseBypassTarget = null;
+                data.chaseBypassTimer = 0;
+                data.chaseReplanCooldown = 0;
+                data.chaseStrafeSign = (data.chaseStrafeSign || 1) * -1;
             }
             if ((collision.blockedX || collision.blockedZ) && behavior === 'flee') {
                 data.fleeBlockedTimer = 0.6;
@@ -148,6 +193,186 @@ const EnemyAI = {
             const speed = baseSpeed * enemy.config.speed;
             position.x += nx * speed * dt;
             position.z += nz * speed * dt;
+        }
+    },
+
+    /**
+     * Distance helper in X/Z plane
+     */
+    _distance2D(a, b) {
+        const dx = (b.x - a.x);
+        const dz = (b.z - a.z);
+        return Math.sqrt(dx * dx + dz * dz);
+    },
+
+    /**
+     * Move position toward target in X/Z plane by speed*dt, clamped to target.
+     */
+    _moveTowards2D(position, target, speed, dt) {
+        const dx = target.x - position.x;
+        const dz = target.z - position.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist < 0.001) return dist;
+
+        const step = Math.min(speed * dt, dist);
+        position.x += (dx / dist) * step;
+        position.z += (dz / dist) * step;
+        return dist;
+    },
+
+    /**
+     * Choose a local bypass waypoint to route around blockers.
+     */
+    _pickChaseBypassTarget(position, targetPos, data, aiOptions = {}) {
+        const { collisionCheck = null, hasLineOfSight = null } = aiOptions;
+        const toTargetX = targetPos.x - position.x;
+        const toTargetZ = targetPos.z - position.z;
+        const toTargetDist = Math.sqrt(toTargetX * toTargetX + toTargetZ * toTargetZ);
+        if (toTargetDist < 0.001) return null;
+
+        const nx = toTargetX / toTargetDist;
+        const nz = toTargetZ / toTargetDist;
+        const leftX = -nz;
+        const leftZ = nx;
+
+        const preferredSign = (typeof data.chaseStrafeSign === 'number' && data.chaseStrafeSign !== 0)
+            ? Math.sign(data.chaseStrafeSign)
+            : (Math.random() < 0.5 ? -1 : 1);
+        const signOrder = [preferredSign, -preferredSign];
+        const sideBase = this.chaseBypassDistance;
+        const sideMultipliers = [1, 1.35];
+        const forwardBias = this.chaseBypassForwardBias;
+        const candidates = [];
+
+        signOrder.forEach((sign) => {
+            sideMultipliers.forEach((multiplier) => {
+                const side = sideBase * multiplier;
+                const candidate = {
+                    x: position.x + leftX * side * sign + nx * forwardBias,
+                    z: position.z + leftZ * side * sign + nz * forwardBias
+                };
+
+                if (collisionCheck) {
+                    const probe = collisionCheck(candidate.x, candidate.z, position.x, position.z);
+                    // Allow candidates with one free axis so chase can slide around blockers.
+                    if (probe?.blockedX && probe?.blockedZ) return;
+                }
+
+                const opensLOS = hasLineOfSight
+                    ? !!hasLineOfSight(candidate.x, candidate.z, targetPos.x, targetPos.z)
+                    : true;
+                const distToTarget = this._distance2D(candidate, targetPos);
+                candidates.push({ candidate, sign, opensLOS, distToTarget });
+            });
+        });
+
+        if (candidates.length === 0) return null;
+
+        candidates.sort((a, b) => {
+            if (a.opensLOS !== b.opensLOS) return a.opensLOS ? -1 : 1;
+            return a.distToTarget - b.distToTarget;
+        });
+
+        const best = candidates[0];
+        data.chaseStrafeSign = best.sign;
+        return best.candidate;
+    },
+
+    /**
+     * Chase with local bypass steering when direct pursuit is blocked.
+     */
+    _behaviorChaseHybrid(enemy, data, targetPos, dt, baseSpeed, aiOptions = {}) {
+        const position = enemy.position;
+        const config = enemy.config || data.config || {};
+        const speed = baseSpeed * (config.speed || 0);
+        const distToTarget = this._distance2D(position, targetPos);
+
+        if (speed <= 0 || distToTarget <= this.chaseMinDistance) {
+            data.chaseBypassTarget = null;
+            data.chaseBypassTimer = 0;
+            data.chaseNoProgressTimer = 0;
+            data.chaseLastDistToTarget = distToTarget;
+            data.chaseIsBypassing = false;
+            return;
+        }
+
+        const hasLineOfSight = aiOptions.hasLineOfSight || null;
+        const collisionCheck = aiOptions.collisionCheck || null;
+        const canSeeTarget = (typeof aiOptions.canSeeTarget === 'boolean')
+            ? aiOptions.canSeeTarget
+            : (hasLineOfSight ? hasLineOfSight(position.x, position.z, targetPos.x, targetPos.z) : true);
+
+        // Probe one direct chase step; LOS may be clear while immediate movement is still blocked.
+        let directStepBlocked = false;
+        if (canSeeTarget && collisionCheck && distToTarget > 0.001) {
+            const step = Math.min(speed * dt, distToTarget);
+            const dirX = (targetPos.x - position.x) / distToTarget;
+            const dirZ = (targetPos.z - position.z) / distToTarget;
+            const probeX = position.x + dirX * step;
+            const probeZ = position.z + dirZ * step;
+            const probe = collisionCheck(probeX, probeZ, position.x, position.z);
+            directStepBlocked = !!(probe?.blocked || probe?.blockedX || probe?.blockedZ);
+        }
+
+        if (typeof data.chaseLastDistToTarget === 'number') {
+            const progress = data.chaseLastDistToTarget - distToTarget;
+            // Scale progress floor by frame step to avoid false "stuck" detection at high FPS.
+            const expectedStep = speed * dt;
+            const minProgress = Math.min(this.chaseProgressEpsilon, Math.max(0.01, expectedStep * 0.35));
+            if (progress < minProgress) {
+                data.chaseNoProgressTimer = (data.chaseNoProgressTimer || 0) + dt;
+            } else {
+                data.chaseNoProgressTimer = Math.max(0, (data.chaseNoProgressTimer || 0) - dt * 0.5);
+            }
+        } else {
+            data.chaseNoProgressTimer = 0;
+        }
+        data.chaseLastDistToTarget = distToTarget;
+
+        let bypassActive = !!data.chaseBypassTarget && (data.chaseBypassTimer || 0) > 0;
+        if (bypassActive && this._distance2D(position, data.chaseBypassTarget) < 0.45) {
+            data.chaseBypassTarget = null;
+            data.chaseBypassTimer = 0;
+            data.chaseReplanCooldown = this.chaseReplanCooldown;
+            bypassActive = false;
+        }
+
+        const shouldBypass = !canSeeTarget
+            || directStepBlocked
+            || (data.chaseBlockedTimer || 0) > 0
+            || (data.chaseNoProgressTimer || 0) >= this.chaseStuckTimeout;
+
+        if (!bypassActive && shouldBypass && (data.chaseReplanCooldown || 0) <= 0) {
+            const bypassTarget = this._pickChaseBypassTarget(position, targetPos, data, aiOptions);
+            if (bypassTarget) {
+                data.chaseBypassTarget = bypassTarget;
+                data.chaseBypassTimer = this.chaseBypassDuration;
+                data.chaseBlockedTimer = 0;
+                data.chaseNoProgressTimer = 0;
+                bypassActive = true;
+            } else {
+                // No viable bypass this frame: briefly wander and retry soon.
+                data.chaseBypassTarget = null;
+                data.chaseBypassTimer = 0;
+                data.chaseReplanCooldown = this.chaseReplanCooldown;
+                data.chaseIsBypassing = false;
+                this._behaviorWander(enemy, data, Math.min(dt, 0.12), baseSpeed);
+                return;
+            }
+        }
+
+        if (bypassActive && canSeeTarget && !directStepBlocked && (data.chaseBlockedTimer || 0) <= 0) {
+            data.chaseBypassTarget = null;
+            data.chaseBypassTimer = 0;
+            bypassActive = false;
+        }
+
+        if (bypassActive && data.chaseBypassTarget) {
+            this._moveTowards2D(position, data.chaseBypassTarget, speed, dt);
+            data.chaseIsBypassing = true;
+        } else {
+            this._moveTowards2D(position, targetPos, speed, dt);
+            data.chaseIsBypassing = false;
         }
     },
 

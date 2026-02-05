@@ -60,6 +60,75 @@
         }
     );
 
+    runner.addTest('skeleton-bypasses-shelf-while-chasing', 'Enemy AI', 'Enemy routes around shelf blockers',
+        'Verifies chase AI makes lateral bypass progress instead of sticking to direct blocked path',
+        async () => {
+            await helpers.bootGameForIntegration();
+
+            const internals = runner.gameWindow.__gameInternals;
+            const manualUpdate = runner.gameWindow.manualUpdate;
+            if (!internals || !manualUpdate) {
+                throw new Error('Game internals not available for bypass integration test');
+            }
+
+            await helpers.positionPlayerAt(45, 68, 0);
+            const enemy = await helpers.spawnEnemyAt(45, 82, 'SKELETON');
+            if (!enemy?.userData) {
+                throw new Error('Failed to spawn enemy for bypass test');
+            }
+
+            // Lock drift randomness for deterministic steering assertions.
+            enemy.userData.config = {
+                ...enemy.userData.config,
+                driftInterval: 999,
+                driftSpeed: 0
+            };
+            enemy.userData.driftSpeed = 0;
+            enemy.userData.driftTimer = 0;
+
+            const shelves = internals.getShelves();
+            if (!Array.isArray(shelves)) {
+                throw new Error('Shelves array not available');
+            }
+
+            const blockerShelf = {
+                position: { x: 45, y: 0, z: 75 },
+                userData: { width: 6, depth: 3 }
+            };
+            shelves.push(blockerShelf);
+
+            try {
+                const initialDist = Math.sqrt(
+                    Math.pow(enemy.position.x - 45, 2) +
+                    Math.pow(enemy.position.z - 68, 2)
+                );
+                const initialX = enemy.position.x;
+
+                // Keep this under LOST_SIGHT_TIMEOUT to isolate bypass behavior.
+                for (let i = 0; i < 110; i++) {
+                    manualUpdate(0.016);
+                }
+                await runner.wait(30);
+
+                const finalDist = Math.sqrt(
+                    Math.pow(enemy.position.x - 45, 2) +
+                    Math.pow(enemy.position.z - 68, 2)
+                );
+                const lateralShift = Math.abs(enemy.position.x - initialX);
+
+                if (finalDist >= initialDist - 0.8) {
+                    throw new Error(`Enemy did not make enough chase progress around blocker: ${initialDist.toFixed(2)} -> ${finalDist.toFixed(2)}`);
+                }
+                if (lateralShift < 0.35) {
+                    throw new Error(`Expected lateral bypass movement around shelf, got shift ${lateralShift.toFixed(2)}`);
+                }
+            } finally {
+                const idx = shelves.indexOf(blockerShelf);
+                if (idx >= 0) shelves.splice(idx, 1);
+            }
+        }
+    );
+
     // Test 3: Skeleton collides with player
     runner.addTest('skeleton-collides-player', 'Enemy AI', 'Enemy collision damages player',
         'Verifies enemy collision with player deals damage',

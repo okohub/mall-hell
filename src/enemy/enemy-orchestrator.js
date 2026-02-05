@@ -583,10 +583,12 @@ const EnemyOrchestrator = {
 
         const size = config.size || config.visual?.size;
         if (size) {
-            const maxDim = Math.max(Number(size.w) || 0, Number(size.d) || 0);
-            if (maxDim > 0) {
-                // Slight padding keeps meshes off wall edges without over-inflating doorway checks.
-                return Math.max(1.0, maxDim * 0.5 + 0.15);
+            const width = Number(size.w) || 0;
+            const depth = Number(size.d) || 0;
+            const halfDiagonal = Math.sqrt(width * width + depth * depth) * 0.5;
+            if (halfDiagonal > 0) {
+                // Use footprint diagonal so rotated meshes do not clip wall corners.
+                return Math.max(1.0, halfDiagonal + 0.15);
             }
         }
 
@@ -604,7 +606,7 @@ const EnemyOrchestrator = {
      * @param {boolean} options.isInvulnerable - Whether player is invulnerable
      * @param {Function} options.onPlayerCollision - Callback when enemy hits player (damage)
      * @param {Function} options.collisionCheck - Wall collision check function(newX, newZ, oldX, oldZ)
-     * @param {Function} options.hasLineOfSight - LOS check function(fromX, fromZ, toX, toZ)
+     * @param {Function} options.hasLineOfSight - LOS check function(fromX, fromZ, toX, toZ, enemyRadius?, enemy?)
      * @param {Array} options.obstacles - Obstacle meshes for collision
      * @param {Array} options.shelves - Shelf meshes for collision
      * @param {number} options.despawnDistance - Distance to despawn (uses Enemy.system.DESPAWN_DISTANCE)
@@ -634,9 +636,15 @@ const EnemyOrchestrator = {
             const enemyCollisionCheck = collisionCheck
                 ? (nX, nZ, oX, oZ) => collisionCheck(nX, nZ, oX, oZ, wallRadius, enemy)
                 : null;
+            const enemyHasLineOfSight = hasLineOfSight
+                ? (fX, fZ, tX, tZ) => hasLineOfSight(fX, fZ, tX, tZ, wallRadius, enemy)
+                : null;
 
             // AI behavior with wall collision and LOS awareness
-            this.updateBehavior(enemy, playerPosition, dt, baseSpeed, { collisionCheck: enemyCollisionCheck, hasLineOfSight });
+            this.updateBehavior(enemy, playerPosition, dt, baseSpeed, {
+                collisionCheck: enemyCollisionCheck,
+                hasLineOfSight: enemyHasLineOfSight
+            });
 
             // Environment collision (obstacles, other enemies, shelves)
             // Run multiple passes to handle nested overlaps

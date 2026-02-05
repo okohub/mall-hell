@@ -397,7 +397,7 @@
             test.assertTrue(e.position.x !== initialX);
         });
 
-        test.it('should reverse drift direction when hitting wall', () => {
+        test.it('should reset chase drift when hitting wall', () => {
             const e = EnemyOrchestrator.spawn('SKELETON', 0, -10, null);
             e.driftSpeed = 5; // Positive drift
             e.driftTimer = 0;
@@ -410,8 +410,8 @@
 
             EnemyOrchestrator.updateBehavior(e, { x: 0, y: 0, z: 0 }, 0.1, 10, { collisionCheck });
 
-            // Drift should reverse
-            test.assertEqual(e.driftSpeed, -5);
+            // Chase drift is disabled; value should be reset
+            test.assertEqual(e.driftSpeed, 0);
         });
 
         test.it('should derive wall collision radius from visual size footprint', () => {
@@ -432,14 +432,17 @@
 
             const toyRadius = EnemyOrchestrator._getWallCollisionRadius(toy);
             const dinoRadius = EnemyOrchestrator._getWallCollisionRadius(dino);
+            const expectedToyRadius = Math.max(1.0, Math.sqrt(1.35 * 1.35 + 1.45 * 1.45) * 0.5 + 0.15);
+            const expectedDinoRadius = Math.max(1.0, Math.sqrt(3.5 * 3.5 + 4.5 * 4.5) * 0.5 + 0.15);
 
-            test.assertTrue(toyRadius >= 1.0, 'Toy wall radius should keep minimum safety margin');
-            test.assertCloseTo(dinoRadius, 2.4, 0.001, 'Dino wall radius should track mesh footprint');
+            test.assertCloseTo(toyRadius, expectedToyRadius, 0.001, 'Toy wall radius should track diagonal footprint');
+            test.assertCloseTo(dinoRadius, expectedDinoRadius, 0.001, 'Dino wall radius should track diagonal footprint');
             test.assertTrue(dinoRadius > toyRadius, 'Larger meshes should get larger wall radius');
         });
 
-        test.it('should pass per-enemy wall radius into collision and clamp callbacks', () => {
+        test.it('should pass per-enemy wall radius into collision, LOS, and clamp callbacks', () => {
             let receivedCollisionRadius = null;
+            let receivedLosRadius = null;
             let receivedClampRadius = null;
             const originalUpdateBehavior = EnemyOrchestrator.updateBehavior;
             const originalResolve = EnemyOrchestrator._resolveEnvironmentCollisions;
@@ -449,6 +452,9 @@
                 EnemyOrchestrator.updateBehavior = (enemy, playerPos, dt, baseSpeed, aiOptions) => {
                     if (aiOptions?.collisionCheck) {
                         aiOptions.collisionCheck(enemy.position.x, enemy.position.z, enemy.position.x, enemy.position.z);
+                    }
+                    if (aiOptions?.hasLineOfSight) {
+                        aiOptions.hasLineOfSight(enemy.position.x, enemy.position.z, playerPos.x, playerPos.z);
                     }
                 };
                 EnemyOrchestrator._resolveEnvironmentCollisions = () => {};
@@ -476,6 +482,10 @@
                         receivedCollisionRadius = radius;
                         return { blocked: false, blockedX: false, blockedZ: false };
                     },
+                    hasLineOfSight: (fX, fZ, tX, tZ, radius) => {
+                        receivedLosRadius = radius;
+                        return true;
+                    },
                     clampToRoomBounds: (pos, radius) => {
                         receivedClampRadius = radius;
                     }
@@ -486,8 +496,153 @@
                 EnemyOrchestrator._updateVisuals = originalUpdateVisuals;
             }
 
-            test.assertCloseTo(receivedCollisionRadius, 2.4, 0.001);
-            test.assertCloseTo(receivedClampRadius, 2.4, 0.001);
+            const expectedRadius = Math.max(1.0, Math.sqrt(3.5 * 3.5 + 4.5 * 4.5) * 0.5 + 0.15);
+            test.assertCloseTo(receivedCollisionRadius, expectedRadius, 0.001);
+            test.assertCloseTo(receivedLosRadius, expectedRadius, 0.001);
+            test.assertCloseTo(receivedClampRadius, expectedRadius, 0.001);
+        });
+
+        test.it('should enter bypass mode when chase is repeatedly blocked', () => {
+            const e = EnemyOrchestrator.spawn('SKELETON', 0, -10, null);
+            const playerPos = { x: 15, y: 0, z: -10 };
+            const initialZ = e.position.z;
+
+            const collisionCheck = (nX, nZ, oX, oZ) => {
+                const stillInDirectLane = Math.abs(nZ - oZ) < 0.25;
+                const blockedX = stillInDirectLane && nX > oX;
+                return {
+                    blocked: blockedX,
+                    blockedX,
+                    blockedZ: false
+                };
+            };
+
+            for (let i = 0; i < 8; i++) {
+                EnemyOrchestrator.updateBehavior(e, playerPos, 0.12, 10, {
+                    collisionCheck,
+                    hasLineOfSight: () => true
+                });
+            }
+
+            test.assertTrue(!!e.chaseBypassTarget || Math.abs(e.position.z - initialZ) > 0.3,
+                'Chase should set a bypass route instead of only pushing direct line');
+        });
+
+        test.it('should use LOS callback to trigger lateral bypass movement', () => {
+            const e = EnemyOrchestrator.spawn('SKELETON', 0, -10, null);
+            const playerPos = { x: 12, y: 0, z: -10 };
+            const initialZ = e.position.z;
+
+            const hasLineOfSight = (fX, fZ, tX, tZ) => {
+                // Block only direct LOS to player target; allow candidate LOS probes.
+                return !(Math.abs(tX - playerPos.x) < 0.001 && Math.abs(tZ - playerPos.z) < 0.001);
+            };
+
+            for (let i = 0; i < 10; i++) {
+                EnemyOrchestrator.updateBehavior(e, playerPos, 0.1, 10, {
+                    collisionCheck: () => ({ blocked: false, blockedX: false, blockedZ: false }),
+                    hasLineOfSight
+                });
+            }
+
+            test.assertTrue(Math.abs(e.position.z - initialZ) > 0.2,
+                'Chase should move laterally when direct LOS is physically blocked');
+        });
+
+        test.it('should exit bypass when timer elapses and resume direct chase', () => {
+            const e = EnemyOrchestrator.spawn('SKELETON', 0, -10, null);
+            const playerPos = { x: 15, y: 0, z: -10 };
+            const initialX = e.position.x;
+
+            e.chaseBypassTarget = { x: 0, z: -6 };
+            e.chaseBypassTimer = 0.05;
+            e.chaseBlockedTimer = 0;
+            e.chaseNoProgressTimer = 0;
+
+            EnemyOrchestrator.updateBehavior(e, playerPos, 0.1, 10, {
+                collisionCheck: () => ({ blocked: false, blockedX: false, blockedZ: false }),
+                hasLineOfSight: () => true
+            });
+
+            test.assertTrue(!e.chaseBypassTarget, 'Bypass should clear when timer ends');
+            test.assertTrue(e.position.x > initialX, 'Enemy should resume direct chase movement');
+        });
+
+        test.it('should alternate bypass side after repeated chase blocks', () => {
+            const e = EnemyOrchestrator.spawn('SKELETON', 0, -10, null);
+            const playerPos = { x: 10, y: 0, z: -10 };
+            e.chaseStrafeSign = 1;
+
+            const alwaysBlocked = () => ({
+                blocked: true,
+                blockedX: true,
+                blockedZ: true
+            });
+
+            EnemyOrchestrator.updateBehavior(e, playerPos, 0.1, 10, {
+                collisionCheck: alwaysBlocked,
+                hasLineOfSight: () => true
+            });
+            const firstSign = e.chaseStrafeSign;
+
+            EnemyOrchestrator.updateBehavior(e, playerPos, 0.1, 10, {
+                collisionCheck: alwaysBlocked,
+                hasLineOfSight: () => true
+            });
+            const secondSign = e.chaseStrafeSign;
+
+            test.assertEqual(firstSign, -1);
+            test.assertEqual(secondSign, 1);
+        });
+
+        test.it('should keep flee blocked timer behavior unchanged', () => {
+            const e = EnemyOrchestrator.spawn('TOY', 0, -10, null);
+            e.fleeBlockedTimer = 0;
+
+            EnemyOrchestrator.updateBehavior(e, { x: 0, y: 0, z: 0 }, 0.1, 10, {
+                collisionCheck: () => ({ blocked: true, blockedX: true, blockedZ: false }),
+                hasLineOfSight: () => true
+            });
+
+            test.assertTrue(e.fleeBlockedTimer > 0, 'Flee behavior should still arm blocked timer');
+        });
+
+        test.it('should chase directly without lateral drift when LOS is clear', () => {
+            const e = EnemyOrchestrator.spawn('SKELETON', 10, -10, null);
+            const playerPos = { x: 0, y: 0, z: -10 };
+            const initialZ = e.position.z;
+            const initialX = e.position.x;
+
+            // Seed drift with a non-zero value to verify it gets reset for chase.
+            e.driftSpeed = 2.5;
+            e.driftTimer = 1.0;
+
+            for (let i = 0; i < 16; i++) {
+                EnemyOrchestrator.updateBehavior(e, playerPos, 0.1, 10, {
+                    collisionCheck: () => ({ blocked: false, blockedX: false, blockedZ: false }),
+                    hasLineOfSight: () => true
+                });
+            }
+
+            test.assertTrue(e.position.x < initialX, 'Enemy should move directly toward player on X');
+            test.assertTrue(Math.abs(e.position.z - initialZ) < 0.05, 'Enemy should not zigzag laterally on clear LOS');
+            test.assertEqual(e.driftSpeed, 0, 'Chase drift speed should be reset to zero');
+        });
+
+        test.it('should not enter bypass at frame-rate dt when LOS is clear', () => {
+            const e = EnemyOrchestrator.spawn('SKELETON', 12, -10, null);
+            const playerPos = { x: 0, y: 0, z: -10 };
+            const initialZ = e.position.z;
+
+            for (let i = 0; i < 120; i++) {
+                EnemyOrchestrator.updateBehavior(e, playerPos, 1 / 60, 10, {
+                    collisionCheck: () => ({ blocked: false, blockedX: false, blockedZ: false }),
+                    hasLineOfSight: () => true
+                });
+            }
+
+            test.assertFalse(!!e.chaseBypassTarget, 'Clear LOS chase should not stay in bypass mode');
+            test.assertTrue(Math.abs(e.position.z - initialZ) < 0.08, 'Clear LOS chase should stay nearly on direct lane');
         });
     });
 

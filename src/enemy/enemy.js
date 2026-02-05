@@ -70,6 +70,12 @@ const Enemy = {
     // Behavior constants (defaults for AI)
     behaviorDefaults: {
         CHASE_MIN_DISTANCE: 3,       // Stop chasing when this close
+        CHASE_STUCK_TIMEOUT: 0.45,   // Seconds of poor progress before forcing bypass
+        CHASE_PROGRESS_EPSILON: 0.12, // Minimum per-tick progress considered "moving toward target"
+        CHASE_BYPASS_DURATION: 0.9,  // Seconds to commit to a local bypass target
+        CHASE_BYPASS_DISTANCE: 3.2,  // Side offset for local bypass waypoint generation
+        CHASE_BYPASS_FORWARD_BIAS: 2.0, // Forward offset when generating bypass waypoints
+        CHASE_REPLAN_COOLDOWN: 0.25, // Cooldown before selecting a new bypass waypoint
         LOST_SIGHT_TIMEOUT: 2,       // Seconds before switching to wander
         LOST_SIGHT_SPEED: 0.5,       // Speed multiplier when lost sight
         WANDER_INTERVAL: 2,          // Seconds between wander direction changes

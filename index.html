@@ -814,7 +814,14 @@
                         shelves,
                         playerRadius: enemyRadius
                     }),
-                hasLineOfSight: (fX, fZ, tX, tZ) => CollisionOrchestrator.hasLineOfSight(fX, fZ, tX, tZ, mallGrid, Room.structure),
+                hasLineOfSight: (fX, fZ, tX, tZ, enemyRadius = 1.5) =>
+                    CollisionOrchestrator.hasLineOfSightWithPhysicals(fX, fZ, tX, tZ, {
+                        gridOrchestrator: mallGrid,
+                        roomConfig: Room.structure,
+                        obstacles,
+                        shelves,
+                        playerRadius: enemyRadius
+                    }),
                 clampToRoomBounds: (pos, enemyRadius = 1.5) => CollisionOrchestrator.clampToRoomBounds(pos, mallGrid, Room.structure, enemyRadius),
                 obstacles,
                 shelves
