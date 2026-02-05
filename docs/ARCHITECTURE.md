@@ -66,6 +66,26 @@ Projectiles use a registry-first pattern with per-type folders. Each projectile 
 **Script load order (non-modules)**:
 Mesh → Animation → Type for each projectile, then `projectile.js` → `projectile-orchestrator.js`.
 
+### PowerUp Domain Pattern (Registry + Per-Type API)
+
+Power-ups now follow the same registry-first pattern. Each power-up type exposes a **single API file** that registers into a global registry and delegates to its mesh helper.
+
+| File | Purpose | Notes |
+|------|---------|-------|
+| `powerup.js` | Registry access + helpers | Uses `globalThis.PowerUpTypeRegistry` |
+| `powerup-orchestrator.js` | Timers + activation | Uses `PowerUp.get(...)` |
+| `powerup/<type>/<type>.js` | **Public API** for the type | Registers to registry, delegates to mesh |
+| `powerup/<type>/<type>-mesh.js` | Pickup mesh creation | `createPickupMesh(THREE, config)` |
+| `powerup.test.js` | Unit tests | Registry hooks enforced |
+
+**Key rules**:
+1. The type file is the only public API for a power-up.
+2. Mesh creation lives in a `*-mesh.js` helper.
+3. Registry entries must define `createPickupMesh`.
+
+**Script load order (non-modules)**:
+Mesh → Type for each power-up, then `powerup.js` → `powerup-orchestrator.js`.
+
 ### Enemy Domain Pattern (Registry + Per-Type API)
 
 Enemies now follow the same registry-first pattern with per-type folders. Each enemy type exposes a **single API file** that delegates to mesh and animation modules and registers into a global registry.

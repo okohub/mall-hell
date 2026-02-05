@@ -24,6 +24,7 @@
             test.assertTrue(config.visual.color !== undefined, 'Has color');
             test.assertTrue(config.visual.glowColor !== undefined, 'Has glow color');
             test.assertTrue(config.visual.scale !== undefined, 'Has scale');
+            test.assertTrue(typeof config.createPickupMesh === 'function', 'Has createPickupMesh hook');
         });
 
         test.it('should get power-up by id', () => {

@@ -1,30 +1,16 @@
 // ============================================
-// POWERUP SYSTEM - Pure Data Definitions
+// POWERUP SYSTEM - Registry Access + Helpers
 // ============================================
-// Defines power-up types and spawn rules
-// Self-contained, zero external dependencies
+// Power-up types register into globalThis.PowerUpTypeRegistry
+// This file provides lookup helpers and a stable API surface.
+
+var PowerUpTypeRegistry = (typeof globalThis !== 'undefined')
+    ? (globalThis.PowerUpTypeRegistry = globalThis.PowerUpTypeRegistry || {})
+    : {};
 
 const PowerUp = {
-    // ==========================================
-    // POWER-UP TYPE DEFINITIONS
-    // ==========================================
-
-    types: {
-        SPEED_BOOST: {
-            id: 'speed_boost',
-            name: 'Speed Boost',
-            isPowerup: true,
-            spawnChance: 0.25,      // 25% of rooms
-            spawnWeight: 2,         // Similar rarity to Laser Gun
-            duration: 10000,        // 10 seconds in milliseconds
-            speedMultiplier: 2.0,   // 2x speed (25 → 50 units/sec)
-            visual: {
-                color: 0x2ecc71,     // Emerald green
-                glowColor: 0x7dffb2, // Mint glow
-                scale: 2.0           // Similar to weapon pickups
-            }
-        }
-    },
+    // Registry-backed types map (keys like SPEED_BOOST)
+    types: PowerUpTypeRegistry,
 
     // ==========================================
     // HELPERS
@@ -36,7 +22,12 @@ const PowerUp = {
      * @returns {Object|null} Power-up type config
      */
     get(typeId) {
-        return this.types[typeId.toUpperCase()] || null;
+        if (!typeId) return null;
+        if (this.types[typeId]) return this.types[typeId];
+        const upper = typeId.toUpperCase();
+        if (this.types[upper]) return this.types[upper];
+        const match = Object.values(this.types).find(type => type.id === typeId);
+        return match || null;
     },
 
     /**
