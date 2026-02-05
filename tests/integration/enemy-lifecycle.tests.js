@@ -205,7 +205,22 @@
 
             await helpers.fireWeapon(0);
 
-            const transformed = await helpers.waitForCondition(() => enemy.userData.isToy === true, 2000);
+            const runner = helpers.runner;
+            const getEnemies = () => {
+                const gi = runner.gameWindow.__gameInternals;
+                return gi ? gi.getEnemies() : (runner.gameWindow.enemies || []);
+            };
+
+            const transformed = await helpers.waitForCondition(() => {
+                const enemies = getEnemies();
+                const hasToy = enemies.some((e) =>
+                    e?.userData?.config?.isToy ||
+                    e?.userData?.isToy ||
+                    e?.userData?.type === 'TOY'
+                );
+                return hasToy && enemy.userData.active === false;
+            }, 2000);
+
             if (!transformed) {
                 throw new Error('Enemy was not transformed into toy');
             }
