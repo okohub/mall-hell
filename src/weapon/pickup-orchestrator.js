@@ -174,13 +174,9 @@ const PickupOrchestrator = {
         const weaponId = config.weaponId;
         let mesh;
 
-        // Power-up pickups use power-up-specific mesh
-        if (config.isPowerup) {
+        // Power-up + health pickups use power-up-specific mesh
+        if (config.isHealth || config.isPowerup) {
             mesh = this._createPowerUpMesh(instance, THREE);
-        }
-        // Health pickups use heart mesh
-        else if (config.isHealth) {
-            mesh = this._createHealthMesh(instance, THREE);
         }
         // Ammo pickups use generic ammo mesh
         else if (config.isAmmo || weaponId === null) {
@@ -294,58 +290,6 @@ const PickupOrchestrator = {
 
         // Fallback: generic power-up mesh
         return this._createGenericMesh(instance, THREE);
-    },
-
-    /**
-     * Create health pickup mesh - stylized heart
-     * @private
-     */
-    _createHealthMesh(instance, THREE) {
-        const pickup = new THREE.Group();
-        const config = instance.config || {};
-        const baseColor = new THREE.Color(config.visual?.color || 0xe74c3c);
-        const glowColor = config.visual?.glowColor || 0xff6b6b;
-
-        // Heart body material
-        const heartMat = new THREE.MeshStandardMaterial({
-            color: baseColor,
-            roughness: 0.35,
-            metalness: 0.2,
-            emissive: baseColor,
-            emissiveIntensity: 0.3,
-            side: THREE.DoubleSide
-        });
-
-        // Heart silhouette using a shape (more recognizable than spheres)
-        const shape = new THREE.Shape();
-        shape.moveTo(0, 0.2);
-        shape.bezierCurveTo(0, 0.5, -0.5, 0.55, -0.5, 0.15);
-        shape.bezierCurveTo(-0.5, -0.25, -0.1, -0.45, 0, -0.6);
-        shape.bezierCurveTo(0.1, -0.45, 0.5, -0.25, 0.5, 0.15);
-        shape.bezierCurveTo(0.5, 0.55, 0, 0.5, 0, 0.2);
-
-        const extrudeGeo = new THREE.ExtrudeGeometry(shape, {
-            depth: 0.08,
-            bevelEnabled: false
-        });
-        extrudeGeo.center();
-
-        const heart = new THREE.Mesh(extrudeGeo, heartMat);
-        heart.scale.set(1.0, 1.12, 1.0);
-        pickup.add(heart);
-
-        // Subtle glow shell
-        const glowMat = new THREE.MeshBasicMaterial({
-            color: glowColor,
-            transparent: true,
-            opacity: 0.6
-        });
-        const glowGeo = new THREE.SphereGeometry(0.5, 16, 16);
-        const glow = new THREE.Mesh(glowGeo, glowMat);
-        glow.position.set(0, 0.05, 0);
-        pickup.add(glow);
-
-        return pickup;
     },
 
     /**
@@ -505,20 +449,6 @@ const PickupOrchestrator = {
             return Math.max(0, after - before);
         };
 
-        // Power-up pickup - activate effect
-        if (config.isPowerup) {
-            if (typeof PowerUpOrchestrator !== 'undefined') {
-                PowerUpOrchestrator.activate(config.id, Date.now());
-            }
-            return {
-                switched: false,
-                ammoAdded: 0,
-                weaponId: currentWeaponId,
-                isPowerup: true,
-                powerupType: config.id
-            };
-        }
-
         // Health pickup - heal player
         if (config.isHealth) {
             if (typeof PlayerOrchestrator !== 'undefined') {
@@ -536,6 +466,20 @@ const PickupOrchestrator = {
                 weaponId: currentWeaponId,
                 isHealth: true,
                 healAmount: config.healAmount || 0
+            };
+        }
+
+        // Power-up pickup - activate effect
+        if (config.isPowerup) {
+            if (typeof PowerUpOrchestrator !== 'undefined') {
+                PowerUpOrchestrator.activate(config.id, Date.now());
+            }
+            return {
+                switched: false,
+                ammoAdded: 0,
+                weaponId: currentWeaponId,
+                isPowerup: true,
+                powerupType: config.id
             };
         }
 

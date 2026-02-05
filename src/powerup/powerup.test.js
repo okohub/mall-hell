@@ -36,6 +36,15 @@
             test.assertEqual(invalid, null, 'Returns null for invalid ID');
         });
 
+        test.it('should expose health heart as drop-only power-up', () => {
+            const config = PowerUp.get('health_heart');
+            test.assertTrue(config !== null, 'Health heart config exists');
+            test.assertTrue(config.isHealth === true, 'Health heart isHealth flag');
+            test.assertEqual(config.healAmount, 20, 'Heal amount is 20');
+            test.assertTrue(config.dropOnly === true, 'Health heart is drop-only');
+            test.assertTrue(typeof config.createPickupMesh === 'function', 'Has createPickupMesh hook');
+        });
+
         test.it('should get all power-ups as array', () => {
             const all = PowerUp.getAll();
             test.assertTrue(Array.isArray(all), 'Returns array');

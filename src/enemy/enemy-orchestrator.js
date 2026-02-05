@@ -435,10 +435,10 @@ const EnemyOrchestrator = {
         // Attach carried health heart to skeleton cart (if applicable)
         if (group.userData.carriesHealth && group.userData.cart && typeof PickupOrchestrator !== 'undefined') {
             const healthInstance = (typeof WeaponPickup !== 'undefined')
-                ? WeaponPickup.createInstance('HEALTH_HEART', { x: 0, y: 0, z: 0 })
+                ? WeaponPickup.createInstance('health_heart', { x: 0, y: 0, z: 0 })
                 : null;
-            if (healthInstance && typeof PickupOrchestrator._createHealthMesh === 'function') {
-                const heartMesh = PickupOrchestrator._createHealthMesh(healthInstance, THREE);
+            if (healthInstance && typeof PickupOrchestrator._createPowerUpMesh === 'function') {
+                const heartMesh = PickupOrchestrator._createPowerUpMesh(healthInstance, THREE);
                 if (typeof PickupOrchestrator._addGlowEffect === 'function') {
                     PickupOrchestrator._addGlowEffect(heartMesh, healthInstance, THREE);
                 }

@@ -676,10 +676,11 @@
             test.assertTrue(WeaponPickup.types.DINONIZER.dropOnly, 'Dinonizer should be drop-only');
         });
 
-        test.it('should have HEALTH_HEART pickup defined', () => {
-            test.assertTrue(WeaponPickup.types.HEALTH_HEART !== undefined);
-            test.assertTrue(WeaponPickup.types.HEALTH_HEART.isHealth, 'Health heart should be isHealth');
-            test.assertEqual(WeaponPickup.types.HEALTH_HEART.healAmount, 20);
+        test.it('should have HEALTH_HEART powerup defined', () => {
+            const config = (typeof PowerUp !== 'undefined') ? PowerUp.get('health_heart') : null;
+            test.assertTrue(config !== null, 'Health heart config exists');
+            test.assertTrue(config.isHealth, 'Health heart should be isHealth');
+            test.assertEqual(config.healAmount, 20);
         });
 
         test.it('should get pickup by id', () => {
@@ -697,7 +698,7 @@
         test.it('should select random pickup', () => {
             const pickup = WeaponPickup.selectRandom();
             test.assertTrue(pickup !== null);
-            test.assertTrue(pickup.weaponId !== undefined);
+            test.assertTrue(pickup.id !== undefined);
         });
 
         test.it('should create pickup instance', () => {
@@ -809,11 +810,11 @@
                 return;
             }
 
-            const instance = WeaponPickup.createInstance('HEALTH_HEART', { x: 0, y: 1, z: 0 });
+            const instance = WeaponPickup.createInstance('health_heart', { x: 0, y: 1, z: 0 });
             test.assertTrue(instance.config.isHealth, 'Should be health type');
 
             PickupOrchestrator.THREE = THREE;
-            const mesh = PickupOrchestrator._createHealthMesh(instance, THREE);
+            const mesh = PickupOrchestrator._createPowerUpMesh(instance, THREE);
 
             test.assertTrue(mesh instanceof THREE.Group, 'Health mesh should be a Group');
             test.assertTrue(mesh.children.length >= 2, 'Heart should have multiple parts');

@@ -86,39 +86,6 @@ const WeaponPickup = {
             }
         },
 
-        // Power-ups - temporary effects
-        SPEED_BOOST: {
-            id: 'speed_boost',
-            weaponId: null,          // Not a weapon
-            name: 'Speed Boost',
-            isPowerup: true,
-            spawnChance: 0.25,       // 25% of rooms
-            spawnWeight: 2,          // Similar rarity to Laser Gun
-            ammoGrant: 0,            // No ammo
-            visual: {
-                color: 0x2ecc71,     // Emerald green
-                glowColor: 0x7dffb2, // Mint glow
-                scale: 2.0
-            }
-        },
-
-        // Health pickup - drop-only (enemy carried)
-        HEALTH_HEART: {
-            id: 'health_heart',
-            weaponId: null,
-            name: 'Health Heart',
-            isHealth: true,
-            healAmount: 20,
-            spawnChance: 0,
-            spawnWeight: 0,
-            dropOnly: true,
-            visual: {
-                color: 0xe74c3c,     // Rich red
-                glowColor: 0xff6b6b, // Warm red glow
-                scale: 1.8
-            }
-        },
-
         DINONIZER: {
             id: 'dinonizer',
             weaponId: 'dinonizer',
@@ -201,18 +168,22 @@ const WeaponPickup = {
      * @returns {Object} Selected pickup type
      */
     selectRandom() {
-        const types = this.getAll().filter(type => !type.dropOnly);
-        const totalWeight = types.reduce((sum, t) => sum + t.spawnWeight, 0);
+        const weaponTypes = this.getAll().filter(type => !type.dropOnly);
+        const powerUps = (typeof PowerUp !== 'undefined' && PowerUp.getAll)
+            ? PowerUp.getAll()
+            : [];
+        const types = [...weaponTypes, ...powerUps].filter(type => !type.dropOnly);
+        const totalWeight = types.reduce((sum, t) => sum + (t.spawnWeight || 0), 0);
         let random = Math.random() * totalWeight;
 
         for (const type of types) {
-            random -= type.spawnWeight;
+            random -= (type.spawnWeight || 0);
             if (random <= 0) {
                 return type;
             }
         }
 
-        return types[0]; // Fallback
+        return types[0] || weaponTypes[0] || powerUps[0]; // Fallback
     },
 
     /**

@@ -10,6 +10,7 @@ const SpeedBoost = {
     id: 'speed_boost',
     name: 'Speed Boost',
     isPowerup: true,
+    weaponId: null,
     spawnChance: 0.25,      // 25% of rooms
     spawnWeight: 2,         // Similar rarity to Laser Gun
     duration: 10000,        // 10 seconds in milliseconds
