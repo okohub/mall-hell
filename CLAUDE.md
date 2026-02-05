@@ -1,6 +1,6 @@
 # Mall Hell
 
-**Version 5.8** | First-person arcade shooter | Clear the mall of enemies
+**Version 5.9** | First-person arcade shooter | Clear the mall of enemies
 
 ## Quick Commands
 

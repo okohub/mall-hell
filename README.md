@@ -123,6 +123,7 @@ mall-hell/
 
 ## Version History
 
+- **v5.9** - Registry-based refactor for projectile/weapon/enemy domains, Dinonizer toy transformation + toy pickups, health heart drops, updated UI enemy counts, test runner timeout improvements
 - **v5.5** - Weapon balance overhaul: slingshot 2s charge time and damage scaling (1/2/4), nerf gun 20% faster projectiles, water gun 50% stronger splash, laser gun 75-shot magazine, weapon-specific projectile spawn offsets for visual accuracy
 - **v5.3** - Integration test suite (45 tests), improved test isolation, deterministic game loop control
 - **v5.1** - T-Rex boss redesign with proper dinosaur anatomy, test framework improvements
